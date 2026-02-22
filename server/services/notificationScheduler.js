@@ -1,8 +1,8 @@
 import cron from 'node-cron'
-import { JsonRepository } from '../repositories/json.repository.js'
+import { getRepository } from '../repositories/index.js'
 import { sendAppointmentReminder } from './emailService.js'
 
-const appointmentsRepo = new JsonRepository('appointments.json')
+const appointmentsRepo = getRepository('appointments.json')
 
 /**
  * Calcula a diferença em horas entre o horário do agendamento e agora
@@ -97,7 +97,7 @@ const processNotifications = async () => {
                 let recipientName = apt.customerName
 
                 if (apt.userId) {
-                    const usersRepo = new JsonRepository('users.json')
+                    const usersRepo = getRepository('users.json')
                     const user = await usersRepo.findById(apt.userId)
                     if (user?.email) {
                         recipientEmail = user.email

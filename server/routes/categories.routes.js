@@ -3,7 +3,7 @@ import { getRepository } from '../repositories/index.js'
 
 const router = Router()
 const categoriesRepo = getRepository('categories.json')
-const servicesRepo = new JsonRepository('services.json')
+const servicesRepo = getRepository('services.json')
 
 // Listar categorias
 router.get('/', async (req, res, next) => {

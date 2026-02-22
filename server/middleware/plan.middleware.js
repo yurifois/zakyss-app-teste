@@ -1,7 +1,7 @@
-import { JsonRepository } from '../repositories/json.repository.js'
+import { getRepository } from '../repositories/index.js'
 import { AppError } from './error.middleware.js'
 
-const establishmentsRepo = new JsonRepository('establishments.json')
+const establishmentsRepo = getRepository('establishments.json')
 
 /**
  * Middleware para verificar se o estabelecimento tem plano premium
