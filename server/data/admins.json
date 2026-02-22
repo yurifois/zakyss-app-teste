@@ -1,0 +1,63 @@
+[
+  {
+    "id": 1,
+    "name": "Admin Studio Beleza",
+    "email": "admin@studiobeleza.com",
+    "password": "$2a$10$N9qo8uLOickgx2ZMRZoMy.MqrqpGSAHzA6S4T7NQH1KMiWj3AXzCm",
+    "establishmentId": 1,
+    "createdAt": "2025-12-15T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Admin Barbearia BSB",
+    "email": "admin@barbeariabsb.com",
+    "password": "$2a$10$N9qo8uLOickgx2ZMRZoMy.MqrqpGSAHzA6S4T7NQH1KMiWj3AXzCm",
+    "establishmentId": 2,
+    "createdAt": "2025-12-15T00:00:00Z"
+  },
+  {
+    "name": "Admin cabelo",
+    "email": "yurifois@gmail.com",
+    "password": "$2a$10$Xgs1l/vViqsjb4IXeTMCkuC/fiKWZEXFDijaGApTPb9ChAKGSk.ty",
+    "establishmentId": 16,
+    "id": 3,
+    "createdAt": "2025-12-16T08:26:48.974Z",
+    "updatedAt": "2025-12-16T08:26:48.974Z"
+  },
+  {
+    "name": "Admin Zakys",
+    "email": "eu@gmail.com",
+    "password": "$2a$10$37UQlI5wm10ik3uPTUoU5uzzN74jeTcdV2J91tCNOvuWN13n1y4Fe",
+    "establishmentId": 17,
+    "id": 4,
+    "createdAt": "2026-01-05T23:52:43.148Z",
+    "updatedAt": "2026-01-05T23:52:43.148Z"
+  },
+  {
+    "name": "Admin barbearia bsb",
+    "email": "barbeariabsb@gmail.com",
+    "password": "$2a$10$oiXfCOtLDb7xpu8tyELY5Ofc.EhangedFxgD4lj9P/799sCG0Cfi2",
+    "establishmentId": 18,
+    "id": 5,
+    "createdAt": "2026-01-06T01:11:52.592Z",
+    "updatedAt": "2026-01-06T01:11:52.592Z"
+  },
+  {
+    "name": "Admin Barba&Cabelo",
+    "email": "yf@mail.com",
+    "password": "$2a$10$SizXRB0jecOz0JdS379D9ONBffbBQ0dO0dQAzUMijObF8utVqrSHO",
+    "establishmentId": 19,
+    "id": 6,
+    "createdAt": "2026-01-16T21:43:02.417Z",
+    "updatedAt": "2026-01-16T21:43:02.417Z"
+  },
+  {
+    "name": "Admin Y Barbas",
+    "email": "ybarbas@gmail.com",
+    "password": "$2a$10$2m1k4fTaX40bDz.ZPbqqW.8iy7eknf1XY0gkQZPq/LElpHLJC12QO",
+    "establishmentId": 20,
+    "id": 7,
+    "createdAt": "2026-01-16T22:05:41.352Z",
+    "updatedAt": "2026-01-16T22:05:41.352Z"
+  }
+]

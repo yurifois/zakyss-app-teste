@@ -1,0 +1,158 @@
+.market-price-indicator {
+    position: relative;
+    display: inline-block;
+}
+
+/* Badge principal */
+.market-price-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.market-price-badge:hover {
+    transform: scale(1.05);
+}
+
+.market-price-icon {
+    font-size: 0.75rem;
+}
+
+/* Posições */
+.market-position-below {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.market-position-average {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.market-position-above {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Badge bloqueado */
+.market-price-locked {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.market-price-locked:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+/* Indisponível */
+.market-price-unavailable {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    color: var(--text-muted, #9ca3af);
+    font-size: 0.8125rem;
+}
+
+/* Tooltip de detalhes */
+.market-price-tooltip {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 50;
+    min-width: 220px;
+    background: var(--bg-card, #1f2937);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.market-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary, #374151);
+    font-size: 0.875rem;
+    color: #000000;
+}
+
+.market-tooltip-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #9ca3af);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.market-tooltip-close:hover {
+    color: var(--text-primary, #fff);
+}
+
+.market-tooltip-content {
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+}
+
+.market-tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.375rem 0;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    color: #ffffff;
+}
+
+.market-tooltip-row span {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.market-tooltip-row strong {
+    color: #ffffff;
+}
+
+.market-tooltip-row:last-of-type {
+    border-bottom: none;
+}
+
+.market-tooltip-footer {
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    color: var(--text-muted, #9ca3af);
+}

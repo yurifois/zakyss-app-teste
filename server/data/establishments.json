@@ -1,0 +1,811 @@
+[
+  {
+    "id": 1,
+    "name": "Studio Beleza Asa Sul",
+    "description": "Salão de beleza completo com os melhores profissionais de Brasília.",
+    "cnpj": "12.345.678/0001-90",
+    "phone": "(61) 99999-1234",
+    "email": "contato@studiobeleza.com",
+    "address": "CLS 408 Bloco A, Loja 12",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "70257-510",
+    "lat": -15.8267,
+    "lng": -47.9218,
+    "rating": 4.8,
+    "reviewCount": 245,
+    "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
+      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800"
+    ],
+    "categories": [
+      "cabelo",
+      "unhas",
+      "maquiagem"
+    ],
+    "services": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9,
+      10,
+      14,
+      15,
+      16
+    ],
+    "workingHours": {
+      "monday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "tuesday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "21:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "21:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "sunday": null
+    },
+    "plan": "free"
+  },
+  {
+    "id": 2,
+    "name": "Barbearia Tradicional BSB",
+    "description": "A melhor barbearia vintage de Brasília. Ambiente exclusivo para homens.",
+    "cnpj": "23.456.789/0001-01",
+    "phone": "(61) 98888-5678",
+    "email": "contato@barbeariabsb.com",
+    "address": "CLN 309 Bloco D, Loja 42",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "70755-540",
+    "lat": -15.7658,
+    "lng": -47.8825,
+    "rating": 4.9,
+    "reviewCount": 189,
+    "image": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800"
+    ],
+    "categories": [
+      "barba",
+      "cabelo"
+    ],
+    "services": [
+      2,
+      24,
+      25,
+      26,
+      27
+    ],
+    "workingHours": {
+      "monday": null,
+      "tuesday": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "wednesday": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "thursday": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "friday": {
+        "open": "10:00",
+        "close": "21:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "sunday": null
+    },
+    "plan": "free"
+  },
+  {
+    "id": 3,
+    "name": "Espaço Zen Lago Sul",
+    "description": "Centro de estética e bem-estar com tratamentos exclusivos no Lago Sul.",
+    "cnpj": "34.567.890/0001-12",
+    "phone": "(61) 97777-9012",
+    "email": "contato@espacozen.com",
+    "address": "SHIS QI 11 Bloco F, Sala 202",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "71625-160",
+    "lat": -15.8456,
+    "lng": -47.8789,
+    "rating": 4.7,
+    "reviewCount": 312,
+    "image": "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800"
+    ],
+    "categories": [
+      "spa",
+      "estetica"
+    ],
+    "services": [
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      28,
+      29,
+      30
+    ],
+    "workingHours": {
+      "monday": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "tuesday": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "wednesday": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "thursday": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "friday": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "17:00"
+      },
+      "sunday": {
+        "open": "10:00",
+        "close": "16:00"
+      }
+    },
+    "plan": "free"
+  },
+  {
+    "id": 4,
+    "name": "Nails & Beauty Sudoeste",
+    "description": "Especialistas em unhas artísticas e alongamentos.",
+    "cnpj": "45.678.901/0001-23",
+    "phone": "(61) 96666-3456",
+    "email": "contato@nailsbeauty.com",
+    "address": "CLSW 303 Bloco B, Loja 58",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "70673-632",
+    "lat": -15.7912,
+    "lng": -47.9345,
+    "rating": 4.6,
+    "reviewCount": 156,
+    "image": "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800"
+    ],
+    "categories": [
+      "unhas"
+    ],
+    "services": [
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "workingHours": {
+      "monday": {
+        "open": "10:00",
+        "close": "19:00"
+      },
+      "tuesday": {
+        "open": "10:00",
+        "close": "19:00"
+      },
+      "wednesday": {
+        "open": "10:00",
+        "close": "19:00"
+      },
+      "thursday": {
+        "open": "10:00",
+        "close": "19:00"
+      },
+      "friday": {
+        "open": "10:00",
+        "close": "19:00"
+      },
+      "saturday": {
+        "open": "10:00",
+        "close": "17:00"
+      },
+      "sunday": null
+    },
+    "plan": "free"
+  },
+  {
+    "id": 5,
+    "name": "Glamour Studio Águas Claras",
+    "description": "Maquiagem profissional para todas as ocasiões em Águas Claras.",
+    "cnpj": "56.789.012/0001-34",
+    "phone": "(61) 95555-7890",
+    "email": "contato@glamourstudio.com",
+    "address": "Av. das Araucárias, 4000, Sala 412",
+    "city": "Águas Claras",
+    "state": "DF",
+    "zipCode": "71936-250",
+    "lat": -15.8412,
+    "lng": -48.0256,
+    "rating": 4.9,
+    "reviewCount": 278,
+    "image": "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=800"
+    ],
+    "categories": [
+      "maquiagem",
+      "cabelo"
+    ],
+    "services": [
+      1,
+      3,
+      8,
+      14,
+      15,
+      16,
+      17
+    ],
+    "workingHours": {
+      "monday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "tuesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "saturday": {
+        "open": "08:00",
+        "close": "16:00"
+      },
+      "sunday": null
+    },
+    "plan": "free"
+  },
+  {
+    "id": 6,
+    "name": "Salão Asa Norte Premium",
+    "description": "Beleza completa na Asa Norte com profissionais renomados.",
+    "cnpj": "67.890.123/0001-45",
+    "phone": "(61) 94444-1122",
+    "email": "contato@asanortepremium.com",
+    "address": "CLN 210 Bloco A, Loja 25",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "70862-510",
+    "lat": -15.7523,
+    "lng": -47.8912,
+    "rating": 4.8,
+    "reviewCount": 198,
+    "image": "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800"
+    ],
+    "categories": [
+      "cabelo",
+      "maquiagem",
+      "unhas"
+    ],
+    "services": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      9,
+      10,
+      14,
+      16
+    ],
+    "workingHours": {
+      "monday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "tuesday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "17:00"
+      },
+      "sunday": null
+    },
+    "plan": "free"
+  },
+  {
+    "name": "cabelo",
+    "description": "cabelo - Beleza e Estética",
+    "cnpj": "49.688.171/0001-44",
+    "phone": "61993291126",
+    "email": "yurifois@gmail.com",
+    "address": "sobradinho quadra 8, 123",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "73091900",
+    "lat": -15.74942387610501,
+    "lng": -47.86863182514825,
+    "image": "/uploads/logos/logo-16-1767904174167-625828378.png",
+    "images": [
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800"
+    ],
+    "categories": [
+      "cabelo",
+      "unhas",
+      "barba"
+    ],
+    "services": [
+      2,
+      24,
+      25,
+      26,
+      27,
+      1
+    ],
+    "workingHours": {
+      "monday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "tuesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "12:00"
+      },
+      "sunday": null
+    },
+    "rating": 5,
+    "reviewCount": 0,
+    "id": 16,
+    "createdAt": "2025-12-16T08:26:48.904Z",
+    "updatedAt": "2026-01-14T19:25:15.640Z",
+    "servicePreferences": {
+      "1": {
+        "price": 120,
+        "duration": 60,
+        "commission": 50
+      },
+      "2": {
+        "price": 95,
+        "duration": 35,
+        "commission": 50
+      },
+      "24": {
+        "price": 55,
+        "duration": 30,
+        "commission": 50
+      },
+      "25": {
+        "price": 45,
+        "duration": 20,
+        "commission": 50
+      },
+      "26": {
+        "price": 55,
+        "duration": 20,
+        "commission": 50
+      },
+      "27": {
+        "price": 80,
+        "duration": 50,
+        "commission": 50
+      }
+    },
+    "serviceImages": [
+      "/uploads/services/service-16-1768002791421-928721781.jpeg",
+      "/uploads/services/service-16-1768002792358-968879164.jpeg"
+    ],
+    "plan": "free"
+  },
+  {
+    "name": "Zakys",
+    "description": "Zakys - Beleza e Estética",
+    "cnpj": "49.688.171/0001-44",
+    "phone": "61993291126",
+    "email": "eu@gmail.com",
+    "address": "sobradinho quadra 8, 12345",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "73091900",
+    "lat": -15.792649714125776,
+    "lng": -47.847584453688754,
+    "image": "/uploads/logos/logo-17-1767904288213-206330976.jpg",
+    "images": [
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800"
+    ],
+    "categories": [
+      "cabelo",
+      "unhas",
+      "maquiagem",
+      "estetica",
+      "barba",
+      "spa"
+    ],
+    "services": [
+      2,
+      26,
+      25,
+      27,
+      1
+    ],
+    "servicePreferences": {
+      "1": {
+        "price": 160,
+        "duration": 60,
+        "commission": 50
+      },
+      "2": {
+        "price": 50,
+        "duration": 30,
+        "commission": 50
+      },
+      "25": {
+        "price": 30,
+        "duration": 20
+      },
+      "26": {
+        "price": 40,
+        "duration": 20
+      },
+      "27": {
+        "price": 80,
+        "duration": 50
+      }
+    },
+    "workingHours": {
+      "monday": null,
+      "tuesday": {
+        "open": "09:00",
+        "close": "19:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "14:00"
+      },
+      "sunday": {
+        "open": "09:00",
+        "close": "14:00"
+      }
+    },
+    "rating": 5,
+    "reviewCount": 0,
+    "id": 17,
+    "createdAt": "2026-01-05T23:52:43.087Z",
+    "updatedAt": "2026-01-19T23:18:44.974Z",
+    "serviceImages": [
+      "/uploads/services/service-17-1767921111638-43870441.png"
+    ],
+    "plan": "premium"
+  },
+  {
+    "name": "barbearia bsb",
+    "description": "barbearia bsb - Beleza e Estética",
+    "cnpj": "49.688.171/0001-44",
+    "phone": "61993291126",
+    "email": "barbeariabsb@gmail.com",
+    "address": "sobradinho quadra 8, 12345",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "73091900",
+    "lat": -15.76922056997565,
+    "lng": -47.875817880508045,
+    "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800"
+    ],
+    "categories": [
+      "cabelo",
+      "barba"
+    ],
+    "services": [
+      24,
+      25,
+      26,
+      27,
+      1,
+      2
+    ],
+    "servicePreferences": {
+      "1": {
+        "price": 120,
+        "duration": 60,
+        "commission": 50
+      },
+      "2": {
+        "price": 60,
+        "duration": 30,
+        "commission": 50
+      },
+      "24": {
+        "price": 40,
+        "duration": 30,
+        "commission": 50
+      },
+      "25": {
+        "price": 25,
+        "duration": 20,
+        "commission": 50
+      },
+      "26": {
+        "price": 30,
+        "duration": 20,
+        "commission": 50
+      },
+      "27": {
+        "price": 60,
+        "duration": 50,
+        "commission": 50
+      }
+    },
+    "workingHours": {
+      "monday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "tuesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "14:00"
+      },
+      "sunday": null
+    },
+    "rating": 5,
+    "reviewCount": 0,
+    "id": 18,
+    "createdAt": "2026-01-06T01:11:52.531Z",
+    "updatedAt": "2026-01-14T19:25:00.216Z",
+    "plan": "free"
+  },
+  {
+    "name": "Barba&Cabelo",
+    "description": "Barba&Cabelo - Beleza e Estética",
+    "cnpj": "49.688.171/0001-44",
+    "phone": "61991282356",
+    "email": "yf@mail.com",
+    "address": "Rodovia BR-020, 22",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "73091-900",
+    "lat": -15.761104969356627,
+    "lng": -47.915050587868656,
+    "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800"
+    ],
+    "categories": [
+      "barba"
+    ],
+    "services": [
+      24,
+      25,
+      26,
+      27
+    ],
+    "servicePreferences": {
+      "24": {
+        "price": 45,
+        "duration": 30
+      },
+      "25": {
+        "price": 30,
+        "duration": 20
+      },
+      "26": {
+        "price": 40,
+        "duration": 20
+      },
+      "27": {
+        "price": 80,
+        "duration": 50
+      }
+    },
+    "workingHours": {
+      "monday": null,
+      "tuesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "14:00"
+      },
+      "sunday": null
+    },
+    "rating": 5,
+    "reviewCount": 0,
+    "plan": "free",
+    "id": 19,
+    "createdAt": "2026-01-16T21:43:02.359Z",
+    "updatedAt": "2026-01-16T21:43:02.359Z"
+  },
+  {
+    "name": "Y Barbas",
+    "description": "Y Barbas - Profissional",
+    "cnpj": "034.166.191-02",
+    "document": "034.166.191-02",
+    "documentType": "cpf",
+    "locationType": "fixed",
+    "serviceRadius": null,
+    "phone": "61991282356",
+    "email": "ybarbas@gmail.com",
+    "address": "Rodovia BR-020, 22",
+    "city": "Brasília",
+    "state": "DF",
+    "zipCode": "73091-900",
+    "lat": -15.82782126357688,
+    "lng": -47.852818787095146,
+    "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
+    "images": [
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800"
+    ],
+    "categories": [
+      "barba"
+    ],
+    "services": [
+      24,
+      25,
+      26,
+      27
+    ],
+    "servicePreferences": {
+      "24": {
+        "price": 45,
+        "duration": 30
+      },
+      "25": {
+        "price": 30,
+        "duration": 20
+      },
+      "26": {
+        "price": 40,
+        "duration": 20
+      },
+      "27": {
+        "price": 80,
+        "duration": 50
+      }
+    },
+    "workingHours": {
+      "monday": null,
+      "tuesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "14:00"
+      },
+      "sunday": null
+    },
+    "rating": 5,
+    "reviewCount": 0,
+    "plan": "free",
+    "id": 20,
+    "createdAt": "2026-01-16T22:05:41.293Z",
+    "updatedAt": "2026-01-16T22:05:41.293Z"
+  }
+]

@@ -1,0 +1,212 @@
+[
+    {
+        "id": 1,
+        "categoryId": "cabelo",
+        "name": "Corte Feminino",
+        "price": 80,
+        "duration": 60
+    },
+    {
+        "id": 2,
+        "categoryId": "cabelo",
+        "name": "Corte Masculino",
+        "price": 50,
+        "duration": 30
+    },
+    {
+        "id": 3,
+        "categoryId": "cabelo",
+        "name": "Escova",
+        "price": 60,
+        "duration": 45
+    },
+    {
+        "id": 4,
+        "categoryId": "cabelo",
+        "name": "Coloração",
+        "price": 150,
+        "duration": 120
+    },
+    {
+        "id": 5,
+        "categoryId": "cabelo",
+        "name": "Mechas/Luzes",
+        "price": 200,
+        "duration": 180
+    },
+    {
+        "id": 6,
+        "categoryId": "cabelo",
+        "name": "Hidratação",
+        "price": 70,
+        "duration": 45
+    },
+    {
+        "id": 7,
+        "categoryId": "cabelo",
+        "name": "Progressiva",
+        "price": 250,
+        "duration": 180
+    },
+    {
+        "id": 8,
+        "categoryId": "cabelo",
+        "name": "Penteado",
+        "price": 120,
+        "duration": 60
+    },
+    {
+        "id": 9,
+        "categoryId": "unhas",
+        "name": "Manicure",
+        "price": 35,
+        "duration": 45
+    },
+    {
+        "id": 10,
+        "categoryId": "unhas",
+        "name": "Pedicure",
+        "price": 40,
+        "duration": 45
+    },
+    {
+        "id": 11,
+        "categoryId": "unhas",
+        "name": "Unha em Gel",
+        "price": 120,
+        "duration": 90
+    },
+    {
+        "id": 12,
+        "categoryId": "unhas",
+        "name": "Alongamento",
+        "price": 150,
+        "duration": 120
+    },
+    {
+        "id": 13,
+        "categoryId": "unhas",
+        "name": "Nail Art",
+        "price": 80,
+        "duration": 60
+    },
+    {
+        "id": 14,
+        "categoryId": "maquiagem",
+        "name": "Maquiagem Social",
+        "price": 100,
+        "duration": 60
+    },
+    {
+        "id": 15,
+        "categoryId": "maquiagem",
+        "name": "Maquiagem Noiva",
+        "price": 250,
+        "duration": 90
+    },
+    {
+        "id": 16,
+        "categoryId": "maquiagem",
+        "name": "Design de Sobrancelhas",
+        "price": 50,
+        "duration": 30
+    },
+    {
+        "id": 17,
+        "categoryId": "maquiagem",
+        "name": "Micropigmentação",
+        "price": 400,
+        "duration": 120
+    },
+    {
+        "id": 18,
+        "categoryId": "estetica",
+        "name": "Limpeza de Pele",
+        "price": 120,
+        "duration": 60
+    },
+    {
+        "id": 19,
+        "categoryId": "estetica",
+        "name": "Peeling",
+        "price": 150,
+        "duration": 45
+    },
+    {
+        "id": 20,
+        "categoryId": "estetica",
+        "name": "Drenagem Linfática",
+        "price": 100,
+        "duration": 60
+    },
+    {
+        "id": 21,
+        "categoryId": "estetica",
+        "name": "Massagem Relaxante",
+        "price": 120,
+        "duration": 60
+    },
+    {
+        "id": 22,
+        "categoryId": "estetica",
+        "name": "Depilação a Laser",
+        "price": 200,
+        "duration": 45
+    },
+    {
+        "id": 23,
+        "categoryId": "estetica",
+        "name": "Depilação com Cera",
+        "price": 80,
+        "duration": 30
+    },
+    {
+        "id": 24,
+        "categoryId": "barba",
+        "name": "Barba Completa",
+        "price": 45,
+        "duration": 30
+    },
+    {
+        "id": 25,
+        "categoryId": "barba",
+        "name": "Aparar Barba",
+        "price": 30,
+        "duration": 20
+    },
+    {
+        "id": 26,
+        "categoryId": "barba",
+        "name": "Hidratação de Barba",
+        "price": 40,
+        "duration": 20
+    },
+    {
+        "id": 27,
+        "categoryId": "barba",
+        "name": "Combo Corte + Barba",
+        "price": 80,
+        "duration": 50
+    },
+    {
+        "id": 28,
+        "categoryId": "spa",
+        "name": "Day Spa",
+        "price": 350,
+        "duration": 240
+    },
+    {
+        "id": 29,
+        "categoryId": "spa",
+        "name": "Banho de Lua",
+        "price": 180,
+        "duration": 90
+    },
+    {
+        "id": 30,
+        "categoryId": "spa",
+        "name": "Reflexologia",
+        "price": 100,
+        "duration": 45
+    }
+]
