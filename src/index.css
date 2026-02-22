@@ -329,6 +329,10 @@ img {
   .md\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .md\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -2193,6 +2197,56 @@ img {
   }
 
   .nav-links {
-    gap: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .nav-link span {
+    display: none;
+  }
+
+  /* Profile page - sidebar vira tabs horizontais */
+  .profile-sidebar-nav {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    scrollbar-width: none;
+  }
+
+  .profile-sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profile-sidebar-nav button {
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 0.75rem 1rem !important;
+    flex-shrink: 0;
+  }
+
+  /* Container padding */
+  .container {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  /* Títulos menores no mobile */
+  .text-3xl {
+    font-size: var(--font-size-2xl);
+  }
+
+  .text-2xl {
+    font-size: var(--font-size-xl);
+  }
+
+  /* Cards com menos padding */
+  .card {
+    padding: var(--space-4);
+  }
+
+  /* Tabelas scrolláveis */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

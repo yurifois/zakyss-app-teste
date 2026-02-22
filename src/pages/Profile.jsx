@@ -334,7 +334,7 @@ export default function Profile() {
                             <p className="text-sm text-secondary">{user.email}</p>
                         </div>
 
-                        <div className="card mt-4" style={{ overflow: 'hidden' }}>
+                        <div className="card mt-4 profile-sidebar-nav" style={{ overflow: 'hidden' }}>
                             <button
                                 onClick={() => setTab('appointments')}
                                 className="w-full text-left p-4"
@@ -381,7 +381,7 @@ export default function Profile() {
                     </div>
 
                     {/* Content */}
-                    <div style={{ gridColumn: 'span 3' }}>
+                    <div className="md:col-span-3">
                         {tab === 'appointments' && (
                             <>
                                 <h1 className="text-2xl font-bold mb-6">Meus Agendamentos</h1>
