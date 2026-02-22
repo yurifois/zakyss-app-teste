@@ -1,11 +1,28 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002/api'
 
+// Verificar se token JWT está expirado
+function isTokenValid(token) {
+    if (!token) return false
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        return payload.exp * 1000 > Date.now()
+    } catch {
+        return false
+    }
+}
+
 // Helper para requisições
 async function request(endpoint, options = {}) {
-    // Check both user and admin tokens - use admin token if available (for admin operations)
     const userToken = localStorage.getItem('zakys_token')
     const adminToken = localStorage.getItem('zakys_admin_token')
-    const token = adminToken || userToken
+
+    // Usar token baseado no contexto: admin para rotas /admin, user para o resto
+    let token = null
+    if (endpoint.includes('/admin') || endpoint.includes('/establishments/')) {
+        token = isTokenValid(adminToken) ? adminToken : (isTokenValid(userToken) ? userToken : null)
+    } else {
+        token = isTokenValid(userToken) ? userToken : (isTokenValid(adminToken) ? adminToken : null)
+    }
 
     const config = {
         headers: {
@@ -80,12 +97,30 @@ export function adminLogout() {
 
 export function getCurrentUser() {
     const user = localStorage.getItem('zakys_user')
-    return user ? JSON.parse(user) : null
+    const token = localStorage.getItem('zakys_token')
+    if (!user || !isTokenValid(token)) {
+        // Limpar dados expirados
+        if (user && !isTokenValid(token)) {
+            localStorage.removeItem('zakys_user')
+            localStorage.removeItem('zakys_token')
+        }
+        return null
+    }
+    return JSON.parse(user)
 }
 
 export function getCurrentAdmin() {
     const admin = localStorage.getItem('zakys_admin')
-    return admin ? JSON.parse(admin) : null
+    const token = localStorage.getItem('zakys_admin_token')
+    if (!admin || !isTokenValid(token)) {
+        // Limpar dados expirados
+        if (admin && !isTokenValid(token)) {
+            localStorage.removeItem('zakys_admin')
+            localStorage.removeItem('zakys_admin_token')
+        }
+        return null
+    }
+    return JSON.parse(admin)
 }
 
 export function getToken() {
