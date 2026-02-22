@@ -1,8 +1,14 @@
-import { Navigate, NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function AdminLayout() {
     const { admin, isAdmin, adminLogout, loading } = useAuth()
+    const [sidebarOpen, setSidebarOpen] = useState(false)
+    const location = useLocation()
+
+    // Fechar sidebar ao navegar (mobile)
+    const handleNavClick = () => setSidebarOpen(false)
 
     // Aguardar carregamento do localStorage
     if (loading) {
@@ -22,7 +28,22 @@ export default function AdminLayout() {
 
     return (
         <div className="admin-layout">
-            <aside className="admin-sidebar">
+            {/* Hamburger button - mobile only */}
+            <button
+                className="admin-mobile-toggle"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label="Menu"
+            >
+                {sidebarOpen ? '✕' : '☰'}
+            </button>
+
+            {/* Overlay - mobile only */}
+            <div
+                className={`admin-sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            />
+
+            <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <div className="logo" style={{ color: 'white' }}>
                     <img
                         src="/logo.png"
@@ -41,32 +62,32 @@ export default function AdminLayout() {
                 </div>
 
                 <nav className="admin-nav">
-                    <NavLink to="/admin" end className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin" end className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         📊 Dashboard
                     </NavLink>
-                    <NavLink to="/admin/agendamentos" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin/agendamentos" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         📅 Agendamentos
                     </NavLink>
-                    <NavLink to="/admin/horarios" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin/horarios" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         🕐 Horários
                     </NavLink>
-                    <NavLink to="/admin/servicos" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin/servicos" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         ✂️ Serviços
                     </NavLink>
-                    <NavLink to="/admin/funcionarios" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin/funcionarios" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         👥 Funcionários
                     </NavLink>
-                    <NavLink to="/admin/relatorio" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin/relatorio" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         💰 Relatório Financeiro
                     </NavLink>
-                    <NavLink to="/admin/analytics" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin/analytics" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         📊 Analytics
                     </NavLink>
                 </nav>
 
                 <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                     <button
-                        onClick={adminLogout}
+                        onClick={() => { adminLogout(); setSidebarOpen(false) }}
                         className="btn btn-ghost w-full"
                         style={{ color: 'rgba(255,255,255,0.7)', justifyContent: 'flex-start' }}
                     >
