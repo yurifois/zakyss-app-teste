@@ -273,12 +273,24 @@ export default function Profile() {
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
     }
 
+    const handleCancelAppointment = async (appointmentId) => {
+        if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return
+        try {
+            await api.updateAppointmentStatus(appointmentId, 'cancelled')
+            success('Agendamento cancelado com sucesso!')
+            loadAppointments()
+        } catch (err) {
+            error(err.message || 'Erro ao cancelar agendamento')
+        }
+    }
+
     const getStatusBadge = (status) => {
         const styles = {
             pending: { class: 'badge-warning', label: 'Pendente' },
             confirmed: { class: 'badge-success', label: 'Confirmado' },
             cancelled: { class: 'badge-error', label: 'Cancelado' },
             completed: { class: 'badge-secondary', label: 'Concluído' },
+            no_show: { class: 'badge-error', label: 'Não Compareceu' },
         }
         const { class: cls, label } = styles[status] || styles.pending
         return <span className={`badge ${cls}`}>{label}</span>
@@ -392,7 +404,7 @@ export default function Profile() {
                                             {[
                                                 { key: 'upcoming', label: '📅 Próximos', filter: a => a.status === 'pending' || a.status === 'confirmed' },
                                                 { key: 'completed', label: '✓ Concluídos', filter: a => a.status === 'completed' },
-                                                { key: 'cancelled', label: '✕ Cancelados', filter: a => a.status === 'cancelled' },
+                                                { key: 'cancelled', label: '✕ Cancelados', filter: a => a.status === 'cancelled' || a.status === 'no_show' },
                                                 { key: 'all', label: '📋 Todos', filter: () => true },
                                             ].map(({ key, label, filter }) => {
                                                 const count = appointments.filter(filter).length
@@ -414,7 +426,7 @@ export default function Profile() {
                                             const filters = {
                                                 upcoming: a => a.status === 'pending' || a.status === 'confirmed',
                                                 completed: a => a.status === 'completed',
-                                                cancelled: a => a.status === 'cancelled',
+                                                cancelled: a => a.status === 'cancelled' || a.status === 'no_show',
                                                 all: () => true,
                                             }
                                             const filtered = appointments.filter(filters[statusFilter] || filters.all)
@@ -464,10 +476,23 @@ export default function Profile() {
                                                             </div>
 
                                                             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                                                <span className="text-sm text-muted">Serviços: </span>
-                                                                {apt.servicesList?.map(s => (
-                                                                    <span key={s.id} className="badge badge-primary mr-2">{s.name}</span>
-                                                                ))}
+                                                                <div className="flex justify-between items-center">
+                                                                    <div>
+                                                                        <span className="text-sm text-muted">Serviços: </span>
+                                                                        {apt.servicesList?.map(s => (
+                                                                            <span key={s.id} className="badge badge-primary mr-2">{s.name}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                    {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                                                                        <button
+                                                                            onClick={() => handleCancelAppointment(apt.id)}
+                                                                            className="btn btn-sm"
+                                                                            style={{ backgroundColor: 'var(--error-500)', color: 'white', fontSize: '0.8rem', padding: '0.4rem 1rem' }}
+                                                                        >
+                                                                            ✕ Cancelar
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
