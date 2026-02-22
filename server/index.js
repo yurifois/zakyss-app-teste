@@ -32,8 +32,8 @@ app.use(cors({
             return callback(null, true)
         }
 
-        // Allow any vercel/render preview URL in development
-        if (process.env.NODE_ENV !== 'production' && (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com'))) {
+        // Always allow Vercel and Render preview URLs
+        if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
             return callback(null, true)
         }
 
