@@ -57,9 +57,11 @@ export class SupabaseRepository {
     }
 
     async create(item) {
+        // Remove id so PostgreSQL auto-generates it via sequence
+        const { id, ...itemWithoutId } = item
         const { data, error } = await supabase
             .from(this.tableName)
-            .insert([{ ...item, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }])
+            .insert([{ ...itemWithoutId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }])
             .select()
             .single()
 
