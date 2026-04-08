@@ -16,6 +16,9 @@
 
 <body>
   <div id="root"></div>
+  <script id="google-maps-script"
+    src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places"
+    onerror="console.error('Falha ao carregar Google Maps. Verifique sua chave API e conexão.')"></script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 

@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_ANON_KEY
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -87,6 +87,18 @@ export class SupabaseRepository {
             .delete()
             .eq('id', id)
 
+        if (error) throw error
+        return true
+    }
+
+    async deleteMany(filter) {
+        let query = supabase.from(this.tableName).delete()
+
+        Object.entries(filter).forEach(([key, value]) => {
+            query = query.eq(key, value)
+        })
+
+        const { error } = await query
         if (error) throw error
         return true
     }

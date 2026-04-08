@@ -3,6 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../services/api'
 import { getCurrentPosition, sortByDistance } from '../services/geolocation'
 import EstablishmentCard from '../components/EstablishmentCard'
+import * as LucideIcons from 'lucide-react'
+
+const CategoryIcon = ({ iconName, color }) => {
+    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
+    return <Icon size={32} color={color} />
+}
 
 export default function Home() {
     const [searchQuery, setSearchQuery] = useState('')
@@ -70,8 +76,9 @@ export default function Home() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <button type="submit" className="btn btn-primary search-btn">
-                            🔍 Buscar
+                        <button type="submit" className="btn btn-primary search-btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <LucideIcons.Search size={20} />
+                            Buscar
                         </button>
                     </form>
 
@@ -116,8 +123,8 @@ export default function Home() {
                                 className="category-card"
                                 onClick={() => handleCategoryClick(category.id)}
                             >
-                                <div className="category-icon">
-                                    {category.icon}
+                                <div className="category-icon" style={{ backgroundColor: `${category.color}15`, padding: '1rem', borderRadius: '1rem' }}>
+                                    <CategoryIcon iconName={category.icon} color={category.color} />
                                 </div>
                                 <span className="category-name">{category.name}</span>
                             </div>

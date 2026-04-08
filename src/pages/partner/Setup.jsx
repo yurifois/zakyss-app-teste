@@ -91,7 +91,7 @@ export default function PartnerSetup() {
 
             const establishment = await api.createEstablishment({
                 name: partnerData.nomeFantasia,
-                description: `${partnerData.nomeFantasia} - ${partnerData.documentType === 'cpf' ? 'Profissional' : 'Empresa'}`,
+                description: `${partnerData.nomeFantasia} - ${partnerData.documentType === 'cpf' ? `Profissional: ${partnerData.razaoSocial}` : 'Empresa'}`,
                 cnpj: partnerData.document, // Sending document as cnpj for backward compatibility if backend expects it, or add new field
                 document: partnerData.document,
                 documentType: partnerData.documentType,
@@ -103,8 +103,8 @@ export default function PartnerSetup() {
                 city: partnerData.city,
                 state: partnerData.state,
                 zipCode: partnerData.cep,
-                lat: -15.7942 + (Math.random() - 0.5) * 0.1,
-                lng: -47.8822 + (Math.random() - 0.5) * 0.1,
+                lat: partnerData.lat || (-15.7942 + (Math.random() - 0.5) * 0.1),
+                lng: partnerData.lng || (-47.8822 + (Math.random() - 0.5) * 0.1),
                 image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
                 images: ['https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800'],
                 categories: Array.from(categorySet),

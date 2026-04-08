@@ -49,7 +49,15 @@ export default function Register() {
                 password: formData.password,
             })
             success('Conta criada com sucesso!')
-            navigate('/')
+
+            // Check if there's a redirect URL saved
+            const redirectUrl = sessionStorage.getItem('redirect_after_login')
+            if (redirectUrl) {
+                sessionStorage.removeItem('redirect_after_login')
+                navigate(redirectUrl)
+            } else {
+                navigate('/')
+            }
         } catch (err) {
             error(err.message)
         } finally {

@@ -160,6 +160,7 @@ export default function PartnerSelectServices() {
                                                         <input
                                                             type="number"
                                                             className="form-input"
+                                                            onFocus={(e) => e.target.select()}
                                                             value={selectedData.customPrice}
                                                             onChange={(e) => updateServicePrice(service.id, e.target.value)}
                                                             style={{ padding: '0.5rem' }}
@@ -170,6 +171,7 @@ export default function PartnerSelectServices() {
                                                         <input
                                                             type="number"
                                                             className="form-input"
+                                                            onFocus={(e) => e.target.select()}
                                                             value={selectedData.customDuration}
                                                             onChange={(e) => updateServiceDuration(service.id, e.target.value)}
                                                             style={{ padding: '0.5rem' }}

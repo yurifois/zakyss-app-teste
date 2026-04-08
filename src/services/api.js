@@ -139,8 +139,29 @@ export async function getCategories() {
 
 // ========== SERVICES ==========
 
-export async function getServices() {
-    return request('/services')
+export async function getServices(establishmentId = null) {
+    const query = establishmentId ? `?establishmentId=${establishmentId}` : ''
+    return request(`/services${query}`)
+}
+
+export async function createService(data) {
+    return request('/services', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+export async function updateService(id, data) {
+    return request(`/services/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    })
+}
+
+export async function deleteService(id) {
+    return request(`/services/${id}`, {
+        method: 'DELETE',
+    })
 }
 
 export async function getServiceById(id) {
@@ -195,6 +216,12 @@ export async function updateEstablishment(id, data) {
     return request(`/establishments/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
+    })
+}
+
+export async function deleteEstablishment(id) {
+    return request(`/establishments/${id}`, {
+        method: 'DELETE',
     })
 }
 

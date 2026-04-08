@@ -1,3 +1,5 @@
+import { Clock, Check } from 'lucide-react'
+
 export default function ServiceCard({ service, selected, onToggle, showPrice = true }) {
     return (
         <div
@@ -7,7 +9,10 @@ export default function ServiceCard({ service, selected, onToggle, showPrice = t
         >
             <div className="service-info">
                 <div className="service-name">{service.name}</div>
-                <div className="service-duration">⏱️ {service.duration} min</div>
+                <div className="service-duration flex items-center gap-1">
+                    <Clock size={14} />
+                    {service.duration} min
+                </div>
             </div>
             {showPrice && (
                 <div className="service-price">
@@ -28,7 +33,7 @@ export default function ServiceCard({ service, selected, onToggle, showPrice = t
                     fontSize: '0.875rem',
                     marginLeft: '1rem',
                 }}>
-                    {selected && '✓'}
+                    {selected && <Check size={16} />}
                 </div>
             )}
         </div>

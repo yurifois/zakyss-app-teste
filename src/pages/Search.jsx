@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import * as api from '../services/api'
 import { getCurrentPosition } from '../services/geolocation'
 import EstablishmentCard from '../components/EstablishmentCard'
+import { Search as SearchIcon, MapPin, Filter } from 'lucide-react'
 
 export default function Search() {
     const [searchParams, setSearchParams] = useSearchParams()
@@ -69,7 +70,8 @@ export default function Search() {
             <div className="container">
                 {/* Header */}
                 <div className="mb-6">
-                    <h1 className="text-3xl font-bold mb-2">
+                    <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
+                        <SearchIcon size={28} className="text-primary" />
                         {query ? `Resultados para "${query}"` : 'Todos os serviços de beleza'}
                     </h1>
                     <p className="text-secondary">
@@ -93,10 +95,12 @@ export default function Search() {
                         ))}
                     </div>
                 ) : results.length === 0 ? (
-                    <div className="card text-center py-16">
-                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                    <div className="card text-center py-16 bg-muted/20 border-dashed">
+                        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                            <SearchIcon size={64} className="text-muted" strokeWidth={1.5} />
+                        </div>
                         <h3 className="text-xl font-semibold mb-2">Nenhum resultado encontrado</h3>
-                        <p className="text-secondary">Tente fazer uma nova busca</p>
+                        <p className="text-secondary">Tente fazer uma nova busca ou mude os filtros</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

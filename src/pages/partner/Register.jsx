@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
-import { validateCNPJ, maskCNPJ, lookupCNPJ, validateCPF, maskCPF } from '../../services/validation'
+import { validateCNPJ, maskCNPJ, lookupCNPJ, validateCPF, maskCPF, lookupCEP } from '../../services/validation'
+import GooglePlacesInput from '../../components/GooglePlacesInput'
 
 export default function PartnerRegister() {
     const navigate = useNavigate()
@@ -24,6 +25,8 @@ export default function PartnerRegister() {
         state: '',
         locationType: 'fixed', // 'fixed' | 'domicile' | 'both'
         serviceRadius: '', // in km
+        lat: null,
+        lng: null
     })
     const [loading, setLoading] = useState(false)
     const [loadingCnpj, setLoadingCnpj] = useState(false)
@@ -34,8 +37,68 @@ export default function PartnerRegister() {
         if (name === 'document') {
             const masked = documentType === 'cnpj' ? maskCNPJ(value) : maskCPF(value)
             setFormData(prev => ({ ...prev, [name]: masked }))
+        } else if (name === 'cep') {
+            const masked = value.replace(/[^\d]/g, '').slice(0, 8)
+            setFormData(prev => ({ ...prev, [name]: masked }))
+
+            if (masked.length === 8) {
+                handleCepLookup(masked)
+            }
         } else {
             setFormData(prev => ({ ...prev, [name]: value }))
+        }
+    }
+
+    const handlePlaceSelected = (place) => {
+        if (!place.geometry) return
+
+        const addressComponents = place.address_components
+        const getComponent = (type) => {
+            const comp = addressComponents.find(c => c.types.includes(type))
+            return comp ? comp.long_name : ''
+        }
+        const getShortComponent = (type) => {
+            const comp = addressComponents.find(c => c.types.includes(type))
+            return comp ? comp.short_name : ''
+        }
+
+        const street = getComponent('route')
+        const number = getComponent('street_number')
+        const neighborhood = getComponent('sublocality_level_1') || getComponent('neighborhood') || getComponent('sublocality')
+        const city = getComponent('administrative_area_level_2') || getComponent('locality')
+        const state = getShortComponent('administrative_area_level_1')
+        const postCode = getComponent('postal_code')
+
+        setFormData(prev => ({
+            ...prev,
+            nomeFantasia: place.name || prev.nomeFantasia,
+            razaoSocial: place.name || prev.razaoSocial, // Default razao social to name if empty
+            address: street || prev.address,
+            number: number || prev.number,
+            neighborhood: neighborhood || prev.neighborhood,
+            city: city || prev.city,
+            state: state || prev.state,
+            cep: postCode ? postCode.replace(/[^\d]/g, '') : prev.cep,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+        }))
+
+        info('Dados do estabelecimento carregados do Google')
+    }
+
+    const handleCepLookup = async (cep) => {
+        try {
+            const data = await lookupCEP(cep)
+            setFormData(prev => ({
+                ...prev,
+                address: data.logradouro,
+                neighborhood: data.bairro,
+                city: data.cidade,
+                state: data.uf
+            }))
+            info('Endereço preenchido pelo CEP')
+        } catch (err) {
+            console.error('Erro ao buscar CEP:', err)
         }
     }
 
@@ -174,9 +237,20 @@ export default function PartnerRegister() {
 
                     {/* Business Data Section */}
                     <div className="card mb-6" style={{ padding: '1.5rem' }}>
-                        <h2 className="text-lg font-semibold mb-4">
+                        <h2 className="text-lg font-semibold mb-2">
                             {documentType === 'cnpj' ? '📋 Dados da Empresa' : '👤 Dados Pessoais'}
                         </h2>
+
+                        {/* Google Places Search */}
+                        <div className="form-group mb-6 pb-6 border-b">
+                            <label className="form-label text-primary font-bold">🔍 Busca Rápida (Google Maps)</label>
+                            <GooglePlacesInput
+                                onPlaceSelected={handlePlaceSelected}
+                                className="form-input"
+                                placeholder="Digite o nome do seu estabelecimento..."
+                            />
+                            <p className="form-helper">Encontre seu negócio no Google para preencher os dados automaticamente</p>
+                        </div>
 
                         <div className="form-group">
                             <label className="form-label">{documentType === 'cnpj' ? 'CNPJ *' : 'CPF *'}</label>
@@ -210,6 +284,24 @@ export default function PartnerRegister() {
 
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div className="form-group">
+                                <label className="form-label" style={{ color: 'var(--primary-500)', fontWeight: 'bold' }}>
+                                    {documentType === 'cnpj' ? 'Nome Fantasia *' : 'Nome do Negócio *'}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="nomeFantasia"
+                                    className="form-input"
+                                    placeholder={documentType === 'cnpj' ? "Como seu estabelecimento é conhecido" : "Ex: Estética da Silva"}
+                                    value={formData.nomeFantasia}
+                                    onChange={handleChange}
+                                    required
+                                    style={{ borderColor: 'var(--primary-300)' }}
+                                />
+                                <p className="form-helper" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                                    Este é o nome que aparecerá para os clientes (Ex: Barbearia do Isaac)
+                                </p>
+                            </div>
+                            <div className="form-group">
                                 <label className="form-label">
                                     {documentType === 'cnpj' ? 'Razão Social *' : 'Nome Completo *'}
                                 </label>
@@ -221,20 +313,9 @@ export default function PartnerRegister() {
                                     onChange={handleChange}
                                     required
                                 />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">
-                                    {documentType === 'cnpj' ? 'Nome Fantasia *' : 'Nome do Negócio *'}
-                                </label>
-                                <input
-                                    type="text"
-                                    name="nomeFantasia"
-                                    className="form-input"
-                                    placeholder={documentType === 'cnpj' ? "Como seu estabelecimento é conhecido" : "Ex: Estética da Silva"}
-                                    value={formData.nomeFantasia}
-                                    onChange={handleChange}
-                                    required
-                                />
+                                <p className="form-helper" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                                    Nome que consta no documento (CPF/CNPJ)
+                                </p>
                             </div>
                         </div>
 
@@ -262,6 +343,7 @@ export default function PartnerRegister() {
                                         name="serviceRadius"
                                         className="form-input"
                                         placeholder="Ex: 10"
+                                        onFocus={(e) => e.target.select()}
                                         value={formData.serviceRadius}
                                         onChange={handleChange}
                                         required

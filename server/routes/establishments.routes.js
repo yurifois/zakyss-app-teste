@@ -336,5 +336,39 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
     }
 })
 
-export default router
+// Excluir estabelecimento e todos os dados relacionados (Zerar dados)
+router.delete('/:id', authMiddleware, async (req, res, next) => {
+    try {
+        const id = parseInt(req.params.id)
 
+        // Verificar se é o próprio estabelecimento (ou admin master se houvesse)
+        if (req.user.type !== 'admin' || req.user.establishmentId !== id) {
+            throw new AppError('Não autorizado a excluir este estabelecimento', 403)
+        }
+
+        // 1. Excluir agendamentos
+        await appointmentsRepo.deleteMany({ establishmentId: id })
+
+        // 2. Excluir funcionários
+        await employeesRepo.deleteMany({ establishmentId: id })
+
+        // 3. Excluir admins vinculados
+        await adminsRepo.deleteMany({ establishmentId: id })
+
+        // 4. Excluir o estabelecimento
+        const deleted = await establishmentsRepo.delete(id)
+
+        if (!deleted) {
+            throw new AppError('Estabelecimento não encontrado', 404)
+        }
+
+        res.json({
+            success: true,
+            message: 'Estabelecimento e todos os registros foram excluídos com sucesso'
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
+export default router

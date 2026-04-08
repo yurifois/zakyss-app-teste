@@ -4,6 +4,12 @@ import * as api from '../services/api'
 import { getImageUrl } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import ServiceCard from '../components/ServiceCard'
+import * as LucideIcons from 'lucide-react'
+
+const CategoryIcon = ({ iconName, color }) => {
+    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
+    return <Icon size={24} color={color} />
+}
 
 export default function Establishment() {
     const { id } = useParams()
@@ -20,6 +26,8 @@ export default function Establishment() {
 
     useEffect(() => {
         loadData()
+        // Save as redirect target for auth
+        sessionStorage.setItem('redirect_after_login', `/estabelecimento/${id}`)
     }, [id])
 
     const loadData = async () => {
@@ -140,6 +148,10 @@ export default function Establishment() {
     return (
         <div className="py-8">
             <div className="container">
+                <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm mb-4 flex items-center gap-2">
+                    <LucideIcons.ArrowLeft size={16} />
+                    Voltar
+                </button>
                 <div className="grid lg:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2">
@@ -155,11 +167,16 @@ export default function Establishment() {
                         {/* Info */}
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold mb-2">{establishment.name}</h1>
-                            <div className="flex items-center gap-4 text-secondary mb-4">
-                                <span className="flex items-center gap-1">
-                                    ⭐ <strong>{establishment.rating}</strong> ({establishment.reviewCount} avaliações)
+                            <div className="flex flex-wrap items-center gap-6 text-secondary mb-6">
+                                <span className="flex items-center gap-2">
+                                    <LucideIcons.Star size={20} className="text-yellow-500 fill-yellow-500" />
+                                    <strong>{establishment.rating}</strong>
+                                    <span className="text-muted">({establishment.reviewCount} avaliações)</span>
                                 </span>
-                                <span>📍 {establishment.address}</span>
+                                <span className="flex items-center gap-2">
+                                    <LucideIcons.MapPin size={20} className="text-primary" />
+                                    {establishment.address}
+                                </span>
                             </div>
                             <p className="text-secondary">{establishment.description}</p>
                         </div>
@@ -170,8 +187,8 @@ export default function Establishment() {
 
                             {categories.filter(cat => services.some(s => s.categoryId === cat.id)).map(category => (
                                 <div key={category.id} className="mb-6">
-                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                                        <span>{category.icon}</span>
+                                    <h3 className="font-semibold mb-3 flex items-center gap-3 bg-muted/30 p-2 rounded-lg">
+                                        <CategoryIcon iconName={category.icon} color={category.color} />
                                         {category.name}
                                     </h3>
                                     <div className="flex flex-col gap-2">

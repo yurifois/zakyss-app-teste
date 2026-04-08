@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import ImageUploader from '../../components/ImageUploader'
 
 export default function AdminDashboard() {
-    const { admin } = useAuth()
-    const { success } = useToast()
+    const { admin, adminLogout } = useAuth()
+    const { success, error, warning } = useToast()
+    const navigate = useNavigate()
     const [copied, setCopied] = useState(false)
 
     const [establishment, setEstablishment] = useState(null)
     const [appointments, setAppointments] = useState([])
     const [todayAppointments, setTodayAppointments] = useState([])
     const [loading, setLoading] = useState(true)
+    const [deleting, setDeleting] = useState(false)
     const [stats, setStats] = useState({
         today: 0,
         week: 0,
@@ -121,6 +124,28 @@ export default function AdminDashboard() {
             success('Imagem removida')
         } catch (error) {
             console.error('Error deleting image:', error)
+        }
+    }
+
+    const handleDeleteAccount = async () => {
+        const confirmStr = `Tem certeza que deseja EXCLUIR TOTALMENTE sua conta e o estabelecimento "${establishment.name}"?\n\nEsta ação é PERMANENTE e apagará todos os agendamentos, funcionários e dados históricos. Você poderá criar um novo cadastro após esta ação.`
+
+        if (!window.confirm(confirmStr)) return
+
+        const secondConfirm = window.confirm("ÚLTIMO AVISO: Todos os seus dados serão apagados agora. Confirmar exclusão?")
+        if (!secondConfirm) return
+
+        setDeleting(true)
+        try {
+            await api.deleteEstablishment(admin.establishmentId)
+            success('Sua conta e todos os dados foram removidos com sucesso.')
+            adminLogout()
+            navigate('/')
+        } catch (err) {
+            error(err.message || 'Erro ao excluir conta')
+            console.error(err)
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -352,6 +377,27 @@ export default function AdminDashboard() {
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="mt-12 pt-8 border-t" style={{ borderColor: '#fee2e2' }}>
+                <div className="card" style={{ padding: '1.5rem', background: '#fff1f1', border: '1px solid #fee2e2' }}>
+                    <h2 className="text-xl font-bold text-error-700 mb-2" style={{ color: '#b91c1c' }}>⚠️ Zona de Perigo</h2>
+                    <p className="text-secondary mb-4">
+                        Ao excluir sua conta, todos os dados do estabelecimento, agendamentos e funcionários serão removidos permanentemente do nosso banco de dados.
+                    </p>
+                    <button
+                        onClick={handleDeleteAccount}
+                        className="btn btn-error"
+                        disabled={deleting}
+                        style={{ background: '#ef4444', color: 'white' }}
+                    >
+                        {deleting ? 'Excluindo tudo...' : '🗑️ Excluir minha conta e todos os dados'}
+                    </button>
+                    <p className="mt-3 text-xs font-medium" style={{ color: '#dc2626' }}>
+                        * Você poderá realizar um novo cadastro com o mesmo e-mail após a exclusão.
+                    </p>
                 </div>
             </div>
         </div>

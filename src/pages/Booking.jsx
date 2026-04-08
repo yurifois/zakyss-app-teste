@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import Calendar from '../components/Calendar'
 import TimeSlots from '../components/TimeSlots'
+import ServiceCard from '../components/ServiceCard'
+import { ArrowLeft, Clock, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react'
 
 export default function Booking() {
     const { id } = useParams()
@@ -19,6 +21,7 @@ export default function Booking() {
     const [availableSlots, setAvailableSlots] = useState([])
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
+    const [allEstablishmentServices, setAllEstablishmentServices] = useState([])
 
     const [formData, setFormData] = useState({
         name: user?.name || '',
@@ -28,15 +31,14 @@ export default function Booking() {
     })
 
     useEffect(() => {
-        // Require login to book
-        if (!user) {
-            error('Você precisa estar logado para agendar')
-            // Save current URL to redirect back after login
-            sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
-            navigate('/entrar')
-            return
-        }
+        // We no longer require login immediately to view the page.
+        // Guests can see services and select dates.
         loadData()
+
+        // Save current URL as redirect target in case they decide to login/register later
+        if (!user) {
+            sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
+        }
     }, [id, user])
 
     useEffect(() => {
@@ -50,22 +52,26 @@ export default function Booking() {
         try {
             // Get selected services from session
             const storedServices = sessionStorage.getItem('booking_services')
-            if (!storedServices) {
-                navigate(`/estabelecimento/${id}`)
-                return
+            let serviceIds = []
+
+            if (storedServices) {
+                serviceIds = JSON.parse(storedServices)
             }
-            const serviceIds = JSON.parse(storedServices)
 
-            // Get employee preferences from session
-            const storedAssignments = sessionStorage.getItem('booking_assignments')
-
-            const [est, allServices] = await Promise.all([
+            const [est, allEstServices] = await Promise.all([
                 api.getEstablishmentById(id),
-                api.getServicesByIds(serviceIds)
+                api.getEstablishmentServices(id)
             ])
 
             setEstablishment(est)
-            setServices(allServices)
+
+            if (serviceIds.length > 0) {
+                const selected = allEstServices.filter(s => serviceIds.includes(s.id))
+                setServices(selected)
+            } else {
+                // If no services pre-selected, let user select from all
+                setAllEstablishmentServices(allEstServices)
+            }
         } catch (err) {
             error('Erro ao carregar dados')
             console.error(err)
@@ -136,6 +142,13 @@ export default function Booking() {
             return
         }
 
+        if (!user) {
+            error('Você precisa estar logado para agendar')
+            sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
+            navigate('/entrar')
+            return
+        }
+
         setSubmitting(true)
 
         try {
@@ -196,6 +209,10 @@ export default function Booking() {
         <div className="py-8">
             <div className="container">
                 <div className="mb-8">
+                    <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm mb-4 flex items-center gap-2">
+                        <ArrowLeft size={16} />
+                        Voltar
+                    </button>
                     <h1 className="text-3xl font-bold mb-2">Agendar horário</h1>
                     <p className="text-secondary">{establishment?.name}</p>
                 </div>
@@ -204,8 +221,33 @@ export default function Booking() {
                     {/* Main Form */}
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit}>
+                            {/* Step 0: Service Selection (if none selected) */}
+                            {services.length === 0 && (
+                                <div className="card mb-6" style={{ padding: '1.5rem' }}>
+                                    <h2 className="text-lg font-semibold mb-4 text-primary font-bold">✨ Escolha os serviços</h2>
+                                    <p className="text-sm text-muted mb-4">Selecione pelo menos um serviço para ver os horários disponíveis</p>
+                                    <div className="flex flex-col gap-2">
+                                        {allEstablishmentServices.map(service => (
+                                            <ServiceCard
+                                                key={service.id}
+                                                service={service}
+                                                selected={services.some(s => s.id === service.id)}
+                                                onToggle={() => {
+                                                    setServices(prev => {
+                                                        if (prev.some(s => s.id === service.id)) {
+                                                            return prev.filter(s => s.id !== service.id)
+                                                        }
+                                                        return [...prev, service]
+                                                    })
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Step 1: Date */}
-                            <div className="card mb-6" style={{ padding: '1.5rem' }}>
+                            <div className={`card mb-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`} style={{ padding: '1.5rem' }}>
                                 <h2 className="text-lg font-semibold mb-4">📅 Escolha a data</h2>
                                 <Calendar
                                     selectedDate={selectedDate}
@@ -314,12 +356,16 @@ export default function Booking() {
 
                             <div className="mb-4">
                                 <h4 className="text-sm font-medium mb-2">Serviços selecionados</h4>
-                                {services.map(service => (
-                                    <div key={service.id} className="flex justify-between text-sm py-1">
-                                        <span className="text-muted">{service.name}</span>
-                                        <span>R$ {service.price.toFixed(2)}</span>
-                                    </div>
-                                ))}
+                                {services.length === 0 ? (
+                                    <p className="text-xs text-muted">Nenhum serviço selecionado</p>
+                                ) : (
+                                    services.map(service => (
+                                        <div key={service.id} className="flex justify-between text-sm py-1">
+                                            <span className="text-muted">{service.name}</span>
+                                            <span>R$ {service.price.toFixed(2)}</span>
+                                        </div>
+                                    ))
+                                )}
                             </div>
 
                             {selectedDate && (

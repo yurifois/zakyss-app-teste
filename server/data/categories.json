@@ -2,37 +2,37 @@
     {
         "id": "cabelo",
         "name": "Cabelo",
-        "icon": "💇",
+        "icon": "Scissors",
         "color": "#fa8072"
     },
     {
         "id": "unhas",
         "name": "Unhas",
-        "icon": "💅",
+        "icon": "Sparkles",
         "color": "#f08060"
     },
     {
         "id": "maquiagem",
         "name": "Maquiagem",
-        "icon": "💄",
+        "icon": "Palette",
         "color": "#e76f61"
     },
     {
         "id": "estetica",
         "name": "Estética",
-        "icon": "✨",
+        "icon": "Flower2",
         "color": "#14b8a6"
     },
     {
         "id": "barba",
         "name": "Barba",
-        "icon": "🧔",
+        "icon": "User",
         "color": "#c25d52"
     },
     {
         "id": "spa",
         "name": "Spa",
-        "icon": "🧖",
+        "icon": "Wind",
         "color": "#0ea5e9"
     }
 ]

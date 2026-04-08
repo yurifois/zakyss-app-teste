@@ -118,24 +118,66 @@ export function maskCPF(value) {
 }
 
 /**
- * Mock CNPJ lookup
+ * Lookup CEP using ViaCEP API
  */
-export async function lookupCNPJ(cnpj) {
-    await new Promise(resolve => setTimeout(resolve, 800))
-    const clean = cleanDocument(cnpj)
-    if (!validateCNPJ(clean)) throw new Error('CNPJ inválido')
-    return {
-        cnpj: formatCNPJ(clean),
-        razaoSocial: 'Empresa Exemplo LTDA',
-        nomeFantasia: '',
-        situacao: 'ATIVA',
-        endereco: {
-            logradouro: 'Rua das Flores',
-            numero: '123',
-            bairro: 'Centro',
-            cidade: 'São Paulo',
-            uf: 'SP',
-            cep: '01310-100',
-        },
+export async function lookupCEP(cep) {
+    const clean = cep.replace(/[^\d]/g, '')
+    if (clean.length !== 8) throw new Error('CEP inválido')
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${clean}/json/`)
+        const data = await response.json()
+
+        if (data.erro) {
+            throw new Error('CEP não encontrado')
+        }
+
+        return {
+            logradouro: data.logradouro,
+            bairro: data.bairro,
+            cidade: data.localidade,
+            uf: data.uf,
+            cep: data.cep
+        }
+    } catch (err) {
+        throw new Error(err.message || 'Erro ao buscar CEP')
     }
 }
+
+/**
+ * Real CNPJ lookup using BrasilAPI
+ */
+export async function lookupCNPJ(cnpj) {
+    const clean = cleanDocument(cnpj)
+    if (!validateCNPJ(clean)) throw new Error('CNPJ inválido')
+
+    try {
+        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${clean}`)
+
+        if (!response.ok) {
+            if (response.status === 404) throw new Error('CNPJ não encontrado na base de dados')
+            throw new Error('Erro ao consultar CNPJ')
+        }
+
+        const data = await response.json()
+
+        return {
+            cnpj: formatCNPJ(clean),
+            razaoSocial: data.razao_social,
+            nomeFantasia: data.nome_fantasia || data.razao_social,
+            situacao: data.descricao_situacao_cadastral,
+            endereco: {
+                logradouro: data.logradouro,
+                numero: data.numero,
+                bairro: data.bairro,
+                cidade: data.municipio,
+                uf: data.uf,
+                cep: data.cep,
+            },
+        }
+    } catch (err) {
+        console.error('Erro CNPJ API:', err)
+        throw new Error(err.message || 'Erro ao buscar dados do CNPJ. Tente preencher manualmente.')
+    }
+}
+

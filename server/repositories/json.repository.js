@@ -94,6 +94,20 @@ export class JsonRepository {
         return true
     }
 
+    async deleteMany(filter) {
+        const data = await this.readAll()
+        const filteredData = data.filter(item => {
+            return !Object.entries(filter).every(([key, value]) => {
+                return item[key] === value
+            })
+        })
+
+        if (data.length === filteredData.length) return false
+
+        await this.writeAll(filteredData)
+        return true
+    }
+
     async search(query, fields) {
         const data = await this.readAll()
         const lowerQuery = query.toLowerCase()

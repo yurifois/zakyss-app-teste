@@ -2250,3 +2250,28 @@ img {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Google Places Autocomplete Fixes */
+.pac-container {
+  z-index: 10000 !important;
+  border-radius: 0.75rem;
+  margin-top: 4px;
+  border: 1px solid #ddd;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
+  pointer-events: auto !important;
+}
+
+.pac-item {
+  padding: 8px 12px;
+  cursor: pointer !important;
+}
+
+.pac-item:hover {
+  background-color: #fce7f3;
+}
+
+.pac-item-query {
+  font-size: 14px;
+  color: #333;
+}

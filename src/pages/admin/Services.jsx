@@ -19,7 +19,9 @@ export default function AdminServices() {
     const [isPremium, setIsPremium] = useState(false)
 
     const [editingService, setEditingService] = useState(null)
-    const [editForm, setEditForm] = useState({ price: '', duration: '', commission: 50 })
+    const [editForm, setEditForm] = useState({ name: '', price: '', duration: '', commission: 50 })
+    const [isCreatingCustom, setIsCreatingCustom] = useState(false)
+    const [customForm, setCustomForm] = useState({ name: '', categoryId: '', price: '', duration: '', commission: 50 })
 
     useEffect(() => {
         if (admin) {
@@ -32,7 +34,7 @@ export default function AdminServices() {
         try {
             const [est, allServs, cats] = await Promise.all([
                 api.getEstablishmentById(admin.establishmentId),
-                api.getServices(),
+                api.getServices(admin.establishmentId),
                 api.getCategories()
             ])
 
@@ -125,10 +127,59 @@ export default function AdminServices() {
         }
     }
 
+    const handleCreateCustomService = async (e) => {
+        e.preventDefault()
+        try {
+            const price = parseFloat(String(customForm.price).replace(',', '.'))
+            const duration = parseInt(customForm.duration)
+            const commission = parseInt(customForm.commission)
+
+            if (isNaN(price) || isNaN(duration) || isNaN(commission)) {
+                return info('Valores numéricos inválidos')
+            }
+            if (commission < 0 || commission > 100) {
+                return info('A comissão deve ser entre 0 e 100%')
+            }
+
+            const newService = await api.createService({
+                name: customForm.name,
+                categoryId: customForm.categoryId,
+                price: price,
+                duration: duration,
+                establishmentId: admin.establishmentId
+            })
+
+            const updatedServices = [...establishment.services, newService.id]
+            const updatedPreferences = {
+                ...(establishment.servicePreferences || {}),
+                [newService.id]: { price, duration, commission }
+            }
+            
+            let updatedCategories = [...establishment.categories]
+            if (!updatedCategories.includes(newService.categoryId)) {
+                updatedCategories.push(newService.categoryId)
+            }
+
+            await api.updateEstablishment(admin.establishmentId, {
+                services: updatedServices,
+                categories: updatedCategories,
+                servicePreferences: updatedPreferences
+            })
+            
+            await loadData()
+            success('Serviço personalizado criado com sucesso!')
+            setShowAddModal(false)
+            setIsCreatingCustom(false)
+            setCustomForm({ name: '', categoryId: '', price: '', duration: '', commission: 50 })
+        } catch (error) {
+            info('Erro ao criar serviço: ' + error.message)
+        }
+    }
+
     const startEditing = (service) => {
         const details = getServiceDetails(service)
         setEditingService(service)
-        setEditForm({ price: details.price, duration: details.duration, commission: details.commission })
+        setEditForm({ name: service.name, price: details.price, duration: details.duration, commission: details.commission })
     }
 
     const handleUpdateService = async (e) => {
@@ -171,6 +222,14 @@ export default function AdminServices() {
             console.log('Sending update:', updatedPreferences)
             console.log('Admin token exists:', !!adminToken)
 
+            if (editingService.establishmentId === admin.establishmentId) {
+                await api.updateService(editingService.id, {
+                    name: editForm.name,
+                    price: newPrice,
+                    duration: newDuration
+                })
+            }
+
             await api.updateEstablishment(admin.establishmentId, {
                 servicePreferences: updatedPreferences
             })
@@ -201,17 +260,25 @@ export default function AdminServices() {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-bold mb-2">Serviços</h1>
                     <p className="text-secondary">Gerencie os serviços oferecidos pelo seu estabelecimento</p>
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="btn btn-primary"
-                >
-                    + Adicionar Serviço
-                </button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                        onClick={() => { setIsCreatingCustom(false); setShowAddModal(true); }}
+                        className="btn btn-outline flex-1 sm:flex-none"
+                    >
+                        📚 Catálogo
+                    </button>
+                    <button
+                        onClick={() => { setIsCreatingCustom(true); setShowAddModal(true); }}
+                        className="btn btn-primary flex-1 sm:flex-none"
+                    >
+                        + Personalizado
+                    </button>
+                </div>
             </div>
 
             {/* Services List */}
@@ -219,12 +286,20 @@ export default function AdminServices() {
                 <div className="card text-center py-12">
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✂️</div>
                     <p className="text-secondary mb-4">Nenhum serviço cadastrado</p>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="btn btn-primary"
-                    >
-                        Adicionar primeiro serviço
-                    </button>
+                    <div className="flex justify-center gap-4">
+                        <button
+                            onClick={() => { setIsCreatingCustom(false); setShowAddModal(true); }}
+                            className="btn btn-outline"
+                        >
+                            Ver Catálogo
+                        </button>
+                        <button
+                            onClick={() => { setIsCreatingCustom(true); setShowAddModal(true); }}
+                            className="btn btn-primary"
+                        >
+                            Criar Personalizado
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <div className="table-container">
@@ -292,19 +367,53 @@ export default function AdminServices() {
 
             {/* Add Service Modal */}
             {showAddModal && (
-                <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+                <div className="modal-backdrop" onClick={() => { setShowAddModal(false); setIsCreatingCustom(false) }}>
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
                         <div className="modal-header">
-                            <h3 className="modal-title">Adicionar Serviço</h3>
+                            <h3 className="modal-title">{isCreatingCustom ? 'Criar Serviço Personalizado' : 'Adicionar Serviço'}</h3>
                             <button
-                                onClick={() => setShowAddModal(false)}
+                                onClick={() => { setShowAddModal(false); setIsCreatingCustom(false) }}
                                 className="btn btn-ghost btn-icon"
                             >
                                 ✕
                             </button>
                         </div>
                         <div className="modal-body" style={{ maxHeight: '400px', overflow: 'auto' }}>
-                            {availableServices.length === 0 ? (
+                            {/* O botão interior foi removido pois virou um botão principal */}
+
+                            {isCreatingCustom ? (
+                                <form onSubmit={handleCreateCustomService} className="flex flex-col gap-4">
+                                    <div className="form-group">
+                                        <label className="form-label">Nome do Serviço</label>
+                                        <input type="text" className="form-input" value={customForm.name} onChange={e => setCustomForm({...customForm, name: e.target.value})} required />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Categoria</label>
+                                        <select className="form-select" value={customForm.categoryId} onChange={e => setCustomForm({...customForm, categoryId: e.target.value})} required>
+                                            <option value="">Selecione uma categoria</option>
+                                            {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                        <div className="form-group">
+                                            <label className="form-label">Preço (R$)</label>
+                                            <input type="number" step="0.01" className="form-input" value={customForm.price} onChange={e => setCustomForm({...customForm, price: e.target.value})} required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Duração (min)</label>
+                                            <input type="number" className="form-input" value={customForm.duration} onChange={e => setCustomForm({...customForm, duration: e.target.value})} required />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Comissão Funcionário (%)</label>
+                                        <input type="number" min="0" max="100" className="form-input" value={customForm.commission} onChange={e => setCustomForm({...customForm, commission: e.target.value})} required />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setIsCreatingCustom(false)} className="btn btn-secondary flex-1">Voltar</button>
+                                        <button type="submit" className="btn btn-primary flex-1">Salvar Serviço</button>
+                                    </div>
+                                </form>
+                            ) : availableServices.length === 0 ? (
                                 <p className="text-center text-muted py-8">
                                     Todos os serviços disponíveis já foram adicionados
                                 </p>
@@ -365,7 +474,20 @@ export default function AdminServices() {
                         </div>
                         <form onSubmit={handleUpdateService}>
                             <div className="modal-body">
-                                <h4 className="font-medium mb-4">{editingService.name}</h4>
+                                {editingService.establishmentId === admin.establishmentId ? (
+                                    <div className="form-group mb-4">
+                                        <label className="form-label">Nome do Serviço</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={editForm.name}
+                                            onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                ) : (
+                                    <h4 className="font-medium mb-4">{editingService.name}</h4>
+                                )}
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     <div className="form-group">
                                         <label className="form-label">Preço (R$)</label>
@@ -373,6 +495,7 @@ export default function AdminServices() {
                                             type="number"
                                             step="0.01"
                                             className="form-input"
+                                            onFocus={(e) => e.target.select()}
                                             value={editForm.price}
                                             onChange={e => setEditForm({ ...editForm, price: e.target.value })}
                                             required
@@ -383,6 +506,7 @@ export default function AdminServices() {
                                         <input
                                             type="number"
                                             className="form-input"
+                                            onFocus={(e) => e.target.select()}
                                             value={editForm.duration}
                                             onChange={e => setEditForm({ ...editForm, duration: e.target.value })}
                                             required
@@ -396,6 +520,7 @@ export default function AdminServices() {
                                         min="0"
                                         max="100"
                                         className="form-input"
+                                        onFocus={(e) => e.target.select()}
                                         value={editForm.commission}
                                         onChange={e => setEditForm({ ...editForm, commission: e.target.value })}
                                         required
