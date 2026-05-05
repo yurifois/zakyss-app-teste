@@ -4,9 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n \"WEB,API\" -c \"cyan,green\" \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "vite",
+    "dev:backend": "npm run dev --prefix server",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:all": "concurrently -n \"WEB,API\" -c \"cyan,green\" \"npm run preview\" \"npm start --prefix server\""
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^9.2.1",
     "vite": "^5.0.0"
   }
 }

@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002/api'
+const isProd = import.meta.env.PROD
+const API_URL = import.meta.env.VITE_API_URL || (isProd ? '' : 'http://localhost:3002/api')
+
+if (isProd && !import.meta.env.VITE_API_URL) {
+    console.warn('⚠️ VITE_API_URL não está definida em produção! As requisições podem falhar.')
+}
 
 // Verificar se token JWT está expirado
 function isTokenValid(token) {
@@ -33,14 +38,22 @@ async function request(endpoint, options = {}) {
         ...options,
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, config)
-    const data = await response.json()
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, config)
+        const data = await response.json()
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Erro na requisição')
+        if (!response.ok) {
+            throw new Error(data.error || `Erro na requisição: ${response.status}`)
+        }
+
+        return data.data
+    } catch (err) {
+        console.error(`❌ API Error [${endpoint}]:`, err)
+        if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+            throw new Error(`Não foi possível conectar ao servidor (${API_URL}). Verifique sua conexão ou se a URL da API está correta.`)
+        }
+        throw err
     }
-
-    return data.data
 }
 
 // ========== AUTH ==========
@@ -331,7 +344,7 @@ export async function changePassword(userId, data) {
 
 // ========== UPLOAD ==========
 
-const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3002/api/upload'
+const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || `${API_URL}/upload`
 
 export async function uploadEstablishmentLogo(establishmentId, file) {
     const adminToken = localStorage.getItem('zakys_admin_token')

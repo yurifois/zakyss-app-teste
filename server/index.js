@@ -28,7 +28,11 @@ app.use(cors({
         }
 
         // Allow production origins
-        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        const isAllowed = allowedOrigins.includes(origin) || 
+                          allowedOrigins.includes('*') ||
+                          (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) // Fallback for production if not specified
+
+        if (isAllowed) {
             return callback(null, true)
         }
 
@@ -37,6 +41,7 @@ app.use(cors({
             return callback(null, true)
         }
 
+        console.warn(`🛑 Blocked by CORS: ${origin}`)
         callback(new Error('Not allowed by CORS'))
     },
     credentials: true
