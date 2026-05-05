@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import routes from './routes/index.js'
 import { errorHandler } from './middleware/error.middleware.js'
 import { startNotificationScheduler } from './services/notificationScheduler.js'
+import morgan from 'morgan'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,6 +48,7 @@ app.use(cors({
     credentials: true
 }))
 app.use(express.json())
+app.use(morgan('dev')) // Logging de requisições
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
@@ -63,8 +65,26 @@ app.use('/api', (req, res, next) => {
 app.use('/api', routes)
 
 // Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() })
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV,
+        database: process.env.SUPABASE_URL ? 'supabase' : 'json'
+    })
+})
+
+// Debug Env (temporário para diagnóstico)
+app.get('/api/debug-env', (req, res) => {
+    const mask = (val) => val ? `${val.substring(0, 5)}...${val.substring(val.length - 4)}` : 'MISSING'
+    res.json({
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT,
+        SUPABASE_URL: mask(process.env.SUPABASE_URL),
+        SUPABASE_ANON_KEY: mask(process.env.SUPABASE_ANON_KEY),
+        JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+        ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
+    })
 })
 
 // Error handling

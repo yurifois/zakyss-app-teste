@@ -11,9 +11,13 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 export class SupabaseRepository {
     constructor(tableName) {
         this.tableName = tableName
+        if (!supabase) {
+            console.error(`❌ Supabase client NOT initialized for table: ${tableName}. Check your environment variables.`)
+        }
     }
 
     async findAll(filter = null) {
+        if (!supabase) throw new Error('Serviço de banco de dados indisponível (Supabase não configurado)')
         let query = supabase.from(this.tableName).select('*')
 
         if (filter) {
@@ -30,6 +34,7 @@ export class SupabaseRepository {
     }
 
     async findById(id) {
+        if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         const { data, error } = await supabase
             .from(this.tableName)
             .select('*')
@@ -41,6 +46,7 @@ export class SupabaseRepository {
     }
 
     async findOne(filter) {
+        if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         let query = supabase.from(this.tableName).select('*')
 
         Object.entries(filter).forEach(([key, value]) => {
@@ -57,6 +63,7 @@ export class SupabaseRepository {
     }
 
     async create(item) {
+        if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         // Remove id so PostgreSQL auto-generates it via sequence
         const { id, ...itemWithoutId } = item
         const { data, error } = await supabase
@@ -70,6 +77,7 @@ export class SupabaseRepository {
     }
 
     async update(id, updates) {
+        if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         const { data, error } = await supabase
             .from(this.tableName)
             .update({ ...updates, updatedAt: new Date().toISOString() })
@@ -82,6 +90,7 @@ export class SupabaseRepository {
     }
 
     async delete(id) {
+        if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         const { error } = await supabase
             .from(this.tableName)
             .delete()
