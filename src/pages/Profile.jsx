@@ -301,7 +301,7 @@ export default function Profile() {
             <div className="container">
                 <div className="grid md:grid-cols-4 gap-8">
                     {/* Sidebar */}
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                         <div className="card" style={{ padding: '1.5rem', textAlign: 'center' }}>
                             <input
                                 ref={fileInputRef}
@@ -381,7 +381,7 @@ export default function Profile() {
                     </div>
 
                     {/* Content */}
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-3" style={{ minWidth: 0 }}>
                         {tab === 'appointments' && (
                             <>
                                 <h1 className="text-2xl font-bold mb-6">Meus Agendamentos</h1>
