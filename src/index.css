@@ -1992,23 +1992,6 @@ img {
   .nav-links { gap: var(--space-3); }
   .nav-link span { display: none; }
 
-  .profile-sidebar-nav {
-    display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 0;
-    scrollbar-width: none;
-  }
-
-  .profile-sidebar-nav::-webkit-scrollbar { display: none; }
-
-  .profile-sidebar-nav button {
-    white-space: nowrap;
-    font-size: 0.85rem;
-    padding: 0.75rem 1rem !important;
-    flex-shrink: 0;
-  }
-
   .container {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
