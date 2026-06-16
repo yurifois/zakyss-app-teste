@@ -199,11 +199,11 @@ export default function AdminDashboard() {
             </div>
 
             {/* Shareable Link Card */}
-            <div className="card mb-8" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, var(--primary-50), var(--primary-100))' }}>
+            <div className="card mb-8" style={{ padding: '1.5rem', background: 'rgba(255, 0, 127, 0.08)', border: '1px solid rgba(255, 0, 127, 0.2)' }}>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <h3 className="font-bold text-lg mb-1">🔗 Link de Agendamento</h3>
-                        <p className="text-sm text-secondary">Compartilhe com seus clientes para agendarem direto!</p>
+                        <h3 className="font-bold text-lg mb-1" style={{ color: '#FF69B4' }}>🔗 Link de Agendamento</h3>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Compartilhe com seus clientes para agendarem direto!</p>
                     </div>
                     <div className="flex items-center gap-3" style={{ flex: 1, maxWidth: '500px' }}>
                         <input
@@ -212,9 +212,11 @@ export default function AdminDashboard() {
                             value={`${window.location.origin}/estabelecimento/${admin?.establishmentId}`}
                             className="form-input"
                             style={{
-                                background: 'white',
+                                background: 'rgba(20, 16, 50, 0.6)',
                                 fontSize: '0.875rem',
-                                cursor: 'default'
+                                cursor: 'default',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--border-color)'
                             }}
                             onClick={(e) => e.target.select()}
                         />
