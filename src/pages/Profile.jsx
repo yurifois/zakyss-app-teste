@@ -338,42 +338,42 @@ export default function Profile() {
                             <button
                                 onClick={() => setTab('appointments')}
                                 className="w-full text-left p-4"
-                                style={{ border: 'none', background: tab === 'appointments' ? 'var(--primary-50)' : 'transparent', cursor: 'pointer' }}
+                                style={{ border: 'none', background: tab === 'appointments' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', color: tab === 'appointments' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'appointments' ? '600' : '400' }}
                             >
                                 📅 Meus Agendamentos
                             </button>
                             <button
                                 onClick={() => setTab('favorites')}
                                 className="w-full text-left p-4"
-                                style={{ border: 'none', background: tab === 'favorites' ? 'var(--primary-50)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)' }}
+                                style={{ border: 'none', background: tab === 'favorites' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: tab === 'favorites' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'favorites' ? '600' : '400' }}
                             >
                                 ❤️ Favoritos
                             </button>
                             <button
                                 onClick={() => setTab('profile')}
                                 className="w-full text-left p-4"
-                                style={{ border: 'none', background: tab === 'profile' ? 'var(--primary-50)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)' }}
+                                style={{ border: 'none', background: tab === 'profile' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: tab === 'profile' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'profile' ? '600' : '400' }}
                             >
                                 👤 Dados Pessoais
                             </button>
                             <button
                                 onClick={() => setTab('address')}
                                 className="w-full text-left p-4"
-                                style={{ border: 'none', background: tab === 'address' ? 'var(--primary-50)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)' }}
+                                style={{ border: 'none', background: tab === 'address' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: tab === 'address' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'address' ? '600' : '400' }}
                             >
                                 📍 Endereço
                             </button>
                             <button
                                 onClick={() => setTab('security')}
                                 className="w-full text-left p-4"
-                                style={{ border: 'none', background: tab === 'security' ? 'var(--primary-50)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)' }}
+                                style={{ border: 'none', background: tab === 'security' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: tab === 'security' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'security' ? '600' : '400' }}
                             >
                                 🔒 Segurança
                             </button>
                             <button
                                 onClick={logout}
                                 className="w-full text-left p-4"
-                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: 'var(--error-500)' }}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: '#FF007F', fontWeight: '400' }}
                             >
                                 🚪 Sair
                             </button>
