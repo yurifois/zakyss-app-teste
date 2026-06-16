@@ -330,8 +330,8 @@ export default function Profile() {
                                     )}
                                 </div>
                             </div>
-                            <h2 className="text-lg font-bold mt-4">{user.name}</h2>
-                            <p className="text-sm text-secondary">{user.email}</p>
+                            <h2 className="text-lg font-bold mt-4 break-words">{user.name}</h2>
+                            <p className="text-sm text-secondary break-all">{user.email}</p>
                         </div>
 
                         <div className="card mt-4 profile-sidebar-nav" style={{ overflow: 'hidden' }}>
@@ -476,11 +476,11 @@ export default function Profile() {
                                                             </div>
 
                                                             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                                                <div className="flex justify-between items-center">
-                                                                    <div>
+                                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                                    <div className="flex flex-wrap items-center gap-2">
                                                                         <span className="text-sm text-muted">Serviços: </span>
                                                                         {apt.servicesList?.map(s => (
-                                                                            <span key={s.id} className="badge badge-primary mr-2">{s.name}</span>
+                                                                            <span key={s.id} className="badge badge-primary">{s.name}</span>
                                                                         ))}
                                                                     </div>
                                                                     {(apt.status === 'pending' || apt.status === 'confirmed') && (
