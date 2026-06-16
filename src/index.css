@@ -1129,7 +1129,15 @@ img {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--gradient-hero-overlay);
+  background: url('/hero-bg.png') center center / cover no-repeat;
+  z-index: 0;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(10, 7, 37, 0.3) 0%, rgba(10, 7, 37, 0.5) 60%, rgba(10, 7, 37, 0.7) 100%);
   z-index: 1;
 }
 
@@ -1137,7 +1145,7 @@ img {
 .hero-bg-decorations {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 2;
   overflow: hidden;
   pointer-events: none;
 }
@@ -1153,7 +1161,7 @@ img {
   width: 300px;
   height: 300px;
   border-radius: 50%;
-  background: rgba(236, 72, 153, 0.12);
+  background: rgba(255, 0, 127, 0.15);
   filter: blur(80px);
   animation: glow-pulse 8s ease-in-out infinite;
 }
@@ -1165,7 +1173,7 @@ img {
   width: 250px;
   height: 250px;
   border-radius: 50%;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.12);
   filter: blur(70px);
   animation: glow-pulse 10s ease-in-out infinite 2s;
 }
@@ -1177,14 +1185,14 @@ img {
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  background: rgba(192, 38, 211, 0.08);
+  background: rgba(192, 38, 211, 0.1);
   filter: blur(60px);
   animation: glow-pulse 7s ease-in-out infinite 4s;
 }
 
 .hero-content {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   max-width: 800px;
   margin: 0 auto;
   text-align: center;
