@@ -19,8 +19,8 @@ export function AuthProvider({ children }) {
         setLoading(false)
     }, [])
 
-    const login = async (email, password) => {
-        const userData = await api.login(email, password)
+    const login = async (email, password, remember = true) => {
+        const userData = await api.login(email, password, remember)
         setUser(userData)
         return userData
     }

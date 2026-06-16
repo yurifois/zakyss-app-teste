@@ -28,10 +28,9 @@ export default function Login() {
         setLoading(true)
 
         try {
-            await login(formData.email, formData.password)
+            await login(formData.email, formData.password, formData.remember)
             success('Login realizado com sucesso!')
 
-            // Check if there's a redirect URL saved
             const redirectUrl = sessionStorage.getItem('redirect_after_login')
             if (redirectUrl) {
                 sessionStorage.removeItem('redirect_after_login')
@@ -47,8 +46,11 @@ export default function Login() {
     }
 
     return (
-        <div className="py-16">
-            <div className="container" style={{ maxWidth: '450px' }}>
+        <div className="py-16" style={{ position: 'relative', overflow: 'hidden' }}>
+            {/* Decorative glow */}
+            <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '500px', height: '500px', borderRadius: '50%', background: 'rgba(236, 72, 153, 0.05)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+
+            <div className="container" style={{ maxWidth: '450px', position: 'relative', zIndex: 1 }}>
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold mb-2">Bem-vindo de volta!</h1>
                     <p className="text-secondary">Entre na sua conta para continuar</p>
@@ -92,7 +94,7 @@ export default function Login() {
                                 />
                                 <span className="text-sm">Lembrar-me</span>
                             </label>
-                            <a href="#" className="text-sm text-primary-500">Esqueceu a senha?</a>
+                            <a href="#" className="text-sm" style={{ color: 'var(--accent-400)' }}>Esqueceu a senha?</a>
                         </div>
 
                         <button
@@ -107,7 +109,7 @@ export default function Login() {
                     <div className="text-center mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
                         <p className="text-secondary text-sm">
                             Não tem uma conta?{' '}
-                            <Link to="/cadastro" className="font-semibold">Cadastre-se</Link>
+                            <Link to="/cadastro" className="font-semibold" style={{ color: 'var(--accent-400)' }}>Cadastre-se</Link>
                         </p>
                     </div>
                 </div>
