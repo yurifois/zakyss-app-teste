@@ -1,22 +1,25 @@
 import nodemailer from 'nodemailer'
 
-// Configuração do transporter de email com timeouts
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 465, // Tentando porta 465 (SSL)
-        secure: true, // true para porta 465
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+// Gateway Serverless da Vercel para envio de emails (dribla o bloqueio do Render)
+const sendViaVercelGateway = async (to, subject, html) => {
+    // Tenta usar a URL configurada, ou usa o domínio da Vercel gerado automaticamente
+    const vercelDomain = process.env.VITE_UPLOAD_URL ? process.env.VITE_UPLOAD_URL.replace('https://', '').split('/')[0] : 'zakyss-app-teste.vercel.app';
+    const gatewayUrl = `https://${vercelDomain}/api/send-email`;
+
+    const response = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.EMAIL_GATEWAY_SECRET || 'zakys-secret-gateway-123'}`
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
-        tls: {
-            rejectUnauthorized: false
-        }
-    })
+        body: JSON.stringify({ to, subject, html })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erro desconhecido no Gateway da Vercel');
+    }
+    return data;
 }
 
 /**
@@ -250,16 +253,11 @@ export const sendConfirmationEmail = async (email, customerName, date, time, est
     }
 
     try {
-        const transporter = createTransporter()
-
-        const mailOptions = {
-            from: process.env.SMTP_FROM || '"BeautyBook" <noreply@beautybook.com>',
-            to: email,
-            subject: `✅ Agendamento Confirmado - ${establishmentName}`,
-            html: generateConfirmationTemplate(customerName, date, time, establishmentName)
-        }
-
-        await transporter.sendMail(mailOptions)
+        await sendViaVercelGateway(
+            email,
+            `✅ Agendamento Confirmado - ${establishmentName}`,
+            generateConfirmationTemplate(customerName, date, time, establishmentName)
+        )
         console.log(`[EmailService] ✅ Email de confirmação enviado para ${email}`)
         return true
     } catch (error) {
@@ -353,16 +351,11 @@ export const sendNewAppointmentEmail = async (establishmentEmail, establishmentN
     }
 
     try {
-        const transporter = createTransporter()
-
-        const mailOptions = {
-            from: process.env.SMTP_FROM || '"Zakys" <noreply@zakys.com>',
-            to: establishmentEmail,
-            subject: `📅 Novo Agendamento Recebido - ${customerName}`,
-            html: generateNewAppointmentTemplate(establishmentName, customerName, date, time, servicesListStr)
-        }
-
-        await transporter.sendMail(mailOptions)
+        await sendViaVercelGateway(
+            establishmentEmail,
+            `📅 Novo Agendamento Recebido - ${customerName}`,
+            generateNewAppointmentTemplate(establishmentName, customerName, date, time, servicesListStr)
+        )
         console.log(`[EmailService] ✅ Email de novo agendamento enviado para o estabelecimento: ${establishmentEmail}`)
         return true
     } catch (error) {
