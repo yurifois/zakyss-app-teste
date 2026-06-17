@@ -17,17 +17,20 @@ export default function AdminProfile() {
     useEffect(() => {
         if (admin?.establishmentId) {
             loadEstablishment()
+        } else {
+            setLoading(false)
         }
     }, [admin])
 
     const loadEstablishment = async () => {
         try {
             setLoading(true)
-            const response = await getEstablishmentById(admin.establishmentId)
-            if (response.success && response.data) {
+            // request() já retorna data.data, então 'establishment' é o objeto direto
+            const establishment = await getEstablishmentById(admin.establishmentId)
+            if (establishment) {
                 setFormData({
-                    email: response.data.email || admin.email || '',
-                    phone: response.data.phone || ''
+                    email: establishment.email || admin.email || '',
+                    phone: establishment.phone || ''
                 })
             }
         } catch (err) {
@@ -49,17 +52,17 @@ export default function AdminProfile() {
         
         try {
             setSaving(true)
-            const response = await updateEstablishment(admin.establishmentId, {
+            // request() já retorna data.data, então 'updated' é o objeto direto
+            const updated = await updateEstablishment(admin.establishmentId, {
                 email: formData.email,
                 phone: formData.phone
             })
 
-            if (response.success) {
-                setSuccess(true)
-                // Atualizar dados na tela
+            setSuccess(true)
+            if (updated) {
                 setFormData({
-                    email: response.data.email || formData.email,
-                    phone: response.data.phone || formData.phone
+                    email: updated.email || formData.email,
+                    phone: updated.phone || formData.phone
                 })
             }
         } catch (err) {
@@ -107,7 +110,7 @@ export default function AdminProfile() {
                         
                         {success && (
                             <div className="p-4 bg-green-100 text-green-700 rounded-xl mb-4 text-sm">
-                                Dados atualizados com sucesso!
+                                ✅ Dados atualizados com sucesso!
                             </div>
                         )}
 
