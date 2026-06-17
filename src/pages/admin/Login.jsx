@@ -9,7 +9,6 @@ export default function AdminLogin() {
     const { adminLogin, adminLogout } = useAuth()
     const { success, error } = useToast()
 
-    // Limpar sessão anterior ao acessar página de login
     useEffect(() => {
         adminLogout()
     }, [])
@@ -41,22 +40,14 @@ export default function AdminLogin() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--gradient-dark)' }}>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--gradient-hero)' }}>
             <div style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}>
                 <div className="text-center mb-8">
                     <Link to="/" className="logo" style={{ justifyContent: 'center', marginBottom: '1.5rem', color: 'white' }}>
-                        <img
-                            src="/logo.png"
-                            alt="Zakys"
-                            style={{
-                                height: '3rem',
-                                width: 'auto',
-                                filter: 'brightness(0) saturate(100%) invert(45%) sepia(85%) saturate(1500%) hue-rotate(310deg) brightness(95%) contrast(95%)'
-                            }}
-                        />
+                        <img src="/logo.png" alt="Zakys" style={{ height: '3rem', width: 'auto' }} />
                     </Link>
                     <h1 className="text-2xl font-bold mb-2" style={{ color: 'white' }}>Portal do Parceiro</h1>
-                    <p style={{ color: 'rgba(255,255,255,0.7)' }}>Acesse sua área administrativa</p>
+                    <p style={{ color: 'rgba(255,255,255,0.6)' }}>Acesse sua área administrativa</p>
                 </div>
 
                 <div className="card" style={{ padding: '2rem' }}>
@@ -102,26 +93,26 @@ export default function AdminLogin() {
                         <div className="flex justify-center">
                             <Link
                                 to="/parceiro/cadastro"
-                                className="p-3 rounded-lg text-center hover-lift w-full"
+                                className="p-3 text-center hover-lift w-full"
                                 style={{
-                                    background: 'var(--primary-50)',
+                                    background: 'rgba(236, 72, 153, 0.08)',
                                     textDecoration: 'none',
-                                    border: '1px solid var(--primary-200)',
+                                    border: '1px solid rgba(236, 72, 153, 0.2)',
+                                    borderRadius: 'var(--radius-lg)',
                                     transition: 'all 0.2s ease'
                                 }}
                             >
                                 <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>🏪</div>
-                                <div className="font-semibold text-sm" style={{ color: 'var(--primary-700)' }}>Criar conta de Estabelecimento</div>
+                                <div className="font-semibold text-sm" style={{ color: 'var(--accent-300)' }}>Criar conta de Estabelecimento</div>
                             </Link>
                         </div>
                     </div>
                 </div>
 
-                <p className="text-center text-sm mt-6" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                <p className="text-center text-sm mt-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     Teste: admin@studiobeleza.com / 123456
                 </p>
             </div>
         </div>
     )
 }
-

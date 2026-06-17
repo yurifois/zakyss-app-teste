@@ -187,7 +187,7 @@ export default function Establishment() {
 
                             {categories.filter(cat => services.some(s => s.categoryId === cat.id)).map(category => (
                                 <div key={category.id} className="mb-6">
-                                    <h3 className="font-semibold mb-3 flex items-center gap-3 bg-muted/30 p-2 rounded-lg">
+                                    <h3 className="font-semibold mb-3 flex items-center gap-3 p-2" style={{ background: 'rgba(139, 92, 246, 0.08)', borderRadius: 'var(--radius-lg)' }}>
                                         <CategoryIcon iconName={category.icon} color={category.color} />
                                         {category.name}
                                     </h3>

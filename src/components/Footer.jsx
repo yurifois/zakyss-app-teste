@@ -7,9 +7,9 @@ export default function Footer() {
                 <div className="footer-grid">
                     <div>
                         <div className="logo" style={{ marginBottom: '1rem' }}>
-                            <img src="/logo.png" alt="Zakys" style={{ height: '2.5rem', width: 'auto' }} />
+                            <img src="/logo.png" alt="Zakys" style={{ height: '3rem', width: 'auto' }} />
                         </div>
-                        <p style={{ color: 'var(--gray-400)', fontSize: 'var(--font-size-sm)' }}>
+                        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>
                             A plataforma mais completa para agendamentos de beleza e estética em Brasília.
                         </p>
                     </div>

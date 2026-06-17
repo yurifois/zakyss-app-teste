@@ -62,12 +62,14 @@ export default function BookingConfirmation() {
                         width: '80px',
                         height: '80px',
                         borderRadius: '50%',
-                        background: 'var(--success-100)',
+                        background: 'rgba(34, 197, 94, 0.15)',
+                        border: '2px solid rgba(34, 197, 94, 0.3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 1.5rem',
-                        fontSize: '2.5rem'
+                        fontSize: '2.5rem',
+                        color: '#4ade80'
                     }}>
                         ✓
                     </div>
@@ -114,8 +116,8 @@ export default function BookingConfirmation() {
                         </div>
                     </div>
 
-                    <div className="p-4 rounded-lg" style={{ background: 'var(--warning-100)' }}>
-                        <p className="text-sm" style={{ color: 'var(--warning-700)' }}>
+                    <div className="p-4" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-lg)' }}>
+                        <p className="text-sm" style={{ color: '#fcd34d' }}>
                             <strong>⚠️ Status:</strong> Aguardando confirmação do estabelecimento
                         </p>
                     </div>

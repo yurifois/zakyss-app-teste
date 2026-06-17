@@ -55,7 +55,6 @@ export default function Search() {
 
             const establishments = await api.getEstablishments(params)
 
-            // Sort by distance
             const sorted = (establishments || []).sort((a, b) => (a.distance || 999) - (b.distance || 999))
             setResults(sorted)
         } catch (error) {
@@ -71,15 +70,13 @@ export default function Search() {
                 {/* Header */}
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-                        <SearchIcon size={28} className="text-primary" />
+                        <SearchIcon size={28} style={{ color: 'var(--accent-400)' }} />
                         {query ? `Resultados para "${query}"` : 'Todos os serviços de beleza'}
                     </h1>
                     <p className="text-secondary">
                         {loading ? 'Buscando...' : `${results.length} resultado(s) encontrado(s)`}
                     </p>
                 </div>
-
-
 
                 {/* Cards Grid */}
                 {loading ? (
@@ -95,9 +92,9 @@ export default function Search() {
                         ))}
                     </div>
                 ) : results.length === 0 ? (
-                    <div className="card text-center py-16 bg-muted/20 border-dashed">
+                    <div className="card text-center py-16" style={{ borderStyle: 'dashed' }}>
                         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                            <SearchIcon size={64} className="text-muted" strokeWidth={1.5} />
+                            <SearchIcon size={64} style={{ color: 'var(--text-muted)' }} strokeWidth={1.5} />
                         </div>
                         <h3 className="text-xl font-semibold mb-2">Nenhum resultado encontrado</h3>
                         <p className="text-secondary">Tente fazer uma nova busca ou mude os filtros</p>
@@ -116,7 +113,3 @@ export default function Search() {
         </div>
     )
 }
-
-// Professional Card Component
-
-

@@ -50,7 +50,6 @@ export default function Register() {
             })
             success('Conta criada com sucesso!')
 
-            // Check if there's a redirect URL saved
             const redirectUrl = sessionStorage.getItem('redirect_after_login')
             if (redirectUrl) {
                 sessionStorage.removeItem('redirect_after_login')
@@ -66,8 +65,10 @@ export default function Register() {
     }
 
     return (
-        <div className="py-16">
-            <div className="container" style={{ maxWidth: '450px' }}>
+        <div className="py-16" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '500px', height: '500px', borderRadius: '50%', background: 'rgba(139, 92, 246, 0.04)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+
+            <div className="container" style={{ maxWidth: '450px', position: 'relative', zIndex: 1 }}>
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold mb-2">Criar conta</h1>
                     <p className="text-secondary">Cadastre-se para agendar seus serviços</p>
@@ -150,8 +151,8 @@ export default function Register() {
                                     onChange={handleChange}
                                 />
                                 <span className="text-sm">
-                                    Li e aceito os <a href="#" className="text-primary-500">termos de uso</a> e{' '}
-                                    <a href="#" className="text-primary-500">política de privacidade</a>
+                                    Li e aceito os <a href="#" style={{ color: 'var(--accent-400)' }}>termos de uso</a> e{' '}
+                                    <a href="#" style={{ color: 'var(--accent-400)' }}>política de privacidade</a>
                                 </span>
                             </label>
                         </div>
@@ -168,7 +169,7 @@ export default function Register() {
                     <div className="text-center mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
                         <p className="text-secondary text-sm">
                             Já tem uma conta?{' '}
-                            <Link to="/entrar" className="font-semibold">Entrar</Link>
+                            <Link to="/entrar" className="font-semibold" style={{ color: 'var(--accent-400)' }}>Entrar</Link>
                         </p>
                     </div>
                 </div>
