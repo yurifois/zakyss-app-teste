@@ -102,11 +102,16 @@ router.post('/', async (req, res, next) => {
         })
 
         // Enviar email notificando o estabelecimento sobre o novo agendamento
-        if (establishment?.email) {
+        // Tenta pegar o email direto do estabelecimento, senão busca o email do admin (dono) associado
+        const adminsRepo = getRepository('admins.json')
+        const admin = await adminsRepo.findOne({ establishmentId: parseInt(establishmentId) })
+        const targetEmail = establishment?.email || admin?.email
+
+        if (targetEmail) {
             const servicesListStr = selectedServices.map(s => s.name).join(', ')
             sendNewAppointmentEmail(
-                establishment.email,
-                establishment.name,
+                targetEmail,
+                establishment?.name || 'Estabelecimento',
                 customerName,
                 date,
                 time,
