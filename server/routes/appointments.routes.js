@@ -101,32 +101,31 @@ router.post('/', async (req, res, next) => {
             assignments: assignments || []
         })
 
-        // Enviar email ao estabelecimento de forma assíncrona (não bloqueia a resposta)
-        ;(async () => {
-            try {
-                let targetEmail = establishment?.email
-                if (!targetEmail) {
-                    const adminsRepo = getRepository('admins.json')
-                    const admin = await adminsRepo.findOne({ establishmentId: parseInt(establishmentId) })
-                    targetEmail = admin?.email
-                }
-                if (targetEmail) {
-                    const servicesListStr = selectedServices.map(s => s.name).join(', ')
-                    await sendNewAppointmentEmail(
-                        targetEmail,
-                        establishment?.name || 'Estabelecimento',
-                        customerName,
-                        date,
-                        time,
-                        servicesListStr
-                    )
-                } else {
-                    console.log(`[Appointments] Nenhum email encontrado para o estabelecimento ID ${establishmentId}`)
-                }
-            } catch (emailErr) {
-                console.error('[Appointments] Erro ao enviar notificação por email ao estabelecimento:', emailErr.message)
+        // Enviar email ao estabelecimento (await garante envio antes da resposta)
+        try {
+            let targetEmail = establishment?.email
+            if (!targetEmail) {
+                const adminsRepo = getRepository('admins.json')
+                const admin = await adminsRepo.findOne({ establishmentId: parseInt(establishmentId) })
+                targetEmail = admin?.email
             }
-        })()
+            if (targetEmail) {
+                const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                await sendNewAppointmentEmail(
+                    targetEmail,
+                    establishment?.name || 'Estabelecimento',
+                    customerName,
+                    date,
+                    time,
+                    servicesListStr
+                )
+                console.log(`[Appointments] Email de novo agendamento enviado para ${targetEmail}`)
+            } else {
+                console.log(`[Appointments] Nenhum email encontrado para o estabelecimento ID ${establishmentId}`)
+            }
+        } catch (emailErr) {
+            console.error('[Appointments] Erro ao enviar email ao estabelecimento:', emailErr.message)
+        }
 
         res.status(201).json({
             success: true,
@@ -262,40 +261,39 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
 
         const appointment = await appointmentsRepo.update(req.params.id, updateData)
 
-        // Se está confirmando (e não estava confirmado antes), enviar email ao cliente de forma assíncrona
+        // Se está confirmando (e não estava confirmado antes), enviar email ao cliente
         if (status === 'confirmed' && currentAppointment.status !== 'confirmed') {
-            ;(async () => {
-                try {
-                    const establishmentsRepo = getRepository('establishments.json')
-                    const establishment = await establishmentsRepo.findById(appointment.establishmentId)
+            try {
+                const establishmentsRepo = getRepository('establishments.json')
+                const establishment = await establishmentsRepo.findById(appointment.establishmentId)
 
-                    let recipientEmail = appointment.customerEmail
-                    let recipientName = appointment.customerName
+                let recipientEmail = appointment.customerEmail
+                let recipientName = appointment.customerName
 
-                    if (appointment.userId) {
-                        const usersRepo = getRepository('users.json')
-                        const user = await usersRepo.findById(appointment.userId)
-                        if (user?.email) {
-                            recipientEmail = user.email
-                            recipientName = user.name || appointment.customerName
-                        }
+                if (appointment.userId) {
+                    const usersRepo = getRepository('users.json')
+                    const user = await usersRepo.findById(appointment.userId)
+                    if (user?.email) {
+                        recipientEmail = user.email
+                        recipientName = user.name || appointment.customerName
                     }
-
-                    if (recipientEmail) {
-                        await sendConfirmationEmail(
-                            recipientEmail,
-                            recipientName,
-                            appointment.date,
-                            appointment.time,
-                            establishment?.name || 'Estabelecimento'
-                        )
-                    } else {
-                        console.log(`[Appointments] Nenhum email encontrado para o cliente do agendamento ID ${appointment.id}`)
-                    }
-                } catch (emailErr) {
-                    console.error('[Appointments] Erro ao enviar email de confirmação ao cliente:', emailErr.message)
                 }
-            })()
+
+                if (recipientEmail) {
+                    await sendConfirmationEmail(
+                        recipientEmail,
+                        recipientName,
+                        appointment.date,
+                        appointment.time,
+                        establishment?.name || 'Estabelecimento'
+                    )
+                    console.log(`[Appointments] Email de confirmação enviado para ${recipientEmail}`)
+                } else {
+                    console.log(`[Appointments] Nenhum email encontrado para o cliente do agendamento ID ${appointment.id}`)
+                }
+            } catch (emailErr) {
+                console.error('[Appointments] Erro ao enviar email de confirmação ao cliente:', emailErr.message)
+            }
         }
 
         res.json({

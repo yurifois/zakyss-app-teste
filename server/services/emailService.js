@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer'
 
-// Configuração do transporter de email
+// Configuração do transporter de email com timeouts
 const createTransporter = () => {
     return nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -9,6 +9,12 @@ const createTransporter = () => {
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+        tls: {
+            rejectUnauthorized: false
         }
     })
 }
