@@ -89,6 +89,15 @@ export default function AdminProfile() {
                         Estes são os dados de contato do seu estabelecimento. O email cadastrado aqui será usado para receber as notificações de novos agendamentos feitos pelos clientes.
                     </p>
 
+                    {(!formData.email || formData.email.trim() === '') && (
+                        <div className="p-4 bg-yellow-100 text-yellow-800 rounded-xl mb-6 text-sm flex items-start gap-2">
+                            <span>⚠️</span>
+                            <div>
+                                <strong>Atenção:</strong> O email do seu estabelecimento ainda não foi configurado! Por favor, preencha o campo abaixo e clique em "Salvar Alterações" para começar a receber as notificações.
+                            </div>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
                             <div className="p-4 bg-red-100 text-red-700 rounded-xl mb-4 text-sm">
