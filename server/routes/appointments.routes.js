@@ -3,10 +3,53 @@ import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { sendConfirmationEmail, sendNewAppointmentEmail } from '../services/emailService.js'
+import nodemailer from 'nodemailer'
 
 const router = Router()
 const appointmentsRepo = getRepository('appointments.json')
 const servicesRepo = getRepository('services.json')
+
+// Endpoint temporário de diagnóstico de Email
+router.get('/test-email', async (req, res) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: parseInt(process.env.SMTP_PORT) || 587,
+            secure: false,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            },
+            connectionTimeout: 10000,
+            tls: { rejectUnauthorized: false }
+        })
+
+        await transporter.verify()
+        
+        // Tenta enviar um email para o próprio remetente para testar
+        const info = await transporter.sendMail({
+            from: `"Zakys Diagnóstico" <${process.env.SMTP_USER}>`,
+            to: process.env.SMTP_USER,
+            subject: 'Teste de Diagnóstico Zakys',
+            text: 'Se você recebeu este email, o SMTP está funcionando perfeitamente no Render!'
+        })
+
+        res.json({
+            success: true,
+            message: 'Conexão SMTP verificada e email de teste enviado com sucesso!',
+            user_configurado: process.env.SMTP_USER,
+            messageId: info.messageId
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Falha no SMTP',
+            detalhes: error.message,
+            user_configurado: process.env.SMTP_USER,
+            dica: 'Se o erro for "Invalid login" ou "Username and Password not accepted", a senha de aplicativo está incorreta ou o Google bloqueou o acesso.'
+        })
+    }
+})
 
 // Buscar agendamento por ID
 router.get('/:id', async (req, res, next) => {
