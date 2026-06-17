@@ -262,8 +262,112 @@ export const sendConfirmationEmail = async (email, customerName, date, time, est
     }
 }
 
+/**
+ * Gera template HTML para notificar o estabelecimento sobre um novo agendamento
+ */
+const generateNewAppointmentTemplate = (establishmentName, customerName, date, time, servicesListStr) => {
+    const formattedDate = formatDate(date)
+
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr>
+                <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <!-- Header -->
+                        <tr>
+                            <td style="background: linear-gradient(135deg, #db2777 0%, #9d174d 100%); padding: 30px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 28px;">📅 Novo Agendamento!</h1>
+                            </td>
+                        </tr>
+                        
+                        <!-- Content -->
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">
+                                    Olá, <strong style="color: #db2777;">${establishmentName}</strong>! 👋
+                                </h2>
+                                
+                                <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">
+                                    Você recebeu um novo agendamento pelo aplicativo. Confira os detalhes abaixo:
+                                </p>
+                                
+                                <div style="background-color: #fdf2f8; border-left: 4px solid #db2777; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                                    <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">
+                                        👤 <strong>Cliente:</strong> ${customerName}
+                                    </p>
+                                    <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">
+                                        📅 <strong>Data:</strong> ${formattedDate}
+                                    </p>
+                                    <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">
+                                        🕐 <strong>Horário:</strong> ${time}
+                                    </p>
+                                    <p style="color: #171615; font-size: 16px; margin: 0; line-height: 1.6;">
+                                        💅 <strong>Serviços:</strong> ${servicesListStr}
+                                    </p>
+                                </div>
+                                
+                                <p style="color: #5c5752; font-size: 14px; margin: 0;">
+                                    Acesse o painel para confirmar ou gerenciar este agendamento.
+                                </p>
+                            </td>
+                        </tr>
+                        
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                                <p style="color: #5c5752; font-size: 12px; margin: 0;">
+                                    Este é um email automático do Zakys.<br>
+                                    Por favor, não responda a esta mensagem.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `
+}
+
+/**
+ * Envia email para o estabelecimento avisando de um novo agendamento
+ */
+export const sendNewAppointmentEmail = async (establishmentEmail, establishmentName, customerName, date, time, servicesListStr) => {
+    if (!establishmentEmail) {
+        console.log(`[EmailService] Sem email para notificar o estabelecimento ${establishmentName}`)
+        return false
+    }
+
+    try {
+        const transporter = createTransporter()
+
+        const mailOptions = {
+            from: process.env.SMTP_FROM || '"Zakys" <noreply@zakys.com>',
+            to: establishmentEmail,
+            subject: `📅 Novo Agendamento Recebido - ${customerName}`,
+            html: generateNewAppointmentTemplate(establishmentName, customerName, date, time, servicesListStr)
+        }
+
+        await transporter.sendMail(mailOptions)
+        console.log(`[EmailService] ✅ Email de novo agendamento enviado para o estabelecimento: ${establishmentEmail}`)
+        return true
+    } catch (error) {
+        console.error(`[EmailService] ❌ Erro ao enviar email para o estabelecimento ${establishmentEmail}:`, error.message)
+        return false
+    }
+}
+
 export default {
     sendAppointmentReminder,
     sendConfirmationEmail,
+    sendNewAppointmentEmail,
     testEmail
 }

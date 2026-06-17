@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
-import { sendConfirmationEmail } from '../services/emailService.js'
+import { sendConfirmationEmail, sendNewAppointmentEmail } from '../services/emailService.js'
 
 const router = Router()
 const appointmentsRepo = getRepository('appointments.json')
@@ -100,6 +100,19 @@ router.post('/', async (req, res, next) => {
             notes: notes || null,
             assignments: assignments || []
         })
+
+        // Enviar email notificando o estabelecimento sobre o novo agendamento
+        if (establishment?.email) {
+            const servicesListStr = selectedServices.map(s => s.name).join(', ')
+            sendNewAppointmentEmail(
+                establishment.email,
+                establishment.name,
+                customerName,
+                date,
+                time,
+                servicesListStr
+            ).catch(err => console.error('[Appointments] Erro ao enviar email de novo agendamento para o estabelecimento:', err))
+        }
 
         res.status(201).json({
             success: true,
