@@ -66,13 +66,39 @@ export class SupabaseRepository {
         if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         // Remove id so PostgreSQL auto-generates it via sequence
         const { id, ...itemWithoutId } = item
+        const newItem = { ...itemWithoutId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+
         const { data, error } = await supabase
             .from(this.tableName)
-            .insert([{ ...itemWithoutId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }])
+            .insert([newItem])
             .select()
             .single()
 
-        if (error) throw error
+        if (error) {
+            // Se o erro for de violação de chave única (ex: sequence dessincronizada no Postgres)
+            if (error.code === '23505' && error.message.includes('pkey')) {
+                console.log(`[SupabaseRepository] Sequence out of sync for ${this.tableName}. Attempting to heal...`)
+                // Pegar o maior ID atual
+                const { data: maxIdData } = await supabase
+                    .from(this.tableName)
+                    .select('id')
+                    .order('id', { ascending: false })
+                    .limit(1)
+                
+                const maxId = maxIdData?.[0]?.id || 0
+                newItem.id = maxId + 1
+
+                const retry = await supabase
+                    .from(this.tableName)
+                    .insert([newItem])
+                    .select()
+                    .single()
+                
+                if (retry.error) throw retry.error
+                return retry.data
+            }
+            throw error
+        }
         return data
     }
 
