@@ -83,6 +83,9 @@ export default function AdminLayout() {
                     <NavLink to="/admin/analytics" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         📊 Analytics
                     </NavLink>
+                    <NavLink to="/admin/dados" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+                        ⚙️ Dados Cadastrados
+                    </NavLink>
                 </nav>
 
                 <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>

@@ -31,6 +31,7 @@ import AdminServices from './pages/admin/Services'
 import AdminEmployees from './pages/admin/Employees'
 import AdminEmployeeReport from './pages/admin/EmployeeReport'
 import AdminAnalytics from './pages/admin/Analytics'
+import AdminProfile from './pages/admin/AdminProfile'
 
 function App() {
     return (
@@ -67,11 +68,10 @@ function App() {
                 <Route path="funcionarios" element={<AdminEmployees />} />
                 <Route path="relatorio" element={<AdminEmployeeReport />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="dados" element={<AdminProfile />} />
             </Route>
         </Routes>
     )
 }
 
 export default App
-
-
