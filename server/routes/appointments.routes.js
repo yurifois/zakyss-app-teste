@@ -101,23 +101,32 @@ router.post('/', async (req, res, next) => {
             assignments: assignments || []
         })
 
-        // Enviar email notificando o estabelecimento sobre o novo agendamento
-        // Tenta pegar o email direto do estabelecimento, senão busca o email do admin (dono) associado
-        const adminsRepo = getRepository('admins.json')
-        const admin = await adminsRepo.findOne({ establishmentId: parseInt(establishmentId) })
-        const targetEmail = establishment?.email || admin?.email
-
-        if (targetEmail) {
-            const servicesListStr = selectedServices.map(s => s.name).join(', ')
-            sendNewAppointmentEmail(
-                targetEmail,
-                establishment?.name || 'Estabelecimento',
-                customerName,
-                date,
-                time,
-                servicesListStr
-            ).catch(err => console.error('[Appointments] Erro ao enviar email de novo agendamento para o estabelecimento:', err))
-        }
+        // Enviar email ao estabelecimento de forma assíncrona (não bloqueia a resposta)
+        ;(async () => {
+            try {
+                let targetEmail = establishment?.email
+                if (!targetEmail) {
+                    const adminsRepo = getRepository('admins.json')
+                    const admin = await adminsRepo.findOne({ establishmentId: parseInt(establishmentId) })
+                    targetEmail = admin?.email
+                }
+                if (targetEmail) {
+                    const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                    await sendNewAppointmentEmail(
+                        targetEmail,
+                        establishment?.name || 'Estabelecimento',
+                        customerName,
+                        date,
+                        time,
+                        servicesListStr
+                    )
+                } else {
+                    console.log(`[Appointments] Nenhum email encontrado para o estabelecimento ID ${establishmentId}`)
+                }
+            } catch (emailErr) {
+                console.error('[Appointments] Erro ao enviar notificação por email ao estabelecimento:', emailErr.message)
+            }
+        })()
 
         res.status(201).json({
             success: true,
@@ -253,34 +262,40 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
 
         const appointment = await appointmentsRepo.update(req.params.id, updateData)
 
-        // Se está confirmando (e não estava confirmado antes), enviar email
+        // Se está confirmando (e não estava confirmado antes), enviar email ao cliente de forma assíncrona
         if (status === 'confirmed' && currentAppointment.status !== 'confirmed') {
-            // Buscar nome do estabelecimento
-            const establishmentsRepo = getRepository('establishments.json')
-            const establishment = await establishmentsRepo.findById(appointment.establishmentId)
+            ;(async () => {
+                try {
+                    const establishmentsRepo = getRepository('establishments.json')
+                    const establishment = await establishmentsRepo.findById(appointment.establishmentId)
 
-            // Determinar email do destinatário
-            // Prioriza email do perfil do usuário (se existir userId)
-            let recipientEmail = appointment.customerEmail
-            let recipientName = appointment.customerName
+                    let recipientEmail = appointment.customerEmail
+                    let recipientName = appointment.customerName
 
-            if (appointment.userId) {
-                const usersRepo = getRepository('users.json')
-                const user = await usersRepo.findById(appointment.userId)
-                if (user?.email) {
-                    recipientEmail = user.email
-                    recipientName = user.name || appointment.customerName
+                    if (appointment.userId) {
+                        const usersRepo = getRepository('users.json')
+                        const user = await usersRepo.findById(appointment.userId)
+                        if (user?.email) {
+                            recipientEmail = user.email
+                            recipientName = user.name || appointment.customerName
+                        }
+                    }
+
+                    if (recipientEmail) {
+                        await sendConfirmationEmail(
+                            recipientEmail,
+                            recipientName,
+                            appointment.date,
+                            appointment.time,
+                            establishment?.name || 'Estabelecimento'
+                        )
+                    } else {
+                        console.log(`[Appointments] Nenhum email encontrado para o cliente do agendamento ID ${appointment.id}`)
+                    }
+                } catch (emailErr) {
+                    console.error('[Appointments] Erro ao enviar email de confirmação ao cliente:', emailErr.message)
                 }
-            }
-
-            // Enviar email de confirmação (não bloqueia a resposta)
-            sendConfirmationEmail(
-                recipientEmail,
-                recipientName,
-                appointment.date,
-                appointment.time,
-                establishment?.name || 'Estabelecimento'
-            ).catch(err => console.error('[Appointments] Erro ao enviar email de confirmação:', err))
+            })()
         }
 
         res.json({

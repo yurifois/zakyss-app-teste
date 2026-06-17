@@ -30,6 +30,18 @@ export default function Booking() {
         notes: '',
     })
 
+    // Sincroniza os dados do formulário quando o usuário carrega (pode vir depois da primeira renderização)
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                name: prev.name || user.name || '',
+                phone: prev.phone || user.phone || '',
+                email: prev.email || user.email || '',
+            }))
+        }
+    }, [user])
+
     useEffect(() => {
         // We no longer require login immediately to view the page.
         // Guests can see services and select dates.
