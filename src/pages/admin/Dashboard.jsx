@@ -265,6 +265,12 @@ export default function AdminDashboard() {
                                         ))}
                                     </div>
 
+                                    {apt.notes && (
+                                        <div className="mt-3 p-2 rounded text-sm text-secondary bg-black/20 border border-purple-500/10">
+                                            <span className="font-semibold text-primary/80">📝 Obs:</span> <span className="italic">{apt.notes}</span>
+                                        </div>
+                                    )}
+
                                     {apt.status === 'pending' && (
                                         <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
                                             <button
@@ -311,6 +317,11 @@ export default function AdminDashboard() {
                                             <span className="font-semibold">R$ {apt.totalPrice?.toFixed(2)}</span>
                                         </div>
                                         <div className="font-medium">{apt.customerName}</div>
+                                        {apt.notes && (
+                                            <div className="mt-2 p-2 rounded text-sm text-secondary bg-black/20 border border-purple-500/10">
+                                                <span className="font-semibold text-primary/80">📝 Obs:</span> <span className="italic">{apt.notes}</span>
+                                            </div>
+                                        )}
                                         <div className="flex gap-2 mt-3">
                                             <button
                                                 onClick={() => handleConfirm(apt.id)}
