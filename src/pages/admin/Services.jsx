@@ -3,6 +3,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import MarketPriceIndicator from '../../components/MarketPriceIndicator'
+import * as LucideIcons from 'lucide-react'
+
+const CategoryIcon = ({ iconName, color }) => {
+    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
+    return <Icon size={16} color={color} />
+}
 export default function AdminServices() {
     const { admin } = useAuth()
     const { success, info } = useToast()
@@ -325,8 +331,9 @@ export default function AdminServices() {
                                             <span className="font-medium">{service.name}</span>
                                         </td>
                                         <td>
-                                            <span className="badge badge-primary">
-                                                {category?.icon} {category?.name}
+                                            <span className="badge badge-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                {category && <CategoryIcon iconName={category.icon} color={category.color} />}
+                                                {category?.name}
                                             </span>
                                         </td>
                                         <td>{details.duration} min</td>
@@ -391,7 +398,7 @@ export default function AdminServices() {
                                         <label className="form-label">Categoria</label>
                                         <select className="form-select" value={customForm.categoryId} onChange={e => setCustomForm({...customForm, categoryId: e.target.value})} required>
                                             <option value="">Selecione uma categoria</option>
-                                            {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid sm:grid-cols-2 gap-4">
@@ -426,7 +433,7 @@ export default function AdminServices() {
                                         return (
                                             <div key={category.id}>
                                                 <div className="font-semibold mb-2 flex items-center gap-2">
-                                                    <span>{category.icon}</span>
+                                                    <CategoryIcon iconName={category.icon} color={category.color} />
                                                     <span>{category.name}</span>
                                                 </div>
                                                 {categoryServices.map(service => (

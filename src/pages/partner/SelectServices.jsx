@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
 import * as api from '../../services/api'
+import * as LucideIcons from 'lucide-react'
+
+const CategoryIcon = ({ iconName, color }) => {
+    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
+    return <Icon size={20} color={color} />
+}
 
 export default function PartnerSelectServices() {
     const navigate = useNavigate()
@@ -117,7 +123,7 @@ export default function PartnerSelectServices() {
                     return (
                         <div key={category.id} className="mb-8">
                             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <span>{category.icon}</span>
+                                <CategoryIcon iconName={category.icon} color={category.color} />
                                 <span>{category.name}</span>
                             </h2>
 
