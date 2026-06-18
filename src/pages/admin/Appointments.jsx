@@ -439,6 +439,11 @@ export default function AdminAppointments() {
                             <div className="mb-3" style={{ borderBottom: '1px solid var(--gray-200)', paddingBottom: '0.75rem' }}>
                                 <div className="font-medium">👤 {apt.customerName}</div>
                                 <div className="text-sm text-muted">📱 {apt.customerPhone}</div>
+                                {apt.notes && (
+                                    <div className="mt-2 p-2 rounded text-sm text-secondary bg-black/20 border border-purple-500/10">
+                                        <span className="font-semibold text-primary/80">📝 Obs:</span> <span className="italic">{apt.notes}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Serviços */}
