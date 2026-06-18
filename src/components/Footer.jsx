@@ -10,7 +10,7 @@ export default function Footer() {
                             <img src="/logo.png" alt="Zakys" style={{ height: '3rem', width: 'auto' }} />
                         </div>
                         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>
-                            A plataforma mais completa para agendamentos de beleza e estética em Brasília.
+                            A plataforma mais completa para agendamentos de beleza e estética.
                         </p>
                     </div>
 
