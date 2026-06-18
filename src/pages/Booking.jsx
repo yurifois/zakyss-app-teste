@@ -235,7 +235,7 @@ export default function Booking() {
                         <form onSubmit={handleSubmit}>
                             {/* Step 0: Service Selection (if none selected) */}
                             {services.length === 0 && (
-                                <div className="card mb-6" style={{ padding: '1.5rem' }}>
+                                <div className="card mb-6 p-4 sm:p-6">
                                     <h2 className="text-lg font-semibold mb-4 text-primary font-bold">✨ Escolha os serviços</h2>
                                     <p className="text-sm text-muted mb-4">Selecione pelo menos um serviço para ver os horários disponíveis</p>
                                     <div className="flex flex-col gap-2">
@@ -259,7 +259,7 @@ export default function Booking() {
                             )}
 
                             {/* Step 1: Date */}
-                            <div className={`card mb-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`} style={{ padding: '1.5rem' }}>
+                            <div className={`card mb-6 p-3 sm:p-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
                                 <h2 className="text-lg font-semibold mb-4">📅 Escolha a data</h2>
                                 <Calendar
                                     selectedDate={selectedDate}
@@ -271,7 +271,7 @@ export default function Booking() {
 
                             {/* Step 2: Time */}
                             {selectedDate && (
-                                <div className="card mb-6" style={{ padding: '1.5rem' }}>
+                                <div className="card mb-6 p-3 sm:p-6">
                                     <h2 className="text-lg font-semibold mb-4">🕐 Escolha o horário</h2>
                                     <p className="text-sm text-muted mb-4">{formatDate(selectedDate)}</p>
                                     {availableSlots.length === 0 ? (
@@ -289,7 +289,7 @@ export default function Booking() {
 
                             {/* Step 3: Customer Info */}
                             {selectedTime && (
-                                <div className="card mb-6" style={{ padding: '1.5rem' }}>
+                                <div className="card mb-6 p-4 sm:p-6">
                                     <h2 className="text-lg font-semibold mb-4">👤 Seus dados</h2>
 
                                     <div className="grid sm:grid-cols-2 gap-4">
@@ -358,7 +358,7 @@ export default function Booking() {
 
                     {/* Summary Sidebar */}
                     <div>
-                        <div className="card" style={{ padding: '1.5rem', position: 'sticky', top: '5rem' }}>
+                        <div className="card p-4 sm:p-6" style={{ position: 'sticky', top: '5rem' }}>
                             <h3 className="text-lg font-bold mb-4">Resumo</h3>
 
                             <div className="mb-4 pb-4" style={{ borderBottom: '1px solid var(--border-color)' }}>
