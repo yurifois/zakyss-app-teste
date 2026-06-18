@@ -8,6 +8,7 @@ const router = Router()
 const establishmentsRepo = getRepository('establishments.json')
 const servicesRepo = getRepository('services.json')
 const appointmentsRepo = getRepository('appointments.json')
+const employeesRepo = getRepository('employees.json')
 
 // Configurações de preços de mercado
 const MARKET_PRICE_RADIUS_KM = 10

@@ -89,9 +89,11 @@ export default function PartnerSetup() {
                 }
             })
 
+            const establishmentName = partnerData.nomeFantasia || partnerData.razaoSocial
+
             const establishment = await api.createEstablishment({
-                name: partnerData.nomeFantasia,
-                description: `${partnerData.nomeFantasia} - ${partnerData.documentType === 'cpf' ? `Profissional: ${partnerData.razaoSocial}` : 'Empresa'}`,
+                name: establishmentName,
+                description: `${establishmentName} - ${partnerData.documentType === 'cpf' ? `Profissional: ${partnerData.razaoSocial}` : 'Empresa'}`,
                 cnpj: partnerData.document, // Sending document as cnpj for backward compatibility if backend expects it, or add new field
                 document: partnerData.document,
                 documentType: partnerData.documentType,
@@ -115,7 +117,7 @@ export default function PartnerSetup() {
 
             // Create admin user
             await api.adminRegister({
-                name: `Admin ${partnerData.nomeFantasia}`,
+                name: `Admin ${establishmentName}`,
                 email: partnerData.email,
                 password: partnerData.password,
                 establishmentId: establishment.id,
@@ -167,7 +169,7 @@ export default function PartnerSetup() {
 
                 {/* Summary Card */}
                 <div className="card mb-6" style={{ padding: '1.5rem', background: 'var(--bg-secondary)' }}>
-                    <h3 className="font-semibold mb-2">{partnerData.nomeFantasia}</h3>
+                    <h3 className="font-semibold mb-2">{partnerData.nomeFantasia || partnerData.razaoSocial}</h3>
                     <p className="text-sm text-secondary mb-1">
                         {partnerData.documentType === 'cpf' ? 'CPF' : 'CNPJ'}: {partnerData.document}
                     </p>
