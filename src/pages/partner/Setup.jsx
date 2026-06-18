@@ -85,15 +85,16 @@ export default function PartnerSetup() {
             Object.values(servicesData).forEach(s => {
                 servicePreferences[s.id] = {
                     price: parseFloat(s.customPrice),
-                    duration: parseInt(s.customDuration)
                 }
             })
 
-            const establishmentName = partnerData.nomeFantasia || partnerData.razaoSocial
+            // Limpa números do início da Razão Social (comum em MEI onde o CNPJ vem no nome)
+            const cleanRazaoSocial = partnerData.razaoSocial ? partnerData.razaoSocial.replace(/^[\d.\-/]+\s*/, '') : ''
+            const establishmentName = partnerData.nomeFantasia || cleanRazaoSocial
 
             const establishment = await api.createEstablishment({
                 name: establishmentName,
-                description: `${establishmentName} - ${partnerData.documentType === 'cpf' ? `Profissional: ${partnerData.razaoSocial}` : 'Empresa'}`,
+                description: `${establishmentName} - ${partnerData.documentType === 'cpf' ? `Profissional: ${cleanRazaoSocial}` : 'Empresa'}`,
                 cnpj: partnerData.document, // Sending document as cnpj for backward compatibility if backend expects it, or add new field
                 document: partnerData.document,
                 documentType: partnerData.documentType,
@@ -169,7 +170,7 @@ export default function PartnerSetup() {
 
                 {/* Summary Card */}
                 <div className="card mb-6" style={{ padding: '1.5rem', background: 'var(--bg-secondary)' }}>
-                    <h3 className="font-semibold mb-2">{partnerData.nomeFantasia || partnerData.razaoSocial}</h3>
+                    <h3 className="font-semibold mb-2">{partnerData.nomeFantasia || (partnerData.razaoSocial ? partnerData.razaoSocial.replace(/^[\d.\-/]+\s*/, '') : '')}</h3>
                     <p className="text-sm text-secondary mb-1">
                         {partnerData.documentType === 'cpf' ? 'CPF' : 'CNPJ'}: {partnerData.document}
                     </p>
