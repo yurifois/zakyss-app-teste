@@ -30,9 +30,6 @@ const getNotificationToSend = (hoursUntil, notificationsSent = {}) => {
     if (hoursUntil <= 4.5 && hoursUntil > 3.5 && !notificationsSent['4h']) {
         return '4h'
     }
-    if (hoursUntil <= 12.5 && hoursUntil > 11.5 && !notificationsSent['12h']) {
-        return '12h'
-    }
     if (hoursUntil <= 24.5 && hoursUntil > 23.5 && !notificationsSent['24h']) {
         return '24h'
     }

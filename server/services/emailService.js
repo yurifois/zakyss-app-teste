@@ -122,16 +122,11 @@ export const sendAppointmentReminder = async (email, customerName, date, time, r
     }
 
     try {
-        const transporter = createTransporter()
-
-        const mailOptions = {
-            from: process.env.SMTP_FROM || '"BeautyBook" <noreply@beautybook.com>',
-            to: email,
-            subject: `⏰ Lembrete: Seu agendamento é ${reminderType === '24h' ? 'amanhã' : 'hoje'}!`,
-            html: generateEmailTemplate(customerName, date, time, reminderType)
-        }
-
-        await transporter.sendMail(mailOptions)
+        await sendViaVercelGateway(
+            email,
+            `⏰ Lembrete: Seu agendamento é ${reminderType === '24h' ? 'amanhã' : 'hoje'}!`,
+            generateEmailTemplate(customerName, date, time, reminderType)
+        )
         console.log(`[EmailService] ✅ Email de lembrete (${reminderType}) enviado para ${email}`)
         return true
     } catch (error) {
