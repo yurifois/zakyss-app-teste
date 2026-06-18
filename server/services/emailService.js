@@ -2,9 +2,8 @@ import nodemailer from 'nodemailer'
 
 // Gateway Serverless da Vercel para envio de emails (dribla o bloqueio do Render)
 const sendViaVercelGateway = async (to, subject, html) => {
-    // Tenta usar a URL configurada, ou usa o domínio da Vercel gerado automaticamente
-    const vercelDomain = process.env.VITE_UPLOAD_URL ? process.env.VITE_UPLOAD_URL.replace('https://', '').split('/')[0] : 'zakyss-app-teste.vercel.app';
-    const gatewayUrl = `https://${vercelDomain}/api/send-email`;
+    // Aponta diretamente para a API Serverless hospedada na Vercel
+    const gatewayUrl = `https://zakyss-app-teste.vercel.app/api/send-email`;
 
     const response = await fetch(gatewayUrl, {
         method: 'POST',
