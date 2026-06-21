@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import routes from './routes/index.js'
 import { errorHandler } from './middleware/error.middleware.js'
 import { startNotificationScheduler } from './services/notificationScheduler.js'
+import { startKeepAlive } from './services/keepAliveService.js'
 import morgan from 'morgan'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -97,4 +98,7 @@ app.listen(PORT, () => {
 
     // Iniciar scheduler de notificações
     startNotificationScheduler()
+
+    // Iniciar serviço de keep-alive para evitar adormecimento do backend
+    startKeepAlive()
 })
