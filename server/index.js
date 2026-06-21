@@ -7,6 +7,7 @@ import routes from './routes/index.js'
 import { errorHandler } from './middleware/error.middleware.js'
 import { startNotificationScheduler } from './services/notificationScheduler.js'
 import { startKeepAlive } from './services/keepAliveService.js'
+import { getRepository } from './repositories/index.js'
 import morgan from 'morgan'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -66,13 +67,24 @@ app.use('/api', (req, res, next) => {
 app.use('/api', routes)
 
 // Health check
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        timestamp: new Date().toISOString(),
-        env: process.env.NODE_ENV,
-        database: process.env.SUPABASE_URL ? 'supabase' : 'json'
-    })
+app.get('/api/health', async (req, res) => {
+    try {
+        // Faz uma query muito leve para evitar que o banco (ex: Supabase) hiberne após 7 dias de inatividade
+        if (process.env.SUPABASE_URL) {
+            const establishmentsRepo = getRepository('establishments.json')
+            await establishmentsRepo.findAll()
+        }
+        
+        res.json({ 
+            status: 'ok', 
+            timestamp: new Date().toISOString(),
+            env: process.env.NODE_ENV,
+            database: process.env.SUPABASE_URL ? 'supabase' : 'json'
+        })
+    } catch (error) {
+        console.error('Health check database ping failed:', error.message)
+        res.status(500).json({ status: 'error', message: 'Database ping failed' })
+    }
 })
 
 // Debug Env (temporário para diagnóstico)
