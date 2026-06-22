@@ -3,18 +3,31 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_PORT === '465',
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    },
-    connectionTimeout: 10000, // 10 segundos
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-})
+const isGmail = process.env.SMTP_HOST === 'smtp.gmail.com';
+
+const transporter = nodemailer.createTransport(
+    isGmail 
+        ? {
+            service: 'gmail',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            },
+            connectionTimeout: 10000,
+        }
+        : {
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_PORT === '465',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            },
+            connectionTimeout: 10000, // 10 segundos
+            greetingTimeout: 10000,
+            socketTimeout: 15000,
+        }
+)
 
 export async function sendPasswordResetEmail(to, token) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
