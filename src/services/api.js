@@ -117,6 +117,20 @@ export function logout() {
     sessionStorage.removeItem('zakys_user')
 }
 
+export async function forgotPassword(email) {
+    return request('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    })
+}
+
+export async function resetPassword(token, newPassword) {
+    return request('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, newPassword }),
+    })
+}
+
 export function adminLogout() {
     localStorage.removeItem('zakys_admin_token')
     localStorage.removeItem('zakys_admin')

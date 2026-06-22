@@ -94,7 +94,7 @@ export default function Login() {
                                 />
                                 <span className="text-sm">Lembrar-me</span>
                             </label>
-                            <a href="#" className="text-sm" style={{ color: 'var(--accent-400)' }}>Esqueceu a senha?</a>
+                            <Link to="/recuperar-senha" className="text-sm" style={{ color: 'var(--accent-400)' }}>Esqueceu a senha?</Link>
                         </div>
 
                         <button

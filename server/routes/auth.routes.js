@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { generateToken, hashPassword, comparePassword } from '../utils/auth.js'
+import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken } from '../utils/auth.js'
+import { sendPasswordResetEmail } from '../utils/email.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 
@@ -197,6 +198,86 @@ router.get('/me', authMiddleware, async (req, res, next) => {
             success: true,
             data: userWithoutSensitive
         })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Solicitar recuperação de senha
+router.post('/forgot-password', async (req, res, next) => {
+    try {
+        const { email } = req.body
+
+        if (!email) {
+            throw new AppError('E-mail é obrigatório', 400)
+        }
+
+        const emailLower = email.toLowerCase().trim()
+        
+        let user = await usersRepo.findOne({ email: emailLower })
+        let type = 'customer'
+
+        if (!user) {
+            user = await adminsRepo.findOne({ email: emailLower })
+            type = 'admin'
+        }
+
+        if (!user) {
+            // Retorna sucesso mesmo se não encontrar para evitar enumeração de e-mails
+            return res.json({ success: true, data: { message: 'Se o e-mail existir, um link de recuperação foi enviado.' } })
+        }
+
+        const token = generateResetToken(user, type)
+
+        await sendPasswordResetEmail(user.email, token)
+
+        res.json({ success: true, data: { message: 'Se o e-mail existir, um link de recuperação foi enviado.' } })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Redefinir senha
+router.post('/reset-password', async (req, res, next) => {
+    try {
+        const { token, newPassword } = req.body
+
+        if (!token || !newPassword) {
+            throw new AppError('Token e nova senha são obrigatórios', 400)
+        }
+
+        // Decode token to find the user
+        const payload = decodeToken(token)
+        if (!payload || !payload.id || !payload.type) {
+            throw new AppError('Link de recuperação inválido ou expirado', 400)
+        }
+
+        let user = null
+        if (payload.type === 'admin') {
+            user = await adminsRepo.findById(payload.id)
+        } else {
+            user = await usersRepo.findById(payload.id)
+        }
+
+        if (!user) {
+            throw new AppError('Link de recuperação inválido ou expirado', 400)
+        }
+
+        try {
+            verifyResetToken(token, user) // Verifica expiração e assinatura com a senha antiga
+        } catch (err) {
+            throw new AppError('Link de recuperação inválido ou expirado', 400)
+        }
+
+        const hashedPassword = await hashPassword(newPassword)
+
+        if (payload.type === 'admin') {
+            await adminsRepo.update(user.id, { password: hashedPassword })
+        } else {
+            await usersRepo.update(user.id, { password: hashedPassword })
+        }
+
+        res.json({ success: true, data: { message: 'Senha alterada com sucesso.' } })
     } catch (error) {
         next(error)
     }

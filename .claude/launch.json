@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "zakys-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:frontend"],
+      "port": 5173,
+      "cwd": "\\\\wsl.localhost\\ubuntu\\home\\yuri\\procts\\zakys app"
+    }
+  ]
+}

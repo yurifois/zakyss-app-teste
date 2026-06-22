@@ -18,3 +18,18 @@ export async function hashPassword(password) {
 export async function comparePassword(password, hash) {
     return bcrypt.compare(password, hash)
 }
+
+export function generateResetToken(user, type) {
+    const secret = process.env.JWT_SECRET + user.password
+    const payload = { id: user.id, type }
+    return jwt.sign(payload, secret, { expiresIn: '1h' })
+}
+
+export function verifyResetToken(token, user) {
+    const secret = process.env.JWT_SECRET + user.password
+    return jwt.verify(token, secret)
+}
+
+export function decodeToken(token) {
+    return jwt.decode(token)
+}

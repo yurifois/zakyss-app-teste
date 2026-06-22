@@ -15,6 +15,8 @@ import BookingConfirmation from './pages/BookingConfirmation'
 // Auth Pages
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 import Profile from './pages/Profile'
 
 // Partner Pages
@@ -47,6 +49,8 @@ function App() {
                 {/* Auth Routes */}
                 <Route path="entrar" element={<Login />} />
                 <Route path="cadastro" element={<Register />} />
+                <Route path="recuperar-senha" element={<ForgotPassword />} />
+                <Route path="redefinir-senha" element={<ResetPassword />} />
                 <Route path="perfil" element={<Profile />} />
 
                 {/* Partner Routes */}
