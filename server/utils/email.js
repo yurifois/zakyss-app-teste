@@ -46,6 +46,6 @@ export async function sendPasswordResetEmail(to, token) {
         console.log(`[Email] Password reset sent to ${to}`)
     } catch (error) {
         console.error(`[Email] Error sending to ${to}:`, error)
-        throw new Error('Falha ao enviar e-mail de recuperação')
+        throw new Error('Falha ao enviar e-mail: ' + error.message)
     }
 }
