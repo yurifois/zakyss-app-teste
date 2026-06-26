@@ -13,6 +13,7 @@ export default function Profile() {
     const [statusFilter, setStatusFilter] = useState('upcoming')
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(true)
+    const [expandedAptId, setExpandedAptId] = useState(null)
     const [uploadingAvatar, setUploadingAvatar] = useState(false)
     const [avatarPreview, setAvatarPreview] = useState(null)
     const fileInputRef = useRef(null)
@@ -80,12 +81,25 @@ export default function Profile() {
 
             // Enrich with establishment data
             const enriched = await Promise.all(apts.map(async (apt) => {
-                const establishment = await api.getEstablishmentById(apt.establishmentId)
-                const servicesList = await api.getServicesByIds(apt.services)
-                return { ...apt, establishment, servicesList }
+                try {
+                    const establishment = await api.getEstablishmentById(apt.establishmentId).catch(() => ({ name: 'Estabelecimento Indisponível' }))
+                    const servicesList = await api.getServicesByIds(apt.services).catch(() => [])
+                    return { ...apt, establishment, servicesList }
+                } catch (e) {
+                    return { ...apt, establishment: { name: 'Erro' }, servicesList: [] }
+                }
             }))
 
-            setAppointments(enriched.sort((a, b) => new Date(b.date) - new Date(a.date)))
+            setAppointments(enriched.sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time || '00:00'}`)
+                const dateB = new Date(`${b.date}T${b.time || '00:00'}`)
+                const now = new Date()
+                
+                const diffA = Math.abs(dateA - now)
+                const diffB = Math.abs(dateB - now)
+                
+                return diffA - diffB
+            }))
         } catch (err) {
             console.error('Error loading appointments:', err)
         } finally {
@@ -284,6 +298,17 @@ export default function Profile() {
         }
     }
 
+    // Auto-refresh appointments every 15 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (user) {
+                loadAppointments()
+            }
+        }, 15000)
+
+        return () => clearInterval(interval)
+    }, [statusFilter])
+
     const getStatusBadge = (status) => {
         const styles = {
             pending: { class: 'badge-warning', label: 'Pendente' },
@@ -450,52 +475,69 @@ export default function Profile() {
 
                                             return (
                                                 <div className="flex flex-col gap-4">
-                                                    {filtered.map(apt => (
-                                                        <div key={apt.id} className={`card appointment-card ${apt.status}`} style={{ padding: '1.5rem' }}>
-                                                            <div className="flex justify-between items-start mb-4">
-                                                                <div>
-                                                                    <h3 className="text-lg font-semibold">{apt.establishment?.name}</h3>
-                                                                    <p className="text-sm text-secondary">{apt.establishment?.address}</p>
-                                                                </div>
-                                                                {getStatusBadge(apt.status)}
-                                                            </div>
-
-                                                            <div className="flex flex-wrap gap-6 text-sm">
-                                                                <div>
-                                                                    <span className="text-muted">📅 Data:</span>{' '}
-                                                                    <strong>{formatDate(apt.date)}</strong>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-muted">🕐 Horário:</span>{' '}
-                                                                    <strong>{apt.time}</strong>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-muted">💰 Total:</span>{' '}
-                                                                    <strong>R$ {apt.totalPrice?.toFixed(2)}</strong>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <span className="text-sm text-muted">Serviços: </span>
-                                                                        {apt.servicesList?.map(s => (
-                                                                            <span key={s.id} className="badge badge-primary">{s.name}</span>
-                                                                        ))}
+                                                    {filtered.map(apt => {
+                                                        const isExpanded = expandedAptId === apt.id
+                                                        return (
+                                                            <div 
+                                                                key={apt.id} 
+                                                                className={`card appointment-card ${apt.status}`} 
+                                                                style={{ padding: '1rem', cursor: 'pointer', transition: 'all 0.3s' }}
+                                                                onClick={() => setExpandedAptId(isExpanded ? null : apt.id)}
+                                                            >
+                                                                <div className="flex justify-between items-center">
+                                                                    <div className="flex gap-4 items-center">
+                                                                        <div className="text-center" style={{ minWidth: '60px' }}>
+                                                                            <div className="text-sm text-secondary">{formatDate(apt.date).split(' ')[0]}</div>
+                                                                            <div className="text-lg font-bold" style={{ color: 'var(--primary-400)' }}>{apt.time}</div>
+                                                                        </div>
+                                                                        <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
+                                                                            <h3 className="text-base font-semibold">{apt.establishment?.name}</h3>
+                                                                            <p className="text-sm text-secondary truncate" style={{ maxWidth: '200px' }}>
+                                                                                {apt.servicesList?.map(s => s.name).join(', ')}
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
-                                                                    {(apt.status === 'pending' || apt.status === 'confirmed') && (
-                                                                        <button
-                                                                            onClick={() => handleCancelAppointment(apt.id)}
-                                                                            className="btn btn-sm"
-                                                                            style={{ backgroundColor: 'var(--error-500)', color: 'white', fontSize: '0.8rem', padding: '0.4rem 1rem' }}
-                                                                        >
-                                                                            ✕ Cancelar
-                                                                        </button>
-                                                                    )}
+                                                                    <div className="flex items-center gap-3">
+                                                                        {getStatusBadge(apt.status)}
+                                                                        <span className="text-secondary">{isExpanded ? '▲' : '▼'}</span>
+                                                                    </div>
                                                                 </div>
+
+                                                                {isExpanded && (
+                                                                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)', cursor: 'default' }} onClick={e => e.stopPropagation()}>
+                                                                        <div className="flex flex-wrap gap-6 text-sm mb-4">
+                                                                            <div>
+                                                                                <span className="text-muted">📍 Local:</span>{' '}
+                                                                                <strong>{apt.establishment?.address}</strong>
+                                                                            </div>
+                                                                            <div>
+                                                                                <span className="text-muted">💰 Total:</span>{' '}
+                                                                                <strong>R$ {apt.totalPrice?.toFixed(2)}</strong>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                                <span className="text-sm text-muted">Serviços: </span>
+                                                                                {apt.servicesList?.map(s => (
+                                                                                    <span key={s.id} className="badge badge-primary">{s.name}</span>
+                                                                                ))}
+                                                                            </div>
+                                                                            {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                                                                                <button
+                                                                                    onClick={() => handleCancelAppointment(apt.id)}
+                                                                                    className="btn btn-sm"
+                                                                                    style={{ backgroundColor: 'var(--error-500)', color: 'white', fontSize: '0.8rem', padding: '0.4rem 1rem' }}
+                                                                                >
+                                                                                    ✕ Cancelar
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        )
+                                                    })}
                                                 </div>
                                             )
                                         })()}

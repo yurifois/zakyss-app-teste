@@ -10,8 +10,9 @@ export default function AdminAppointments() {
     const [appointments, setAppointments] = useState([])
     const [filteredAppointments, setFilteredAppointments] = useState([])
     const [loading, setLoading] = useState(true)
-    const [statusFilter, setStatusFilter] = useState('all')
+    const [statusFilter, setStatusFilter] = useState('active')
     const [dateFilter, setDateFilter] = useState('')
+    const [expandedAptId, setExpandedAptId] = useState(null)
 
     // Modal de edição
     const [editingAppointment, setEditingAppointment] = useState(null)
@@ -50,6 +51,13 @@ export default function AdminAppointments() {
         loadAppointments()
         loadServices()
         loadEmployees()
+
+        // Auto-refresh appointments every 15 seconds
+        const interval = setInterval(() => {
+            loadAppointments()
+        }, 15000)
+
+        return () => clearInterval(interval)
     }, [admin])
 
     useEffect(() => {
@@ -69,9 +77,14 @@ export default function AdminAppointments() {
             }))
 
             setAppointments(enriched.sort((a, b) => {
-                const dateCompare = b.date.localeCompare(a.date)
-                if (dateCompare !== 0) return dateCompare
-                return a.time.localeCompare(b.time)
+                const dateA = new Date(`${a.date}T${a.time || '00:00'}`)
+                const dateB = new Date(`${b.date}T${b.time || '00:00'}`)
+                const now = new Date()
+                
+                const diffA = Math.abs(dateA - now)
+                const diffB = Math.abs(dateB - now)
+                
+                return diffA - diffB
             }))
         } catch (err) {
             console.error('Error loading appointments:', err)
@@ -113,7 +126,11 @@ export default function AdminAppointments() {
         let filtered = [...appointments]
 
         if (statusFilter !== 'all') {
-            filtered = filtered.filter(a => a.status === statusFilter)
+            if (statusFilter === 'active') {
+                filtered = filtered.filter(a => a.status === 'pending' || a.status === 'confirmed')
+            } else {
+                filtered = filtered.filter(a => a.status === statusFilter)
+            }
         }
 
         if (dateFilter) {
@@ -367,6 +384,7 @@ export default function AdminAppointments() {
                             onChange={(e) => setStatusFilter(e.target.value)}
                             style={{ width: 'auto' }}
                         >
+                            <option value="active">Ativos (Pendentes e Confirmados)</option>
                             <option value="all">Todos</option>
                             <option value="pending">Pendente</option>
                             <option value="confirmed">Confirmado</option>
@@ -412,107 +430,126 @@ export default function AdminAppointments() {
                     <p className="text-secondary">Nenhum agendamento encontrado</p>
                 </div>
             ) : (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredAppointments.map(apt => (
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                    {filteredAppointments.map(apt => {
+                        const isExpanded = expandedAptId === apt.id;
+                        return (
                         <div
                             key={apt.id}
                             className="card"
-                            style={{ padding: '1.25rem' }}
+                            style={{ padding: '1rem', cursor: 'pointer', transition: 'all 0.3s' }}
+                            onClick={() => setExpandedAptId(isExpanded ? null : apt.id)}
                         >
-                            {/* Header */}
-                            <div className="flex justify-between items-start mb-3">
-                                <div>
-                                    <div className="font-semibold" style={{ color: 'var(--primary-600)' }}>
-                                        📅 {formatDate(apt.date)} • {apt.time}
+                            {/* Compact View */}
+                            <div className="flex justify-between items-center">
+                                <div className="flex gap-4 items-center">
+                                    <div className="text-center" style={{ minWidth: '60px' }}>
+                                        <div className="text-xs text-secondary">{formatDate(apt.date).split(' ')[0]}</div>
+                                        <div className="text-lg font-bold" style={{ color: 'var(--primary-400)' }}>{apt.time}</div>
+                                    </div>
+                                    <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
+                                        <h3 className="text-base font-semibold truncate" style={{ maxWidth: '150px' }}>{apt.customerName}</h3>
+                                        <p className="text-xs text-secondary truncate" style={{ maxWidth: '150px' }}>
+                                            {apt.servicesList?.map(s => s.name).join(', ')}
+                                        </p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => openEditModal(apt)}
-                                    className="btn btn-outline btn-sm"
-                                    title="Editar"
-                                >
-                                    ✏️ Editar
-                                </button>
+                                <div className="flex flex-col items-end gap-2">
+                                    {getStatusBadge(apt.status)}
+                                    <span className="text-secondary text-xs">{isExpanded ? '▲ Menos' : '▼ Mais'}</span>
+                                </div>
                             </div>
 
-                            {/* Cliente */}
-                            <div className="mb-3" style={{ borderBottom: '1px solid var(--gray-200)', paddingBottom: '0.75rem' }}>
-                                <div className="font-medium">👤 {apt.customerName}</div>
-                                <div className="text-sm text-muted">📱 {apt.customerPhone}</div>
+                            {/* Expanded View */}
+                            {isExpanded && (
+                            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)', cursor: 'default' }} onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <div className="text-sm text-muted">📱 {apt.customerPhone}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => openEditModal(apt)}
+                                        className="btn btn-outline btn-sm"
+                                        title="Editar"
+                                    >
+                                        ✏️ Editar
+                                    </button>
+                                </div>
+
                                 {apt.notes && (
-                                    <div className="mt-2 p-2 rounded text-sm text-secondary bg-black/20 border border-purple-500/10">
+                                    <div className="mb-3 p-2 rounded text-sm text-secondary bg-black/20 border border-purple-500/10">
                                         <span className="font-semibold text-primary/80">📝 Obs:</span> <span className="italic">{apt.notes}</span>
                                     </div>
                                 )}
-                            </div>
 
-                            {/* Serviços */}
-                            <div className="mb-3">
-                                <div className="text-sm font-medium mb-2">Serviços:</div>
-                                <div className="flex flex-col gap-1">
-                                    {apt.servicesList?.map(s => {
-                                        const assignedEmployee = getServiceAssignment(apt, s.id)
-                                        return (
-                                            <div key={s.id} className="flex justify-between items-center text-sm">
-                                                <span className="badge badge-primary text-xs">{s.name}</span>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--primary-500)', fontWeight: '500' }}>
-                                                    {assignedEmployee ? `→ ${assignedEmployee}` : '(não atribuído)'}
-                                                </span>
-                                            </div>
-                                        )
-                                    })}
+                                {/* Serviços */}
+                                <div className="mb-3">
+                                    <div className="text-sm font-medium mb-2">Serviços:</div>
+                                    <div className="flex flex-col gap-1">
+                                        {apt.servicesList?.map(s => {
+                                            const assignedEmployee = getServiceAssignment(apt, s.id)
+                                            return (
+                                                <div key={s.id} className="flex justify-between items-center text-sm">
+                                                    <span className="badge badge-primary text-xs">{s.name}</span>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--primary-500)', fontWeight: '500' }}>
+                                                        {assignedEmployee ? `→ ${assignedEmployee}` : '(não atribuído)'}
+                                                    </span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="text-xs text-muted mt-2">Duração: {apt.totalDuration} min</div>
                                 </div>
-                                <div className="text-xs text-muted mt-2">{apt.totalDuration} min</div>
-                            </div>
 
-                            {/* Footer */}
-                            <div className="flex justify-between items-center" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
-                                <span className="font-bold" style={{ color: 'var(--success-600)' }}>
-                                    R$ {apt.totalPrice?.toFixed(2)}
-                                </span>
-                                {getStatusBadge(apt.status)}
-                            </div>
-
-                            {/* Actions */}
-                            {(apt.status === 'pending' || apt.status === 'confirmed') && (
-                                <div className="flex gap-2 mt-3" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
-                                    {apt.status === 'pending' && (
-                                        <>
-                                            <button
-                                                onClick={() => handleStatusChange(apt.id, 'confirmed')}
-                                                className="btn btn-primary btn-sm flex-1"
-                                            >
-                                                ✓ Confirmar
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusChange(apt.id, 'cancelled')}
-                                                className="btn btn-secondary btn-sm"
-                                            >
-                                                ✕
-                                            </button>
-                                        </>
-                                    )}
-                                    {apt.status === 'confirmed' && (
-                                        <>
-                                            <button
-                                                onClick={() => handleStatusChange(apt.id, 'completed')}
-                                                className="btn btn-secondary btn-sm flex-1"
-                                            >
-                                                ✓ Concluir
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusChange(apt.id, 'no_show')}
-                                                className="btn btn-ghost btn-sm"
-                                                style={{ color: 'var(--error-500)' }}
-                                            >
-                                                🚫 Faltou
-                                            </button>
-                                        </>
-                                    )}
+                                {/* Footer */}
+                                <div className="flex justify-between items-center" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
+                                    <span className="font-bold" style={{ color: 'var(--success-600)' }}>
+                                        R$ {apt.totalPrice?.toFixed(2)}
+                                    </span>
                                 </div>
+
+                                {/* Actions */}
+                                {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                                    <div className="flex gap-2 mt-3" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
+                                        {apt.status === 'pending' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleStatusChange(apt.id, 'confirmed')}
+                                                    className="btn btn-primary btn-sm flex-1"
+                                                >
+                                                    ✓ Confirmar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStatusChange(apt.id, 'cancelled')}
+                                                    className="btn btn-secondary btn-sm"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </>
+                                        )}
+                                        {apt.status === 'confirmed' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleStatusChange(apt.id, 'completed')}
+                                                    className="btn btn-secondary btn-sm flex-1"
+                                                >
+                                                    ✓ Concluir
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStatusChange(apt.id, 'no_show')}
+                                                    className="btn btn-ghost btn-sm"
+                                                    style={{ color: 'var(--error-500)' }}
+                                                >
+                                                    🚫 Faltou
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             )}
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
 

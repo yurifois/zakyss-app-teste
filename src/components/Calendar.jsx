@@ -32,8 +32,15 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         const date = new Date(year, month, day)
         date.setHours(0, 0, 0, 0)
 
+        let parsedMinDate = minDate;
+        if (typeof minDate === 'string') {
+            const [y, m, d] = minDate.split('-');
+            parsedMinDate = new Date(y, m - 1, d);
+        }
+        parsedMinDate.setHours(0, 0, 0, 0);
+
         // Check if before min date
-        if (date < minDate) return true
+        if (date.getTime() < parsedMinDate.getTime()) return true
 
         // Check if in disabled days (0 = Sunday, 6 = Saturday)
         const dayOfWeek = date.getDay()
@@ -79,7 +86,14 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         const date = new Date(year, month, day)
         date.setHours(0, 0, 0, 0)
 
-        const isPast = date < minDate
+        let parsedMinDate = minDate;
+        if (typeof minDate === 'string') {
+            const [y, m, d] = minDate.split('-');
+            parsedMinDate = new Date(y, m - 1, d);
+        }
+        parsedMinDate.setHours(0, 0, 0, 0);
+
+        const isPast = date.getTime() < parsedMinDate.getTime()
         const dayOfWeek = date.getDay()
         const isClosed = disabledDays.includes(dayOfWeek)
         const disabled = isPast || isClosed
