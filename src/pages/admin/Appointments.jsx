@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import Calendar from '../../components/Calendar'
 
 export default function AdminAppointments() {
     const { admin } = useAuth()
@@ -47,10 +48,22 @@ export default function AdminAppointments() {
     // Funcionários
     const [employees, setEmployees] = useState([])
 
+    // Modal de Calendário (Filtro e Exceções)
+    const [showScheduleModal, setShowScheduleModal] = useState(false)
+    const [scheduleDate, setScheduleDate] = useState(new Date())
+    const [scheduleExceptions, setScheduleExceptions] = useState({})
+    const [savingSchedule, setSavingSchedule] = useState(false)
+    const [exceptionForm, setExceptionForm] = useState({
+        isClosed: false,
+        open: '',
+        close: ''
+    })
+
     useEffect(() => {
         loadAppointments()
         loadServices()
         loadEmployees()
+        loadEstablishment()
 
         // Auto-refresh appointments every 15 seconds
         const interval = setInterval(() => {
@@ -111,6 +124,77 @@ export default function AdminAppointments() {
         } catch (err) {
             console.error('Error loading employees:', err)
         }
+    }
+
+    const loadEstablishment = async () => {
+        if (!admin) return
+        try {
+            const data = await api.getEstablishmentById(admin.establishmentId)
+            if (data.scheduleExceptions) {
+                setScheduleExceptions(data.scheduleExceptions)
+            }
+        } catch (err) {
+            console.error('Error loading establishment:', err)
+        }
+    }
+
+    const handleScheduleDateChange = (date) => {
+        setScheduleDate(date)
+        const dateStr = date.toISOString().split('T')[0]
+        const exception = scheduleExceptions[dateStr]
+        if (exception) {
+            setExceptionForm({
+                isClosed: exception.isClosed || false,
+                open: exception.open || '',
+                close: exception.close || ''
+            })
+        } else {
+            setExceptionForm({
+                isClosed: false,
+                open: '',
+                close: ''
+            })
+        }
+    }
+
+    const handleSaveScheduleException = async () => {
+        if (!admin) return
+        setSavingSchedule(true)
+        try {
+            const dateStr = scheduleDate.toISOString().split('T')[0]
+            const newExceptions = { ...scheduleExceptions }
+            
+            if (exceptionForm.isClosed || (exceptionForm.open && exceptionForm.close)) {
+                newExceptions[dateStr] = {
+                    isClosed: exceptionForm.isClosed,
+                    open: exceptionForm.isClosed ? null : exceptionForm.open,
+                    close: exceptionForm.isClosed ? null : exceptionForm.close
+                }
+            } else {
+                delete newExceptions[dateStr]
+            }
+
+            await api.updateEstablishment(admin.establishmentId, {
+                scheduleExceptions: newExceptions
+            })
+            setScheduleExceptions(newExceptions)
+            success('Horário atualizado com sucesso!')
+        } catch (err) {
+            error(err.message || 'Erro ao atualizar horário')
+        } finally {
+            setSavingSchedule(false)
+        }
+    }
+
+    const openScheduleModal = () => {
+        handleScheduleDateChange(new Date())
+        setShowScheduleModal(true)
+    }
+
+    const handleFilterByScheduleDate = () => {
+        const dateStr = scheduleDate.toISOString().split('T')[0]
+        setDateFilter(dateStr)
+        setShowScheduleModal(false)
     }
 
     const getEmployeeName = (employeeId) => {
@@ -396,17 +480,23 @@ export default function AdminAppointments() {
 
                     <div className="flex items-center gap-2">
                         <label className="text-sm font-medium">Data:</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
-                            style={{ width: 'auto' }}
-                        />
+                        <button 
+                            className="btn btn-outline flex items-center gap-2"
+                            onClick={openScheduleModal}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            {dateFilter ? new Date(dateFilter + 'T12:00:00').toLocaleDateString('pt-BR') : 'Selecionar Data'}
+                        </button>
                         {dateFilter && (
                             <button
                                 onClick={() => setDateFilter('')}
                                 className="btn btn-ghost btn-sm"
+                                title="Limpar filtro"
                             >
                                 ✕
                             </button>
@@ -863,6 +953,123 @@ export default function AdminAppointments() {
                             >
                                 Cancelar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Gerenciamento de Calendário */}
+            {showScheduleModal && (
+                <div
+                    className="modal-backdrop"
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
+                    }}
+                    onClick={() => setShowScheduleModal(false)}
+                >
+                    <div
+                        className="card flex flex-col md:flex-row gap-6"
+                        style={{
+                            width: '100%',
+                            maxWidth: '800px',
+                            maxHeight: '90vh',
+                            overflow: 'auto',
+                            padding: '2rem',
+                            margin: '1rem'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Calendário */}
+                        <div className="flex-1">
+                            <h2 className="text-xl font-bold mb-4">📅 Calendário</h2>
+                            <Calendar
+                                selectedDate={scheduleDate}
+                                onSelectDate={handleScheduleDateChange}
+                            />
+                        </div>
+
+                        {/* Detalhes do Dia e Filtro */}
+                        <div className="flex-1 flex flex-col gap-6" style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem' }}>
+                            <div>
+                                <h3 className="text-lg font-semibold mb-2">
+                                    {scheduleDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                                </h3>
+                                
+                                <button
+                                    onClick={handleFilterByScheduleDate}
+                                    className="btn btn-outline w-full mb-6"
+                                >
+                                    🔍 Ver Agendamentos deste Dia
+                                </button>
+                            </div>
+
+                            <div className="flex-1">
+                                <h4 className="font-medium mb-4">⚙️ Horário de Atendimento</h4>
+                                
+                                <div className="form-group mb-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="form-checkbox"
+                                            checked={exceptionForm.isClosed}
+                                            onChange={(e) => setExceptionForm(prev => ({ ...prev, isClosed: e.target.checked }))}
+                                        />
+                                        <span>Dia Fechado (Não atender)</span>
+                                    </label>
+                                </div>
+
+                                {!exceptionForm.isClosed && (
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="form-group">
+                                            <label className="form-label">Abertura</label>
+                                            <input
+                                                type="time"
+                                                className="form-input"
+                                                value={exceptionForm.open}
+                                                onChange={(e) => setExceptionForm(prev => ({ ...prev, open: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Fechamento</label>
+                                            <input
+                                                type="time"
+                                                className="form-input"
+                                                value={exceptionForm.close}
+                                                onChange={(e) => setExceptionForm(prev => ({ ...prev, close: e.target.value }))}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-secondary mb-4">
+                                    Esta configuração sobrescreve o horário padrão apenas para este dia. Deixe os campos de hora vazios e desmarque "Dia Fechado" para usar o horário padrão.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-4 mt-auto">
+                                <button
+                                    onClick={handleSaveScheduleException}
+                                    className="btn btn-primary flex-1"
+                                    disabled={savingSchedule}
+                                >
+                                    {savingSchedule ? 'Salvando...' : 'Salvar Horários'}
+                                </button>
+                                <button
+                                    onClick={() => setShowScheduleModal(false)}
+                                    className="btn btn-secondary"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

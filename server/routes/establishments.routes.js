@@ -256,7 +256,17 @@ router.get('/:id/available-slots', async (req, res, next) => {
 
         // Verificar dia da semana
         const dayOfWeek = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
-        const hours = establishment.workingHours[dayOfWeek]
+        let hours = establishment.workingHours?.[dayOfWeek]
+
+        // Verificar exceções de calendário para o dia específico
+        if (establishment.scheduleExceptions && establishment.scheduleExceptions[date]) {
+            const exception = establishment.scheduleExceptions[date]
+            if (exception.isClosed) {
+                hours = null
+            } else if (exception.open && exception.close) {
+                hours = { open: exception.open, close: exception.close }
+            }
+        }
 
         if (!hours) {
             return res.json({

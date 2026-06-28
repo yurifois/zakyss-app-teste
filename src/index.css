@@ -2082,3 +2082,8 @@ img {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.5);
 }
+
+/* Calendário nativo - cor do ícone */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
