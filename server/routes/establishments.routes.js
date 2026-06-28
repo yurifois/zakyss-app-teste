@@ -259,12 +259,13 @@ router.get('/:id/available-slots', async (req, res, next) => {
         let hours = establishment.workingHours?.[dayOfWeek]
 
         // Verificar exceções de calendário para o dia específico
+        let blockedRanges = []
         if (establishment.scheduleExceptions && establishment.scheduleExceptions[date]) {
             const exception = establishment.scheduleExceptions[date]
             if (exception.isClosed) {
                 hours = null
-            } else if (exception.open && exception.close) {
-                hours = { open: exception.open, close: exception.close }
+            } else if (exception.blockedRanges) {
+                blockedRanges = exception.blockedRanges
             }
         }
 
@@ -300,7 +301,19 @@ router.get('/:id/available-slots', async (req, res, next) => {
             .filter(a => a.date === date && a.status !== 'cancelled' && a.status !== 'no_show')
             .map(a => a.time)
 
-        const availableSlots = slots.filter(s => !bookedTimes.includes(s))
+        let availableSlots = slots.filter(s => !bookedTimes.includes(s))
+
+        // Remover slots que caem nos horários bloqueados
+        if (blockedRanges.length > 0) {
+            availableSlots = availableSlots.filter(slot => {
+                for (const range of blockedRanges) {
+                    if (slot >= range.start && slot < range.end) {
+                        return false // Bloqueado
+                    }
+                }
+                return true
+            })
+        }
 
         res.json({
             success: true,

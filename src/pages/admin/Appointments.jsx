@@ -55,8 +55,7 @@ export default function AdminAppointments() {
     const [savingSchedule, setSavingSchedule] = useState(false)
     const [exceptionForm, setExceptionForm] = useState({
         isClosed: false,
-        open: '',
-        close: ''
+        blockedRanges: []
     })
 
     useEffect(() => {
@@ -145,14 +144,12 @@ export default function AdminAppointments() {
         if (exception) {
             setExceptionForm({
                 isClosed: exception.isClosed || false,
-                open: exception.open || '',
-                close: exception.close || ''
+                blockedRanges: exception.blockedRanges || []
             })
         } else {
             setExceptionForm({
                 isClosed: false,
-                open: '',
-                close: ''
+                blockedRanges: []
             })
         }
     }
@@ -164,11 +161,10 @@ export default function AdminAppointments() {
             const dateStr = scheduleDate.toISOString().split('T')[0]
             const newExceptions = { ...scheduleExceptions }
             
-            if (exceptionForm.isClosed || (exceptionForm.open && exceptionForm.close)) {
+            if (exceptionForm.isClosed || exceptionForm.blockedRanges.length > 0) {
                 newExceptions[dateStr] = {
                     isClosed: exceptionForm.isClosed,
-                    open: exceptionForm.isClosed ? null : exceptionForm.open,
-                    close: exceptionForm.isClosed ? null : exceptionForm.close
+                    blockedRanges: exceptionForm.isClosed ? [] : exceptionForm.blockedRanges
                 }
             } else {
                 delete newExceptions[dateStr]
@@ -1028,30 +1024,66 @@ export default function AdminAppointments() {
                                 </div>
 
                                 {!exceptionForm.isClosed && (
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
-                                        <div className="form-group">
-                                            <label className="form-label">Abertura</label>
-                                            <input
-                                                type="time"
-                                                className="form-input"
-                                                value={exceptionForm.open}
-                                                onChange={(e) => setExceptionForm(prev => ({ ...prev, open: e.target.value }))}
-                                            />
+                                    <div className="mb-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="form-label mb-0">Pausas / Horários Bloqueados</label>
+                                            <button 
+                                                className="btn btn-outline btn-sm"
+                                                onClick={() => setExceptionForm(prev => ({
+                                                    ...prev, 
+                                                    blockedRanges: [...prev.blockedRanges, { start: '', end: '' }]
+                                                }))}
+                                            >
+                                                + Adicionar
+                                            </button>
                                         </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Fechamento</label>
-                                            <input
-                                                type="time"
-                                                className="form-input"
-                                                value={exceptionForm.close}
-                                                onChange={(e) => setExceptionForm(prev => ({ ...prev, close: e.target.value }))}
-                                            />
-                                        </div>
+                                        
+                                        {exceptionForm.blockedRanges.length === 0 && (
+                                            <p className="text-sm text-secondary italic">Nenhum horário bloqueado.</p>
+                                        )}
+
+                                        {exceptionForm.blockedRanges.map((range, index) => (
+                                            <div key={index} className="flex gap-2 mb-2 items-center">
+                                                <input
+                                                    type="time"
+                                                    className="form-input flex-1"
+                                                    value={range.start}
+                                                    onChange={(e) => {
+                                                        const newRanges = [...exceptionForm.blockedRanges]
+                                                        newRanges[index].start = e.target.value
+                                                        setExceptionForm(prev => ({ ...prev, blockedRanges: newRanges }))
+                                                    }}
+                                                    placeholder="Início"
+                                                />
+                                                <span className="text-secondary">até</span>
+                                                <input
+                                                    type="time"
+                                                    className="form-input flex-1"
+                                                    value={range.end}
+                                                    onChange={(e) => {
+                                                        const newRanges = [...exceptionForm.blockedRanges]
+                                                        newRanges[index].end = e.target.value
+                                                        setExceptionForm(prev => ({ ...prev, blockedRanges: newRanges }))
+                                                    }}
+                                                    placeholder="Fim"
+                                                />
+                                                <button 
+                                                    className="btn btn-ghost btn-sm text-danger"
+                                                    onClick={() => {
+                                                        const newRanges = exceptionForm.blockedRanges.filter((_, i) => i !== index)
+                                                        setExceptionForm(prev => ({ ...prev, blockedRanges: newRanges }))
+                                                    }}
+                                                    title="Remover pausa"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
 
                                 <p className="text-xs text-secondary mb-4">
-                                    Esta configuração sobrescreve o horário padrão apenas para este dia. Deixe os campos de hora vazios e desmarque "Dia Fechado" para usar o horário padrão.
+                                    A configuração de Pausas permite bloquear horas específicas dentro do horário padrão de funcionamento do dia.
                                 </p>
                             </div>
 
