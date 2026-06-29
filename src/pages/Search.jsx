@@ -80,10 +80,10 @@ export default function Search() {
 
                 {/* Cards Grid */}
                 {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {[1, 2, 3, 4].map(i => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
                             <div key={i} className="card">
-                                <div className="skeleton" style={{ height: '220px' }}></div>
+                                <div className="skeleton" style={{ aspectRatio: '1/1' }}></div>
                                 <div className="card-body">
                                     <div className="skeleton" style={{ height: '1.5rem', width: '70%', marginBottom: '0.5rem' }}></div>
                                     <div className="skeleton" style={{ height: '1rem', width: '90%' }}></div>
@@ -100,7 +100,7 @@ export default function Search() {
                         <p className="text-secondary">Tente fazer uma nova busca ou mude os filtros</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         {results.map(item => (
                             <EstablishmentCard
                                 key={`est-${item.id}`}
