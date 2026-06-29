@@ -1,6 +1,8 @@
 const isProd = import.meta.env.PROD
 const API_URL = import.meta.env.VITE_API_URL || (isProd ? '' : 'http://localhost:3002/api')
 
+console.log('[API] URL configurada:', API_URL || '(vazio - usando relativo)')
+
 if (isProd && !import.meta.env.VITE_API_URL) {
     console.warn('⚠️ VITE_API_URL não está definida em produção! As requisições podem falhar.')
 }
@@ -375,21 +377,17 @@ export async function changePassword(userId, data) {
 
 // ========== UPLOAD ==========
 
-const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || `${API_URL}/upload`
+const UPLOAD_URL = `${API_URL}/upload`
 
-export async function uploadEstablishmentLogo(establishmentId, file) {
-    const adminToken = localStorage.getItem('zakys_admin_token')
+// Helper para processar resposta de upload (trata respostas HTML)
+async function handleUploadResponse(response, url) {
+    const contentType = response.headers.get('content-type') || ''
 
-    const formData = new FormData()
-    formData.append('image', file)
-
-    const response = await fetch(`${UPLOAD_URL}/logo/${establishmentId}`, {
-        method: 'POST',
-        headers: {
-            ...(adminToken && { Authorization: `Bearer ${adminToken}` }),
-        },
-        body: formData,
-    })
+    if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error(`❌ Upload para ${url} retornou ${response.status} (${contentType}):`, text.substring(0, 200))
+        throw new Error(`Erro no servidor (${response.status}). Tente novamente em alguns segundos.`)
+    }
 
     const data = await response.json()
 
@@ -400,13 +398,16 @@ export async function uploadEstablishmentLogo(establishmentId, file) {
     return data.data
 }
 
-export async function uploadServiceImage(establishmentId, file) {
+export async function uploadEstablishmentLogo(establishmentId, file) {
     const adminToken = localStorage.getItem('zakys_admin_token')
 
     const formData = new FormData()
     formData.append('image', file)
 
-    const response = await fetch(`${UPLOAD_URL}/service-image/${establishmentId}`, {
+    const url = `${UPLOAD_URL}/logo/${establishmentId}`
+    console.log('[Upload] Logo URL:', url)
+
+    const response = await fetch(url, {
         method: 'POST',
         headers: {
             ...(adminToken && { Authorization: `Bearer ${adminToken}` }),
@@ -414,13 +415,27 @@ export async function uploadServiceImage(establishmentId, file) {
         body: formData,
     })
 
-    const data = await response.json()
+    return handleUploadResponse(response, url)
+}
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Erro ao fazer upload')
-    }
+export async function uploadServiceImage(establishmentId, file) {
+    const adminToken = localStorage.getItem('zakys_admin_token')
 
-    return data.data
+    const formData = new FormData()
+    formData.append('image', file)
+
+    const url = `${UPLOAD_URL}/service-image/${establishmentId}`
+    console.log('[Upload] Service image URL:', url)
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            ...(adminToken && { Authorization: `Bearer ${adminToken}` }),
+        },
+        body: formData,
+    })
+
+    return handleUploadResponse(response, url)
 }
 
 export async function deleteServiceImage(establishmentId, imageIndex) {
@@ -435,7 +450,10 @@ export async function uploadUserAvatar(userId, file) {
     const formData = new FormData()
     formData.append('image', file)
 
-    const response = await fetch(`${UPLOAD_URL}/avatar/${userId}`, {
+    const url = `${UPLOAD_URL}/avatar/${userId}`
+    console.log('[Upload] Avatar URL:', url)
+
+    const response = await fetch(url, {
         method: 'POST',
         headers: {
             ...(userToken && { Authorization: `Bearer ${userToken}` }),
@@ -443,18 +461,14 @@ export async function uploadUserAvatar(userId, file) {
         body: formData,
     })
 
-    const data = await response.json()
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Erro ao fazer upload')
-    }
+    const data = await handleUploadResponse(response, url)
 
     // Atualiza o usuário no localStorage
-    if (data.data.user) {
-        localStorage.setItem('zakys_user', JSON.stringify(data.data.user))
+    if (data.user) {
+        localStorage.setItem('zakys_user', JSON.stringify(data.user))
     }
 
-    return data.data
+    return data
 }
 
 // Helper para construir URL de imagem
