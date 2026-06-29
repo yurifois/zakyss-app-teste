@@ -169,9 +169,34 @@ export default function AdminDashboard() {
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-                <p className="text-secondary">Bem-vindo de volta! Aqui está o resumo do seu estabelecimento.</p>
+            <div className="mb-8 flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+                    <p className="text-secondary">Bem-vindo de volta! Aqui está o resumo do seu estabelecimento.</p>
+                </div>
+                {establishment?.image && (
+                    <div 
+                        style={{
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                            flexShrink: 0,
+                            border: '1px solid var(--border-color)'
+                        }}
+                    >
+                        <img 
+                            src={api.getImageUrl(establishment.image)} 
+                            alt="Logo do Estabelecimento" 
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                            }}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Stats Grid */}
