@@ -19,7 +19,8 @@ router.post('/login', async (req, res, next) => {
             throw new AppError('Email e senha são obrigatórios', 400)
         }
 
-        const user = await usersRepo.findOne({ email })
+        const normalizedEmail = email.toLowerCase().trim()
+        const user = await usersRepo.findOne({ email: normalizedEmail })
 
         if (!user) {
             throw new AppError('Credenciais inválidas', 401)
@@ -101,7 +102,8 @@ router.post('/admin/login', async (req, res, next) => {
             throw new AppError('Email e senha são obrigatórios', 400)
         }
 
-        const admin = await adminsRepo.findOne({ email })
+        const normalizedEmail = email.toLowerCase().trim()
+        const admin = await adminsRepo.findOne({ email: normalizedEmail })
 
         if (!admin) {
             throw new AppError('Credenciais inválidas', 401)
