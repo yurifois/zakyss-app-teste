@@ -27,8 +27,10 @@ export default function AdminAppointments() {
         customerPhone: '',
         customerEmail: '',
         notes: '',
-        assignments: []
+        assignments: [],
+        customPrice: ''
     })
+    const [cancelling, setCancelling] = useState(false)
     const [saving, setSaving] = useState(false)
 
     // Modal de novo agendamento
@@ -241,7 +243,8 @@ export default function AdminAppointments() {
             customerPhone: apt.customerPhone,
             customerEmail: apt.customerEmail || '',
             notes: apt.notes || '',
-            assignments: apt.assignments || []
+            assignments: apt.assignments || [],
+            customPrice: apt.totalPrice != null ? String(apt.totalPrice) : ''
         })
         await loadSlotsForDate(apt.date, apt.time)
     }
@@ -316,7 +319,8 @@ export default function AdminAppointments() {
                 customerPhone: editForm.customerPhone,
                 customerEmail: editForm.customerEmail,
                 notes: editForm.notes,
-                assignments: editForm.assignments
+                assignments: editForm.assignments,
+                customPrice: editForm.customPrice ? parseFloat(editForm.customPrice) : null
             })
             success('Agendamento atualizado com sucesso!')
             setEditingAppointment(null)
@@ -741,6 +745,27 @@ export default function AdminAppointments() {
                             </div>
                         </div>
 
+                        {/* Preço do Atendimento */}
+                        <div className="form-group mb-4">
+                            <label className="form-label">💰 Preço do Atendimento (R$)</label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="number"
+                                    name="customPrice"
+                                    className="form-input"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="Preço calculado automaticamente"
+                                    value={editForm.customPrice}
+                                    onChange={handleEditFormChange}
+                                    style={{ maxWidth: '200px' }}
+                                />
+                                <span className="text-xs text-muted" style={{ flex: 1 }}>
+                                    Altere para aplicar desconto ou ajuste manual
+                                </span>
+                            </div>
+                        </div>
+
                         {/* Dados do Cliente */}
                         <div className="grid sm:grid-cols-2 gap-4 mb-4">
                             <div className="form-group">
@@ -792,17 +817,59 @@ export default function AdminAppointments() {
                             <button
                                 onClick={handleSaveEdit}
                                 className="btn btn-primary flex-1"
-                                disabled={saving}
+                                disabled={saving || cancelling}
                             >
                                 {saving ? 'Salvando...' : 'Salvar alterações'}
                             </button>
                             <button
                                 onClick={() => setEditingAppointment(null)}
                                 className="btn btn-secondary"
+                                disabled={saving || cancelling}
                             >
-                                Cancelar
+                                Voltar
                             </button>
                         </div>
+
+                        {/* Cancelar Atendimento */}
+                        {editingAppointment.status !== 'cancelled' && (
+                            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+                                <button
+                                    onClick={async () => {
+                                        if (!window.confirm(`Tem certeza que deseja cancelar o atendimento de ${editingAppointment.customerName}?`)) return
+                                        setCancelling(true)
+                                        try {
+                                            await api.updateAppointmentStatus(editingAppointment.id, 'cancelled')
+                                            success('Atendimento cancelado com sucesso!')
+                                            setEditingAppointment(null)
+                                            loadAppointments()
+                                        } catch (err) {
+                                            error(err.message || 'Erro ao cancelar atendimento')
+                                        } finally {
+                                            setCancelling(false)
+                                        }
+                                    }}
+                                    className="btn btn-sm"
+                                    disabled={cancelling}
+                                    style={{
+                                        width: '100%',
+                                        background: 'transparent',
+                                        border: '1px solid var(--error-500)',
+                                        color: 'var(--error-500)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.target.style.background = 'var(--error-500)'
+                                        e.target.style.color = 'white'
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.target.style.background = 'transparent'
+                                        e.target.style.color = 'var(--error-500)'
+                                    }}
+                                >
+                                    {cancelling ? 'Cancelando...' : '🚫 Cancelar Atendimento'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

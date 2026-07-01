@@ -191,7 +191,8 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             customerPhone,
             customerEmail,
             notes,
-            assignments
+            assignments,
+            customPrice
         } = req.body
 
         // Buscar agendamento existente
@@ -254,6 +255,11 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
         if (customerEmail !== undefined) updateData.customerEmail = customerEmail
         if (notes !== undefined) updateData.notes = notes
         if (assignments !== undefined) updateData.assignments = assignments
+
+        // Permitir override manual do preço pelo admin
+        if (customPrice !== undefined && customPrice !== null) {
+            updateData.totalPrice = parseFloat(customPrice)
+        }
 
         // Aplicar atualizações
         const updatedAppointment = await appointmentsRepo.update(appointmentId, updateData)
