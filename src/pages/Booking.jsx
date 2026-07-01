@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import * as api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -22,6 +22,8 @@ export default function Booking() {
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [allEstablishmentServices, setAllEstablishmentServices] = useState([])
+
+    const calendarRef = useRef(null)
 
     const [formData, setFormData] = useState({
         name: user?.name || '',
@@ -246,10 +248,16 @@ export default function Booking() {
                                                 selected={services.some(s => s.id === service.id)}
                                                 onToggle={() => {
                                                     setServices(prev => {
-                                                        if (prev.some(s => s.id === service.id)) {
+                                                        const isRemoving = prev.some(s => s.id === service.id)
+                                                        if (isRemoving) {
                                                             return prev.filter(s => s.id !== service.id)
                                                         }
-                                                        return [...prev, service]
+                                                        const updated = [...prev, service]
+                                                        // Scroll para o calendário após selecionar um serviço
+                                                        setTimeout(() => {
+                                                            calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                                        }, 100)
+                                                        return updated
                                                     })
                                                 }}
                                             />
@@ -259,7 +267,7 @@ export default function Booking() {
                             )}
 
                             {/* Step 1: Date */}
-                            <div className={`card mb-6 p-3 sm:p-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <div ref={calendarRef} className={`card mb-6 p-3 sm:p-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
                                 <h2 className="text-lg font-semibold mb-4">📅 Escolha a data</h2>
                                 <Calendar
                                     selectedDate={selectedDate}
