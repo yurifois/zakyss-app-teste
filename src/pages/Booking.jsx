@@ -137,6 +137,17 @@ export default function Booking() {
         return closedDays
     }
 
+    const getClosedDates = () => {
+        if (!establishment?.scheduleExceptions) return []
+        const closedDates = []
+        Object.entries(establishment.scheduleExceptions).forEach(([dateStr, exception]) => {
+            if (exception.isClosed) {
+                closedDates.push(dateStr)
+            }
+        })
+        return closedDates
+    }
+
     const getTotalPrice = () => services.reduce((sum, s) => sum + s.price, 0)
     const getTotalDuration = () => services.reduce((sum, s) => sum + s.duration, 0)
 
@@ -276,6 +287,7 @@ export default function Booking() {
                                     onSelectDate={setSelectedDate}
                                     minDate={new Date().toISOString().split('T')[0]}
                                     disabledDays={getClosedDays()}
+                                    disabledDates={getClosedDates()}
                                 />
                             </div>
 

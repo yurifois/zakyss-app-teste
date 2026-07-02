@@ -6,7 +6,7 @@ const MONTHS = [
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ]
 
-export default function Calendar({ selectedDate, onSelectDate, disabledDays = [], minDate = new Date() }) {
+export default function Calendar({ selectedDate, onSelectDate, disabledDays = [], disabledDates = [], minDate = new Date() }) {
     const [currentMonth, setCurrentMonth] = useState(new Date())
 
     const year = currentMonth.getFullYear()
@@ -45,6 +45,10 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         // Check if in disabled days (0 = Sunday, 6 = Saturday)
         const dayOfWeek = date.getDay()
         if (disabledDays.includes(dayOfWeek)) return true
+        
+        // Check specific disabled dates
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        if (disabledDates.includes(dateStr)) return true
 
         return false
     }
@@ -95,7 +99,8 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
 
         const isPast = date.getTime() < parsedMinDate.getTime()
         const dayOfWeek = date.getDay()
-        const isClosed = disabledDays.includes(dayOfWeek)
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        const isClosed = disabledDays.includes(dayOfWeek) || disabledDates.includes(dateStr)
         const disabled = isPast || isClosed
         const selected = isSelected(day)
         const todayClass = isToday(day)
