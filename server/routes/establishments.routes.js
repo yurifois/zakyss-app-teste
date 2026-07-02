@@ -297,13 +297,82 @@ router.get('/:id/available-slots', async (req, res, next) => {
         const appointments = await appointmentsRepo.findAll({
             establishmentId: parseInt(req.params.id)
         })
-        const bookedTimes = appointments
-            .filter(a => a.date === date && a.status !== 'cancelled' && a.status !== 'no_show')
-            .map(a => a.time)
+        const activeAppointments = appointments.filter(a => a.date === date && a.status !== 'cancelled' && a.status !== 'no_show')
 
-        let availableSlots = slots.filter(s => !bookedTimes.includes(s))
+        const employeesRepo = getRepository('employees.json')
+        const employees = await employeesRepo.findAll({ establishmentId: parseInt(req.params.id) })
+        const isSolo = employees.length === 0
 
-        // Remover slots que caem nos horários bloqueados
+        const timeToMinutes = (time) => {
+            const [h, m] = time.split(':').map(Number)
+            return h * 60 + m
+        }
+
+        const checkOverlap = (start1, duration1, start2, duration2) => {
+            const s1 = timeToMinutes(start1)
+            const e1 = s1 + duration1
+            const s2 = timeToMinutes(start2)
+            const e2 = s2 + (duration2 || 30)
+            return s1 < e2 && e1 > s2
+        }
+
+        const requestedServices = req.query.services ? req.query.services.split(',').map(Number) : []
+        let requestedAssignments = []
+        if (req.query.assignments) {
+            try {
+                requestedAssignments = JSON.parse(req.query.assignments)
+            } catch (e) {
+                // Ignore parse error
+            }
+        }
+
+        const servicesRepo = getRepository('services.json')
+        const allServices = await servicesRepo.findAll()
+        const selectedServices = allServices.filter(s => requestedServices.includes(s.id))
+        let requestedDuration = 0
+        selectedServices.forEach(service => {
+            const prefs = establishment?.servicePreferences?.[service.id]
+            requestedDuration += prefs?.duration ?? service.duration
+        })
+        if (requestedDuration === 0) requestedDuration = 30 // fallback
+
+        let availableSlots = slots.filter(slot => {
+            if (isSolo) {
+                const hasConflict = activeAppointments.some(apt => checkOverlap(slot, requestedDuration, apt.time, apt.totalDuration))
+                if (hasConflict) return false
+            } else {
+                const availableEmployees = employees.filter(emp => {
+                    return !activeAppointments.some(apt => {
+                        if (!apt.assignments || apt.assignments.length === 0) {
+                            return checkOverlap(slot, requestedDuration, apt.time, apt.totalDuration)
+                        }
+                        const isAssigned = apt.assignments.some(a => a.employeeId === emp.id)
+                        return isAssigned && checkOverlap(slot, requestedDuration, apt.time, apt.totalDuration)
+                    })
+                })
+
+                if (requestedServices.length === 0) {
+                    if (availableEmployees.length === 0) return false
+                } else {
+                    for (const serviceId of requestedServices) {
+                        const preference = requestedAssignments.find(a => a.serviceId === serviceId && a.employeeId !== null && a.employeeId !== "")
+                        
+                        let canFulfill = false
+                        if (preference) {
+                            const empId = parseInt(preference.employeeId)
+                            canFulfill = availableEmployees.some(emp => emp.id === empId && (emp.services || []).includes(serviceId))
+                        } else {
+                            canFulfill = availableEmployees.some(emp => (emp.services || []).includes(serviceId))
+                        }
+
+                        if (!canFulfill) return false
+                    }
+                }
+            }
+            return true
+        })
+
+        // Remover slots que caem nos horários bloqueados (exceções de calendário)
         if (blockedRanges.length > 0) {
             availableSlots = availableSlots.filter(slot => {
                 for (const range of blockedRanges) {

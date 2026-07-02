@@ -247,8 +247,15 @@ export async function getEstablishmentServices(id) {
     return request(`/establishments/${id}/services`)
 }
 
-export async function getAvailableSlots(establishmentId, date) {
-    return request(`/establishments/${establishmentId}/available-slots?date=${date}`)
+export async function getAvailableSlots(establishmentId, date, services = [], assignments = []) {
+    let url = `/establishments/${establishmentId}/available-slots?date=${date}`
+    if (services.length > 0) {
+        url += `&services=${services.join(',')}`
+    }
+    if (assignments.length > 0) {
+        url += `&assignments=${encodeURIComponent(JSON.stringify(assignments))}`
+    }
+    return request(url)
 }
 
 export async function createEstablishment(data) {

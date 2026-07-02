@@ -101,7 +101,9 @@ export default function Booking() {
             if (selectedDate instanceof Date) {
                 dateStr = selectedDate.toISOString().split('T')[0]
             }
-            const slots = await api.getAvailableSlots(id, dateStr)
+            const serviceIds = services.map(s => s.id)
+            const assignments = JSON.parse(sessionStorage.getItem('booking_assignments') || '[]')
+            const slots = await api.getAvailableSlots(id, dateStr, serviceIds, assignments)
             setAvailableSlots(slots)
             setSelectedTime(null)
         } catch (err) {
