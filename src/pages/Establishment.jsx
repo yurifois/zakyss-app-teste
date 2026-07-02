@@ -114,17 +114,7 @@ export default function Establishment() {
         return cat ? cat.name : ''
     }
 
-    const formatWorkingHours = () => {
-        if (!establishment?.workingHours) return []
-        const days = {
-            monday: 'Segunda', tuesday: 'Terça', wednesday: 'Quarta',
-            thursday: 'Quinta', friday: 'Sexta', saturday: 'Sábado', sunday: 'Domingo'
-        }
-        return Object.entries(days).map(([key, label]) => {
-            const hours = establishment.workingHours[key]
-            return { day: label, hours: hours ? `${hours.open} - ${hours.close}` : 'Fechado' }
-        })
-    }
+
 
     if (loading) {
         return (
@@ -219,18 +209,7 @@ export default function Establishment() {
                             </div>
                         )}
 
-                        {/* Working Hours */}
-                        <div>
-                            <h2 className="text-xl font-bold mb-4">Horário de funcionamento</h2>
-                            <div className="card" style={{ padding: '1rem' }}>
-                                {formatWorkingHours().map(({ day, hours }) => (
-                                    <div key={day} className="flex justify-between py-2" style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                        <span className="text-secondary">{day}</span>
-                                        <span className={hours === 'Fechado' ? 'text-muted' : 'font-medium'}>{hours}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+
                     </div>
 
                     {/* Booking Sidebar */}
