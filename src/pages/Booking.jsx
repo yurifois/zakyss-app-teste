@@ -61,6 +61,24 @@ export default function Booking() {
         }
     }, [selectedDate])
 
+    // Em navegadores mobile a aba fica em segundo plano (troca de app, tela
+    // bloqueada) enquanto o cliente preenche o formulário; ao voltar, os
+    // horários podem ter sido bloqueados pelo estabelecimento nesse meio tempo.
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && selectedDate && establishment) {
+                loadAvailableSlots()
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleVisibilityChange)
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleVisibilityChange)
+        }
+    }, [selectedDate, establishment])
+
     const loadData = async () => {
         setLoading(true)
         try {
@@ -207,6 +225,9 @@ export default function Booking() {
             navigate(`/confirmacao/${appointment.id}`)
         } catch (err) {
             error(err.message || 'Erro ao criar agendamento')
+            // O horário selecionado pode ter sido bloqueado/ocupado nesse meio tempo;
+            // atualiza a lista para não deixar um horário inválido marcado como disponível.
+            loadAvailableSlots()
         } finally {
             setSubmitting(false)
         }

@@ -71,7 +71,21 @@ export default function AdminAppointments() {
             loadAppointments()
         }, 15000)
 
-        return () => clearInterval(interval)
+        // Navegadores mobile suspendem o setInterval quando a aba fica em segundo
+        // plano (troca de app, tela bloqueada); força atualização ao voltar.
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                loadAppointments()
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleVisibilityChange)
+
+        return () => {
+            clearInterval(interval)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleVisibilityChange)
+        }
     }, [admin])
 
     useEffect(() => {
@@ -86,7 +100,7 @@ export default function AdminAppointments() {
             const apts = await api.getAppointmentsByEstablishment(admin.establishmentId)
 
             const enriched = await Promise.all(apts.map(async (apt) => {
-                const servicesList = await api.getServicesByIds(apt.services)
+                const servicesList = await api.getServicesByIds(apt.services).catch(() => [])
                 return { ...apt, servicesList }
             }))
 

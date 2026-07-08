@@ -306,8 +306,22 @@ export default function Profile() {
             }
         }, 15000)
 
-        return () => clearInterval(interval)
-    }, [statusFilter])
+        // Navegadores mobile suspendem o setInterval quando a aba fica em segundo
+        // plano (troca de app, tela bloqueada); força atualização ao voltar.
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && user) {
+                loadAppointments()
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleVisibilityChange)
+
+        return () => {
+            clearInterval(interval)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleVisibilityChange)
+        }
+    }, [statusFilter, user])
 
     const getStatusBadge = (status) => {
         const styles = {
