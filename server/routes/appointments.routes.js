@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
@@ -8,6 +9,53 @@ import nodemailer from 'nodemailer'
 const router = Router()
 const appointmentsRepo = getRepository('appointments.json')
 const servicesRepo = getRepository('services.json')
+
+// Política de remarcação: cliente que falta a um agendamento (no_show) fica
+// impedido de criar novos agendamentos pelo site/app por alguns dias.
+const NO_SHOW_RESTRICTION_DAYS = 7
+
+const normalizePhone = (phone) => (phone || '').replace(/\D/g, '')
+
+// Verifica se o telefone/usuário tem uma falta (no_show) recente que ainda restringe novos agendamentos.
+// Retorna a data em que a restrição termina, ou null se não houver restrição ativa.
+async function getActiveNoShowRestriction(customerPhone, userId) {
+    const normalizedPhone = normalizePhone(customerPhone)
+    if (!normalizedPhone && !userId) return null
+
+    const allAppointments = await appointmentsRepo.findAll()
+    const now = new Date()
+
+    let restrictionEnd = null
+    for (const apt of allAppointments) {
+        if (apt.status !== 'no_show') continue
+
+        const matchesPhone = normalizedPhone && normalizePhone(apt.customerPhone) === normalizedPhone
+        const matchesUser = userId && apt.userId === userId
+        if (!matchesPhone && !matchesUser) continue
+
+        const end = new Date(apt.date + 'T00:00:00')
+        end.setDate(end.getDate() + NO_SHOW_RESTRICTION_DAYS)
+
+        if (end > now && (!restrictionEnd || end > restrictionEnd)) {
+            restrictionEnd = end
+        }
+    }
+
+    return restrictionEnd
+}
+
+// Um admin autenticado (dashboard) pode criar agendamentos "de encaixe" mesmo
+// para um cliente restrito — a restrição vale apenas para autoagendamento público.
+function isAuthenticatedAdminRequest(req) {
+    const authHeader = req.headers.authorization
+    if (!authHeader?.startsWith('Bearer ')) return false
+    try {
+        const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET)
+        return decoded?.type === 'admin'
+    } catch (error) {
+        return false
+    }
+}
 
 // Endpoint temporário de diagnóstico de Email
 router.get('/test-email', async (req, res) => {
@@ -97,10 +145,31 @@ router.post('/', async (req, res, next) => {
             throw new AppError('Dados incompletos', 400)
         }
 
+        // Cliente com falta (no_show) recente fica restrito de se autoagendar por alguns dias.
+        // Um admin autenticado (agendamento de encaixe pelo dashboard) pode ignorar a restrição.
+        if (!isAuthenticatedAdminRequest(req)) {
+            const restrictionEnd = await getActiveNoShowRestriction(customerPhone, userId)
+            if (restrictionEnd) {
+                const formattedDate = restrictionEnd.toLocaleDateString('pt-BR')
+                throw new AppError(`Devido a uma falta (no-show) recente, novos agendamentos ficam temporariamente indisponíveis para este contato até ${formattedDate}.`, 403)
+            }
+        }
+
         // Get establishment for custom prices
         const establishmentsRepo = getRepository('establishments.json')
         const establishment = await establishmentsRepo.findById(establishmentId)
         if (!establishment) throw new AppError('Estabelecimento não encontrado', 404)
+
+        // Verificar se a data/horário foi bloqueada pelo estabelecimento (exceção de calendário)
+        const scheduleException = establishment.scheduleExceptions?.[date]
+        if (scheduleException) {
+            if (scheduleException.isClosed) {
+                throw new AppError('O estabelecimento não está disponível nesta data. Por favor, escolha outro dia.', 409)
+            }
+            if (scheduleException.blockedRanges?.some(range => time >= range.start && time < range.end)) {
+                throw new AppError('Este horário foi bloqueado pelo estabelecimento. Por favor, escolha outro horário.', 409)
+            }
+        }
 
         // Calcular preço e duração total
         const allServices = await servicesRepo.findAll()
@@ -290,6 +359,21 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
         const newAssignments = assignments || existingAppointment.assignments
 
         if (date || time || services || assignments) {
+            // Verificar se a nova data/horário foi bloqueada pelo estabelecimento (exceção de calendário)
+            if (date || time) {
+                const establishmentsRepo = getRepository('establishments.json')
+                const establishment = await establishmentsRepo.findById(existingAppointment.establishmentId)
+                const scheduleException = establishment?.scheduleExceptions?.[newDate]
+                if (scheduleException) {
+                    if (scheduleException.isClosed) {
+                        throw new AppError('O estabelecimento não está disponível nesta data. Por favor, escolha outro dia.', 409)
+                    }
+                    if (scheduleException.blockedRanges?.some(range => newTime >= range.start && newTime < range.end)) {
+                        throw new AppError('Este horário foi bloqueado pelo estabelecimento. Por favor, escolha outro horário.', 409)
+                    }
+                }
+            }
+
             // Helpers
             const timeToMinutes = (t) => {
                 const [h, m] = t.split(':').map(Number)
