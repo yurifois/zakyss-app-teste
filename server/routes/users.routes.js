@@ -10,6 +10,10 @@ const appointmentsRepo = getRepository('appointments.json')
 // Buscar usuário por ID
 router.get('/:id', authMiddleware, async (req, res, next) => {
     try {
+        if (parseInt(req.user.id) !== parseInt(req.params.id)) {
+            throw new AppError('Não autorizado', 403)
+        }
+
         const user = await usersRepo.findById(req.params.id)
 
         if (!user) {
@@ -108,6 +112,10 @@ router.put('/:id/password', authMiddleware, async (req, res, next) => {
 // Agendamentos do usuário
 router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
     try {
+        if (parseInt(req.user.id) !== parseInt(req.params.id)) {
+            throw new AppError('Não autorizado', 403)
+        }
+
         const appointments = await appointmentsRepo.findAll({ userId: parseInt(req.params.id) })
 
         res.json({
@@ -122,6 +130,10 @@ router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
 // Favoritos
 router.get('/:id/favorites', authMiddleware, async (req, res, next) => {
     try {
+        if (parseInt(req.user.id) !== parseInt(req.params.id)) {
+            throw new AppError('Não autorizado', 403)
+        }
+
         const user = await usersRepo.findById(req.params.id)
 
         if (!user) {
@@ -140,6 +152,10 @@ router.get('/:id/favorites', authMiddleware, async (req, res, next) => {
 // Toggle favorito
 router.post('/:id/favorites/:establishmentId', authMiddleware, async (req, res, next) => {
     try {
+        if (parseInt(req.user.id) !== parseInt(req.params.id)) {
+            throw new AppError('Não autorizado', 403)
+        }
+
         const user = await usersRepo.findById(req.params.id)
 
         if (!user) {
