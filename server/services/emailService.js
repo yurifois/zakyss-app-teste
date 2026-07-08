@@ -358,9 +358,99 @@ export const sendNewAppointmentEmail = async (establishmentEmail, establishmentN
     }
 }
 
+/**
+ * Gera template HTML para lembrete de retorno (incentivo à recorrência)
+ */
+const generateReturnReminderTemplate = (customerName, establishmentName, serviceNames) => {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr>
+                <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <!-- Header -->
+                        <tr>
+                            <td style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); padding: 30px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 28px;">✨ Sentimos sua falta!</h1>
+                            </td>
+                        </tr>
+
+                        <!-- Content -->
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">
+                                    Olá <strong style="color: #ec4899;">${customerName}</strong>! 👋
+                                </h2>
+
+                                <div style="background-color: #fdf2f8; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                                    <p style="color: #171615; font-size: 18px; margin: 0; line-height: 1.6;">
+                                        Já faz um tempinho desde o seu último <strong style="color: #db2777;">${serviceNames}</strong> em
+                                        <strong style="color: #db2777;">${establishmentName}</strong>. Que tal agendar um novo horário?
+                                    </p>
+                                </div>
+
+                                <p style="color: #5c5752; font-size: 14px; margin: 0;">
+                                    Acesse o Zakys e reserve seu próximo horário quando quiser. Estamos te esperando! 💅
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                                <p style="color: #5c5752; font-size: 12px; margin: 0;">
+                                    Este é um email automático do Zakys.<br>
+                                    Por favor, não responda a esta mensagem.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `
+}
+
+/**
+ * Envia email de lembrete de retorno para o mesmo serviço (incentivo à recorrência)
+ * @param {string} email - Email do destinatário
+ * @param {string} customerName - Nome do cliente
+ * @param {string} establishmentName - Nome do estabelecimento
+ * @param {string} serviceNames - Nome(s) do(s) serviço(s) realizados
+ * @returns {Promise<boolean>} Sucesso no envio
+ */
+export const sendReturnReminder = async (email, customerName, establishmentName, serviceNames) => {
+    if (!email) {
+        console.log(`[EmailService] Sem email para enviar lembrete de retorno para ${customerName}`)
+        return false
+    }
+
+    try {
+        await sendViaVercelGateway(
+            email,
+            `✨ Que tal agendar seu próximo ${serviceNames}?`,
+            generateReturnReminderTemplate(customerName, establishmentName, serviceNames)
+        )
+        console.log(`[EmailService] ✅ Email de lembrete de retorno enviado para ${email}`)
+        return true
+    } catch (error) {
+        console.error(`[EmailService] ❌ Erro ao enviar email de retorno para ${email}:`, error.message)
+        return false
+    }
+}
+
 export default {
     sendAppointmentReminder,
     sendConfirmationEmail,
     sendNewAppointmentEmail,
+    sendReturnReminder,
     testEmail
 }

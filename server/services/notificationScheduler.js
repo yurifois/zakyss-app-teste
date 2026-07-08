@@ -1,8 +1,15 @@
 import cron from 'node-cron'
 import { getRepository } from '../repositories/index.js'
-import { sendAppointmentReminder } from './emailService.js'
+import { sendAppointmentReminder, sendReturnReminder } from './emailService.js'
 
 const appointmentsRepo = getRepository('appointments.json')
+
+// Dias após o serviço concluído para incentivar o cliente a agendar de novo
+const RETURN_REMINDER_DAYS = 30
+
+// Só considera agendamentos concluídos a partir desta data: evita mandar um
+// lote retroativo de emails pra todo o histórico assim que o recurso entra no ar.
+const RETURN_REMINDER_FEATURE_START = '2026-07-08'
 
 /**
  * Calcula a diferença em horas entre o horário do agendamento e agora
@@ -29,6 +36,9 @@ const getNotificationToSend = (hoursUntil, notificationsSent = {}) => {
 
     if (hoursUntil <= 4.5 && hoursUntil > 3.5 && !notificationsSent['4h']) {
         return '4h'
+    }
+    if (hoursUntil <= 12.5 && hoursUntil > 11.5 && !notificationsSent['12h']) {
+        return '12h'
     }
     if (hoursUntil <= 24.5 && hoursUntil > 23.5 && !notificationsSent['24h']) {
         return '24h'
@@ -138,6 +148,97 @@ const processNotifications = async () => {
 }
 
 /**
+ * Verifica quantos dias se passaram desde uma data (YYYY-MM-DD)
+ */
+const getDaysSince = (dateStr) => {
+    const date = new Date(`${dateStr}T00:00:00`)
+    const now = new Date()
+    return (now - date) / (1000 * 60 * 60 * 24)
+}
+
+/**
+ * Envia lembrete de retorno para clientes que concluíram um serviço há
+ * RETURN_REMINDER_DAYS dias e ainda não agendaram de novo o mesmo serviço
+ * no mesmo estabelecimento, incentivando a recorrência.
+ */
+const processReturnReminders = async () => {
+    console.log('[NotificationScheduler] 🔁 Verificando lembretes de retorno...')
+
+    try {
+        const appointments = await appointmentsRepo.findAll()
+        const completed = appointments.filter(apt => apt.status === 'completed')
+
+        let remindersSent = 0
+
+        for (const apt of completed) {
+            if (apt.returnReminderSent) continue
+            if (apt.date < RETURN_REMINDER_FEATURE_START) continue
+            if (getDaysSince(apt.date) < RETURN_REMINDER_DAYS) continue
+
+            // Cliente já tem um agendamento mais recente para o mesmo serviço/estabelecimento?
+            const hasNewerBooking = appointments.some(other => {
+                if (other.id === apt.id) return false
+                if (other.establishmentId !== apt.establishmentId) return false
+                if (other.status === 'cancelled') return false
+                const sameCustomer = apt.userId
+                    ? other.userId === apt.userId
+                    : other.customerPhone === apt.customerPhone
+                if (!sameCustomer) return false
+                const sharesService = (other.services || []).some(s => (apt.services || []).includes(s))
+                return sharesService && other.date > apt.date
+            })
+
+            if (hasNewerBooking) {
+                await appointmentsRepo.update(apt.id, { returnReminderSent: true })
+                continue
+            }
+
+            let recipientEmail = apt.customerEmail
+            let recipientName = apt.customerName
+
+            if (apt.userId) {
+                const usersRepo = getRepository('users.json')
+                const user = await usersRepo.findById(apt.userId)
+                if (user?.email) {
+                    recipientEmail = user.email
+                    recipientName = user.name || apt.customerName
+                }
+            }
+
+            const establishmentsRepo = getRepository('establishments.json')
+            const establishment = await establishmentsRepo.findById(apt.establishmentId)
+
+            const servicesRepo = getRepository('services.json')
+            const allServices = await servicesRepo.findAll()
+            const serviceNames = allServices
+                .filter(s => (apt.services || []).includes(s.id))
+                .map(s => s.name)
+                .join(', ')
+
+            const emailSent = await sendReturnReminder(
+                recipientEmail,
+                recipientName,
+                establishment?.name || 'o estabelecimento',
+                serviceNames || 'seu serviço'
+            )
+
+            // Marca como enviado mesmo sem email, para não tentar de novo a cada ciclo
+            await appointmentsRepo.update(apt.id, { returnReminderSent: true })
+
+            if (emailSent) remindersSent++
+        }
+
+        if (remindersSent > 0) {
+            console.log(`[NotificationScheduler] ✅ ${remindersSent} lembretes de retorno enviados`)
+        } else {
+            console.log(`[NotificationScheduler] 💤 Nenhum lembrete de retorno pendente no momento`)
+        }
+    } catch (error) {
+        console.error('[NotificationScheduler] ❌ Erro ao processar lembretes de retorno:', error.message)
+    }
+}
+
+/**
  * Inicia o scheduler de notificações
  * Executa a cada 30 minutos
  */
@@ -146,11 +247,13 @@ export const startNotificationScheduler = () => {
 
     // Executar imediatamente na inicialização
     processNotifications()
+    processReturnReminders()
 
     // Agendar para rodar a cada 30 minutos
     // Formato: minuto hora dia-do-mês mês dia-da-semana
     cron.schedule('*/30 * * * *', () => {
         processNotifications()
+        processReturnReminders()
     })
 
     console.log('[NotificationScheduler] ✅ Scheduler configurado para executar a cada 30 minutos')
@@ -162,6 +265,7 @@ export const startNotificationScheduler = () => {
 export const runNotificationsNow = async () => {
     console.log('[NotificationScheduler] 🔄 Executando verificação manual...')
     await processNotifications()
+    await processReturnReminders()
 }
 
 export default {
