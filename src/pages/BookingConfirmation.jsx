@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import * as api from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
 
 export default function BookingConfirmation() {
     const { id } = useParams()
+    const { user, isAuthenticated } = useAuth()
+    const { success, error: showError } = useToast()
     const [appointment, setAppointment] = useState(null)
     const [establishment, setEstablishment] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [cancelling, setCancelling] = useState(false)
+    const [guestPhone, setGuestPhone] = useState('')
+    const [showGuestForm, setShowGuestForm] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -23,6 +30,32 @@ export default function BookingConfirmation() {
             console.error('Error loading confirmation:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const isOwner = isAuthenticated && appointment && user?.id === appointment.userId
+
+    const handleCancel = async () => {
+        if (!isOwner && !guestPhone.trim()) {
+            setShowGuestForm(true)
+            return
+        }
+
+        if (!window.confirm('Tem certeza que deseja cancelar este agendamento?')) return
+
+        setCancelling(true)
+        try {
+            if (isOwner) {
+                await api.updateAppointmentStatus(appointment.id, 'cancelled')
+            } else {
+                await api.cancelGuestAppointment(appointment.id, guestPhone)
+            }
+            setAppointment(prev => ({ ...prev, status: 'cancelled' }))
+            success('Agendamento cancelado com sucesso.')
+        } catch (err) {
+            showError(err.message || 'Erro ao cancelar agendamento')
+        } finally {
+            setCancelling(false)
         }
     }
 
@@ -121,6 +154,37 @@ export default function BookingConfirmation() {
                             <strong>⚠️ Status:</strong> Aguardando confirmação do estabelecimento
                         </p>
                     </div>
+
+                    {(appointment.status === 'pending' || appointment.status === 'confirmed') && (
+                        <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
+                            {showGuestForm && !isOwner && (
+                                <div className="mb-3">
+                                    <label className="text-sm text-muted">Confirme o telefone usado no agendamento</label>
+                                    <input
+                                        type="tel"
+                                        className="input w-full mt-1"
+                                        placeholder="(00) 00000-0000"
+                                        value={guestPhone}
+                                        onChange={(e) => setGuestPhone(e.target.value)}
+                                    />
+                                </div>
+                            )}
+                            <button
+                                onClick={handleCancel}
+                                disabled={cancelling}
+                                className="btn btn-sm"
+                                style={{ backgroundColor: 'var(--error-500)', color: 'white' }}
+                            >
+                                {cancelling ? 'Cancelando...' : '✕ Cancelar agendamento'}
+                            </button>
+                        </div>
+                    )}
+
+                    {appointment.status === 'cancelled' && (
+                        <div className="mt-6 pt-6 text-sm text-secondary" style={{ borderTop: '1px solid var(--border-color)' }}>
+                            Este agendamento foi cancelado.
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-4 mt-8">

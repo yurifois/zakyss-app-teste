@@ -57,6 +57,17 @@ function isAuthenticatedAdminRequest(req) {
     }
 }
 
+// Verifica se o usuário autenticado (req.user, via authMiddleware) pode gerenciar
+// este agendamento: o admin do estabelecimento dono do agendamento, ou o próprio
+// cliente (conta logada) dono do agendamento.
+function canManageAppointment(req, appointment) {
+    const user = req.user
+    if (!user || !appointment) return false
+    if (user.type === 'admin') return user.establishmentId === appointment.establishmentId
+    if (user.type === 'customer') return Boolean(appointment.userId) && user.id === appointment.userId
+    return false
+}
+
 // Endpoint temporário de diagnóstico de Email
 router.get('/test-email', async (req, res) => {
     try {
@@ -323,6 +334,11 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             throw new AppError('Agendamento não encontrado', 404)
         }
 
+        // Edição completa (serviços, preço, reagendamento) é uma ação administrativa
+        if (req.user?.type !== 'admin' || req.user.establishmentId !== existingAppointment.establishmentId) {
+            throw new AppError('Você não tem permissão para editar este agendamento', 403)
+        }
+
         // Preparar dados para atualização
         const updateData = {}
 
@@ -492,6 +508,15 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
             throw new AppError('Agendamento não encontrado', 404)
         }
 
+        if (!canManageAppointment(req, currentAppointment)) {
+            throw new AppError('Você não tem permissão para alterar este agendamento', 403)
+        }
+
+        // Cliente só pode cancelar; os demais status são de gestão do estabelecimento
+        if (req.user.type === 'customer' && status !== 'cancelled') {
+            throw new AppError('Você só pode cancelar seu agendamento', 403)
+        }
+
         // Preparar dados de atualização
         const updateData = { status }
 
@@ -550,16 +575,58 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
     }
 })
 
-// Cancelar agendamento
-router.delete('/:id', authMiddleware, async (req, res, next) => {
+// Cancelamento de agendamento feito sem conta (convidado): confirma a identidade
+// pelo telefone usado no agendamento, já que não há login para autenticar.
+router.patch('/:id/cancel-guest', async (req, res, next) => {
     try {
-        const appointment = await appointmentsRepo.update(req.params.id, {
-            status: 'cancelled'
-        })
+        const { phone } = req.body
+        if (!phone) {
+            throw new AppError('Informe o telefone usado no agendamento', 400)
+        }
 
+        const appointment = await appointmentsRepo.findById(req.params.id)
         if (!appointment) {
             throw new AppError('Agendamento não encontrado', 404)
         }
+
+        if (appointment.userId) {
+            throw new AppError('Este agendamento pertence a uma conta. Faça login para cancelá-lo.', 403)
+        }
+
+        if (normalizePhone(phone) !== normalizePhone(appointment.customerPhone)) {
+            throw new AppError('Telefone não confere com o agendamento.', 403)
+        }
+
+        if (!['pending', 'confirmed'].includes(appointment.status)) {
+            throw new AppError('Este agendamento não pode mais ser cancelado.', 409)
+        }
+
+        const updated = await appointmentsRepo.update(req.params.id, { status: 'cancelled' })
+
+        res.json({
+            success: true,
+            data: updated
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Cancelar agendamento
+router.delete('/:id', authMiddleware, async (req, res, next) => {
+    try {
+        const existingAppointment = await appointmentsRepo.findById(req.params.id)
+        if (!existingAppointment) {
+            throw new AppError('Agendamento não encontrado', 404)
+        }
+
+        if (!canManageAppointment(req, existingAppointment)) {
+            throw new AppError('Você não tem permissão para cancelar este agendamento', 403)
+        }
+
+        await appointmentsRepo.update(req.params.id, {
+            status: 'cancelled'
+        })
 
         res.json({
             success: true,

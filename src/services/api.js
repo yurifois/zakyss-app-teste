@@ -328,6 +328,13 @@ export async function updateAppointment(id, data) {
     })
 }
 
+export async function cancelGuestAppointment(id, phone) {
+    return request(`/appointments/${id}/cancel-guest`, {
+        method: 'PATCH',
+        body: JSON.stringify({ phone }),
+    })
+}
+
 // ========== USERS ==========
 
 export async function updateUser(id, data) {
