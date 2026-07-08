@@ -39,7 +39,7 @@ export default function AdminDashboard() {
 
             // Enrich with services
             const enriched = await Promise.all(apts.map(async (apt) => {
-                const servicesList = await api.getServicesByIds(apt.services)
+                const servicesList = await api.getServicesByIds(apt.services).catch(() => [])
                 return { ...apt, servicesList }
             }))
 
@@ -61,8 +61,9 @@ export default function AdminDashboard() {
                 today: todayApts.length,
                 week: enriched.filter(a => a.date >= weekAgoStr && a.status !== 'cancelled').length,
                 pending: enriched.filter(a => a.status === 'pending').length,
+                // Faturamento só conta após a conclusão do serviço, não na confirmação do agendamento
                 revenue: enriched
-                    .filter(a => a.status === 'confirmed' || a.status === 'completed')
+                    .filter(a => a.status === 'completed')
                     .reduce((sum, a) => sum + a.totalPrice, 0),
             })
         } catch (error) {
