@@ -288,6 +288,12 @@ router.get('/:id/available-slots', async (req, res, next) => {
             })
         }
 
+        // Pausa para almoço: faz parte do horário semanal (recorrente), então usa
+        // a mesma lógica de bloqueio das exceções de calendário
+        if (hours.lunchBreak?.start && hours.lunchBreak?.end) {
+            blockedRanges = [...blockedRanges, hours.lunchBreak]
+        }
+
         // Gerar slots de 30 minutos
         const slots = []
         const [openH, openM] = hours.open.split(':').map(Number)

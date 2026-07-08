@@ -44,6 +44,15 @@ async function getActiveNoShowRestriction(customerPhone, userId) {
     return restrictionEnd
 }
 
+// Verifica se um horário cai dentro da pausa para almoço (recorrente, faz parte
+// do horário semanal do estabelecimento) do dia da semana correspondente à data.
+function isWithinLunchBreak(establishment, date, time) {
+    const dayOfWeek = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+    const lunchBreak = establishment.workingHours?.[dayOfWeek]?.lunchBreak
+    if (!lunchBreak?.start || !lunchBreak?.end) return false
+    return time >= lunchBreak.start && time < lunchBreak.end
+}
+
 // Um admin autenticado (dashboard) pode criar agendamentos "de encaixe" mesmo
 // para um cliente restrito — a restrição vale apenas para autoagendamento público.
 function isAuthenticatedAdminRequest(req) {
@@ -180,6 +189,10 @@ router.post('/', async (req, res, next) => {
             if (scheduleException.blockedRanges?.some(range => time >= range.start && time < range.end)) {
                 throw new AppError('Este horário foi bloqueado pelo estabelecimento. Por favor, escolha outro horário.', 409)
             }
+        }
+
+        if (isWithinLunchBreak(establishment, date, time)) {
+            throw new AppError('Este horário cai na pausa para almoço do estabelecimento. Por favor, escolha outro horário.', 409)
         }
 
         // Calcular preço e duração total
@@ -387,6 +400,10 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
                     if (scheduleException.blockedRanges?.some(range => newTime >= range.start && newTime < range.end)) {
                         throw new AppError('Este horário foi bloqueado pelo estabelecimento. Por favor, escolha outro horário.', 409)
                     }
+                }
+
+                if (establishment && isWithinLunchBreak(establishment, newDate, newTime)) {
+                    throw new AppError('Este horário cai na pausa para almoço do estabelecimento. Por favor, escolha outro horário.', 409)
                 }
             }
 

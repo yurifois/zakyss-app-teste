@@ -21,6 +21,7 @@ export default function AdminSchedule() {
     const [workingHours, setWorkingHours] = useState({})
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [quickLunchBreak, setQuickLunchBreak] = useState({ start: '12:00', end: '13:00' })
 
     useEffect(() => {
         if (admin) {
@@ -42,6 +43,11 @@ export default function AdminSchedule() {
                     enabled: !!dayHours,
                     open: dayHours?.open || '09:00',
                     close: dayHours?.close || '18:00',
+                    lunchBreak: {
+                        enabled: !!dayHours?.lunchBreak,
+                        start: dayHours?.lunchBreak?.start || '12:00',
+                        end: dayHours?.lunchBreak?.end || '13:00',
+                    },
                 }
             })
             setWorkingHours(hours)
@@ -66,6 +72,38 @@ export default function AdminSchedule() {
         }))
     }
 
+    const toggleLunchBreak = (day) => {
+        setWorkingHours(prev => ({
+            ...prev,
+            [day]: { ...prev[day], lunchBreak: { ...prev[day].lunchBreak, enabled: !prev[day].lunchBreak.enabled } },
+        }))
+    }
+
+    const updateLunchBreak = (day, field, value) => {
+        setWorkingHours(prev => ({
+            ...prev,
+            [day]: { ...prev[day], lunchBreak: { ...prev[day].lunchBreak, [field]: value } },
+        }))
+    }
+
+    // Aplica o mesmo intervalo de almoço a todos os dias abertos, evitando
+    // configurar dia por dia manualmente
+    const applyLunchBreakToAllDays = () => {
+        setWorkingHours(prev => {
+            const next = { ...prev }
+            DAYS.forEach(({ key }) => {
+                if (next[key]?.enabled) {
+                    next[key] = {
+                        ...next[key],
+                        lunchBreak: { enabled: true, start: quickLunchBreak.start, end: quickLunchBreak.end },
+                    }
+                }
+            })
+            return next
+        })
+        success('Pausa para almoço aplicada a todos os dias abertos!')
+    }
+
     const handleSave = async () => {
         setSaving(true)
         try {
@@ -73,7 +111,11 @@ export default function AdminSchedule() {
             const formattedHours = {}
             Object.entries(workingHours).forEach(([day, data]) => {
                 formattedHours[day] = data.enabled
-                    ? { open: data.open, close: data.close }
+                    ? {
+                        open: data.open,
+                        close: data.close,
+                        ...(data.lunchBreak.enabled ? { lunchBreak: { start: data.lunchBreak.start, end: data.lunchBreak.end } } : {}),
+                    }
                     : null
             })
 
@@ -95,6 +137,38 @@ export default function AdminSchedule() {
                 <p className="text-secondary">Configure os dias e horários de atendimento</p>
             </div>
 
+            <div className="card mb-6" style={{ padding: '1.5rem', maxWidth: '700px' }}>
+                <h3 className="font-semibold mb-1">🍽️ Pausa para almoço</h3>
+                <p className="text-sm text-secondary mb-4">
+                    Defina um intervalo e aplique a todos os dias abertos de uma vez, em vez de configurar dia por dia.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted">Início:</label>
+                        <input
+                            type="time"
+                            value={quickLunchBreak.start}
+                            onChange={(e) => setQuickLunchBreak(prev => ({ ...prev, start: e.target.value }))}
+                            className="form-input"
+                            style={{ width: '130px', padding: '0.5rem' }}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted">Fim:</label>
+                        <input
+                            type="time"
+                            value={quickLunchBreak.end}
+                            onChange={(e) => setQuickLunchBreak(prev => ({ ...prev, end: e.target.value }))}
+                            className="form-input"
+                            style={{ width: '130px', padding: '0.5rem' }}
+                        />
+                    </div>
+                    <button onClick={applyLunchBreakToAllDays} className="btn btn-secondary btn-sm">
+                        Aplicar a todos os dias
+                    </button>
+                </div>
+            </div>
+
             <div className="card" style={{ padding: '1.5rem', maxWidth: '700px' }}>
                 {DAYS.map(({ key, label }) => {
                     const dayData = workingHours[key]
@@ -103,43 +177,78 @@ export default function AdminSchedule() {
                     return (
                         <div
                             key={key}
-                            className="flex items-center gap-4 py-4"
+                            className="py-4"
                             style={{ borderBottom: key !== 'sunday' ? '1px solid var(--border-color)' : 'none' }}
                         >
-                            <label className="form-checkbox" style={{ width: '180px' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={dayData.enabled}
-                                    onChange={() => toggleDay(key)}
-                                />
-                                <span className={dayData.enabled ? 'font-medium' : 'text-muted'}>{label}</span>
-                            </label>
+                            <div className="flex items-center gap-4">
+                                <label className="form-checkbox" style={{ width: '180px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={dayData.enabled}
+                                        onChange={() => toggleDay(key)}
+                                    />
+                                    <span className={dayData.enabled ? 'font-medium' : 'text-muted'}>{label}</span>
+                                </label>
 
-                            {dayData.enabled ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <label className="text-sm text-muted">Abre:</label>
-                                        <input
-                                            type="time"
-                                            value={dayData.open}
-                                            onChange={(e) => updateHours(key, 'open', e.target.value)}
-                                            className="form-input"
-                                            style={{ width: '130px', padding: '0.5rem' }}
-                                        />
+                                {dayData.enabled ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-sm text-muted">Abre:</label>
+                                            <input
+                                                type="time"
+                                                value={dayData.open}
+                                                onChange={(e) => updateHours(key, 'open', e.target.value)}
+                                                className="form-input"
+                                                style={{ width: '130px', padding: '0.5rem' }}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-sm text-muted">Fecha:</label>
+                                            <input
+                                                type="time"
+                                                value={dayData.close}
+                                                onChange={(e) => updateHours(key, 'close', e.target.value)}
+                                                className="form-input"
+                                                style={{ width: '130px', padding: '0.5rem' }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <label className="text-sm text-muted">Fecha:</label>
+                                ) : (
+                                    <span className="text-muted">Fechado</span>
+                                )}
+                            </div>
+
+                            {dayData.enabled && (
+                                <div className="flex items-center gap-3 mt-2" style={{ marginLeft: '180px' }}>
+                                    <label className="form-checkbox">
                                         <input
-                                            type="time"
-                                            value={dayData.close}
-                                            onChange={(e) => updateHours(key, 'close', e.target.value)}
-                                            className="form-input"
-                                            style={{ width: '130px', padding: '0.5rem' }}
+                                            type="checkbox"
+                                            checked={dayData.lunchBreak.enabled}
+                                            onChange={() => toggleLunchBreak(key)}
                                         />
-                                    </div>
+                                        <span className="text-sm text-muted">Pausa para almoço</span>
+                                    </label>
+
+                                    {dayData.lunchBreak.enabled && (
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="time"
+                                                value={dayData.lunchBreak.start}
+                                                onChange={(e) => updateLunchBreak(key, 'start', e.target.value)}
+                                                className="form-input"
+                                                style={{ width: '110px', padding: '0.4rem' }}
+                                            />
+                                            <span className="text-sm text-muted">até</span>
+                                            <input
+                                                type="time"
+                                                value={dayData.lunchBreak.end}
+                                                onChange={(e) => updateLunchBreak(key, 'end', e.target.value)}
+                                                className="form-input"
+                                                style={{ width: '110px', padding: '0.4rem' }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <span className="text-muted">Fechado</span>
                             )}
                         </div>
                     )
