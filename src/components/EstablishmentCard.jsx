@@ -80,6 +80,12 @@ export default function EstablishmentCard({ establishment }) {
                     {establishment.categories.slice(0, 4).map(cat => (
                         <span key={cat} className="badge">{cat}</span>
                     ))}
+                    {(establishment.locationType === 'domicile' || establishment.locationType === 'both') && (
+                        <span className="badge">🏠 Domicílio</span>
+                    )}
+                    {establishment.accessible && (
+                        <span className="badge">♿ Acessível</span>
+                    )}
                 </div>
 
                 <p className="establishment-address">

@@ -39,6 +39,18 @@ router.get('/', async (req, res, next) => {
             )
         }
 
+        // Filtrar por atendimento domiciliar
+        if (req.query.domiciliar === 'true') {
+            establishments = establishments.filter(e =>
+                e.locationType === 'domicile' || e.locationType === 'both'
+            )
+        }
+
+        // Filtrar por acessibilidade
+        if (req.query.acessivel === 'true') {
+            establishments = establishments.filter(e => e.accessible === true)
+        }
+
         // Busca por texto
         if (req.query.q) {
             const query = req.query.q.toLowerCase()

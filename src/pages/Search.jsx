@@ -15,6 +15,8 @@ export default function Search() {
     const query = searchParams.get('q') || ''
     const categoryFilter = searchParams.get('categoria') || ''
     const distanceFilter = searchParams.get('distancia') || ''
+    const domiciliarFilter = searchParams.get('domiciliar') === 'true'
+    const acessivelFilter = searchParams.get('acessivel') === 'true'
 
     useEffect(() => {
         loadCategories()
@@ -25,7 +27,17 @@ export default function Search() {
         if (userPosition) {
             loadResults()
         }
-    }, [query, categoryFilter, distanceFilter, userPosition])
+    }, [query, categoryFilter, distanceFilter, domiciliarFilter, acessivelFilter, userPosition])
+
+    const updateFilter = (key, value) => {
+        const next = new URLSearchParams(searchParams)
+        if (value) {
+            next.set(key, value)
+        } else {
+            next.delete(key)
+        }
+        setSearchParams(next)
+    }
 
     const loadCategories = async () => {
         try {
@@ -52,6 +64,8 @@ export default function Search() {
             if (query) params.q = query
             if (categoryFilter) params.category = categoryFilter
             if (distanceFilter) params.maxDistance = distanceFilter
+            if (domiciliarFilter) params.domiciliar = 'true'
+            if (acessivelFilter) params.acessivel = 'true'
 
             const establishments = await api.getEstablishments(params)
 
@@ -76,6 +90,44 @@ export default function Search() {
                     <p className="text-secondary">
                         {loading ? 'Buscando...' : `${results.length} resultado(s) encontrado(s)`}
                     </p>
+                </div>
+
+                {/* Filtros */}
+                <div className="card mb-6 p-4 flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Filter size={18} style={{ color: 'var(--text-muted)' }} />
+                        <span className="text-sm font-medium">Filtros:</span>
+                    </div>
+
+                    <select
+                        className="form-input"
+                        style={{ width: 'auto' }}
+                        value={categoryFilter}
+                        onChange={(e) => updateFilter('categoria', e.target.value)}
+                    >
+                        <option value="">Todos os tipos de serviço</option>
+                        {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
+
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={domiciliarFilter}
+                            onChange={(e) => updateFilter('domiciliar', e.target.checked ? 'true' : '')}
+                        />
+                        Atendimento domiciliar
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={acessivelFilter}
+                            onChange={(e) => updateFilter('acessivel', e.target.checked ? 'true' : '')}
+                        />
+                        Acessível
+                    </label>
                 </div>
 
                 {/* Cards Grid */}

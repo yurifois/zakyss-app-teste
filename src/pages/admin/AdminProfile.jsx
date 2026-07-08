@@ -11,7 +11,9 @@ export default function AdminProfile() {
 
     const [formData, setFormData] = useState({
         email: '',
-        phone: ''
+        phone: '',
+        locationType: 'fixed',
+        accessible: false
     })
 
     useEffect(() => {
@@ -30,7 +32,9 @@ export default function AdminProfile() {
             if (establishment) {
                 setFormData({
                     email: establishment.email || admin.email || '',
-                    phone: establishment.phone || ''
+                    phone: establishment.phone || '',
+                    locationType: establishment.locationType || 'fixed',
+                    accessible: establishment.accessible || false
                 })
             }
         } catch (err) {
@@ -41,7 +45,8 @@ export default function AdminProfile() {
     }
 
     const handleChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
+        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+        setFormData(prev => ({ ...prev, [e.target.name]: value }))
         setSuccess(false)
     }
 
@@ -55,14 +60,18 @@ export default function AdminProfile() {
             // request() já retorna data.data, então 'updated' é o objeto direto
             const updated = await updateEstablishment(admin.establishmentId, {
                 email: formData.email,
-                phone: formData.phone
+                phone: formData.phone,
+                locationType: formData.locationType,
+                accessible: formData.accessible
             })
 
             setSuccess(true)
             if (updated) {
                 setFormData({
                     email: updated.email || formData.email,
-                    phone: updated.phone || formData.phone
+                    phone: updated.phone || formData.phone,
+                    locationType: updated.locationType || formData.locationType,
+                    accessible: updated.accessible ?? formData.accessible
                 })
             }
         } catch (err) {
@@ -139,6 +148,31 @@ export default function AdminProfile() {
                                 placeholder="(00) 00000-0000"
                             />
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Tipo de Atendimento</label>
+                            <select
+                                name="locationType"
+                                className="input w-full"
+                                value={formData.locationType}
+                                onChange={handleChange}
+                            >
+                                <option value="fixed">Apenas Local Fixo</option>
+                                <option value="domicile">Apenas Domicílio</option>
+                                <option value="both">Fixo e Domicílio</option>
+                            </select>
+                            <p className="text-xs opacity-60 mt-1">Usado no filtro de busca "Atendimento domiciliar".</p>
+                        </div>
+
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                name="accessible"
+                                checked={formData.accessible}
+                                onChange={handleChange}
+                            />
+                            Estabelecimento acessível (aparece no filtro "Acessível" da busca)
+                        </label>
 
                         <div className="pt-4">
                             <button

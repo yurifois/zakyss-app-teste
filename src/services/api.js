@@ -234,6 +234,8 @@ export async function getEstablishments(params = {}) {
     if (params.lat) queryParams.append('lat', params.lat)
     if (params.lng) queryParams.append('lng', params.lng)
     if (params.maxDistance) queryParams.append('maxDistance', params.maxDistance)
+    if (params.domiciliar) queryParams.append('domiciliar', params.domiciliar)
+    if (params.acessivel) queryParams.append('acessivel', params.acessivel)
 
     const query = queryParams.toString()
     return request(`/establishments${query ? `?${query}` : ''}`)

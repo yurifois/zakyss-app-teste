@@ -34,6 +34,7 @@ CREATE TABLE establishments (
     "documentType" TEXT,
     "locationType" TEXT,
     "serviceRadius" DOUBLE PRECISION,
+    accessible BOOLEAN DEFAULT false,
     phone TEXT,
     email TEXT,
     address TEXT,
