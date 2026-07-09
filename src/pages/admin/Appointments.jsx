@@ -67,16 +67,16 @@ export default function AdminAppointments() {
         loadEmployees()
         loadEstablishment()
 
-        // Auto-refresh appointments every 15 seconds
+        // Auto-refresh appointments every 15 seconds (silencioso, sem piscar a tela)
         const interval = setInterval(() => {
-            loadAppointments()
+            loadAppointments(true)
         }, 15000)
 
         // Navegadores mobile suspendem o setInterval quando a aba fica em segundo
         // plano (troca de app, tela bloqueada); força atualização ao voltar.
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                loadAppointments()
+                loadAppointments(true)
             }
         }
         document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -93,9 +93,9 @@ export default function AdminAppointments() {
         filterAppointments()
     }, [appointments, statusFilter, dateFilter])
 
-    const loadAppointments = async () => {
+    const loadAppointments = async (silent = false) => {
         if (!admin) return
-        setLoading(true)
+        if (!silent) setLoading(true)
 
         try {
             const apts = await api.getAppointmentsByEstablishment(admin.establishmentId)
@@ -118,7 +118,7 @@ export default function AdminAppointments() {
         } catch (err) {
             console.error('Error loading appointments:', err)
         } finally {
-            setLoading(false)
+            if (!silent) setLoading(false)
         }
     }
 

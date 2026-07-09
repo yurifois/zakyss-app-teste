@@ -73,9 +73,9 @@ export default function Profile() {
         }
     }, [user])
 
-    const loadAppointments = async () => {
+    const loadAppointments = async (silent = false) => {
         if (!user) return
-        setLoading(true)
+        if (!silent) setLoading(true)
         try {
             const apts = await api.getAppointmentsByUser(user.id)
 
@@ -103,7 +103,7 @@ export default function Profile() {
         } catch (err) {
             console.error('Error loading appointments:', err)
         } finally {
-            setLoading(false)
+            if (!silent) setLoading(false)
         }
     }
 
@@ -298,11 +298,11 @@ export default function Profile() {
         }
     }
 
-    // Auto-refresh appointments every 15 seconds
+    // Auto-refresh appointments every 15 seconds (silencioso, sem piscar a tela)
     useEffect(() => {
         const interval = setInterval(() => {
             if (user) {
-                loadAppointments()
+                loadAppointments(true)
             }
         }, 15000)
 
@@ -310,7 +310,7 @@ export default function Profile() {
         // plano (troca de app, tela bloqueada); força atualização ao voltar.
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && user) {
-                loadAppointments()
+                loadAppointments(true)
             }
         }
         document.addEventListener('visibilitychange', handleVisibilityChange)
