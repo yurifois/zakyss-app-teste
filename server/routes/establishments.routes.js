@@ -294,7 +294,8 @@ router.get('/:id/clients', authMiddleware, async (req, res, next) => {
                     date: apt.date,
                     time: apt.time,
                     services: (apt.services || []).map(id => serviceNameById[id] || 'Serviço removido'),
-                    totalPrice: apt.totalPrice
+                    totalPrice: apt.totalPrice,
+                    notes: apt.notes || null
                 }))
             }
         }).sort((a, b) => (b.lastVisit || '').localeCompare(a.lastVisit || ''))

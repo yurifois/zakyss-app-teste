@@ -98,6 +98,9 @@ export default function AdminClients() {
                                                     <div>
                                                         <strong>{formatDate(visit.date)}</strong>{' '}
                                                         <span className="text-secondary">{visit.services.join(', ')}</span>
+                                                        {visit.notes && (
+                                                            <div className="text-xs text-muted italic">📝 {visit.notes}</div>
+                                                        )}
                                                     </div>
                                                     <span className="text-muted">R$ {visit.totalPrice?.toFixed(2)}</span>
                                                 </div>
