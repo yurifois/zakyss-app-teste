@@ -54,6 +54,7 @@ export default function AdminAppointments() {
     const [showScheduleModal, setShowScheduleModal] = useState(false)
     const [scheduleDate, setScheduleDate] = useState(new Date())
     const [scheduleExceptions, setScheduleExceptions] = useState({})
+    const [workingHours, setWorkingHours] = useState({})
     const [savingSchedule, setSavingSchedule] = useState(false)
     const [exceptionForm, setExceptionForm] = useState({
         isClosed: false,
@@ -148,10 +149,26 @@ export default function AdminAppointments() {
             if (data.scheduleExceptions) {
                 setScheduleExceptions(data.scheduleExceptions)
             }
+            if (data.workingHours) {
+                setWorkingHours(data.workingHours)
+            }
         } catch (err) {
             console.error('Error loading establishment:', err)
         }
     }
+
+    // Dias da semana sem expediente (workingHours[dia] === null), pro calendário
+    // marcar como fechado visualmente
+    const WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    const closedWeekdays = WEEKDAY_KEYS
+        .map((key, index) => (workingHours[key] ? null : index))
+        .filter(index => index !== null)
+
+    // Datas com o dia inteiro fechado (exceção de calendário) - bloqueio parcial
+    // (blockedRanges) não conta, o dia continua com atendimento normal
+    const closedDatesList = Object.entries(scheduleExceptions)
+        .filter(([, exception]) => exception.isClosed)
+        .map(([date]) => date)
 
     // Monta a chave de data a partir dos componentes locais (ano/mês/dia), em vez de
     // toISOString(), que converte para UTC e pode salvar sob a data errada dependendo
@@ -1077,6 +1094,8 @@ export default function AdminAppointments() {
                             <Calendar
                                 selectedDate={scheduleDate}
                                 onSelectDate={handleScheduleDateChange}
+                                closedDays={closedWeekdays}
+                                closedDates={closedDatesList}
                             />
                         </div>
 

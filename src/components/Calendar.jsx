@@ -6,7 +6,7 @@ const MONTHS = [
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ]
 
-export default function Calendar({ selectedDate, onSelectDate, disabledDays = [], disabledDates = [], minDate = new Date() }) {
+export default function Calendar({ selectedDate, onSelectDate, disabledDays = [], disabledDates = [], closedDays = [], closedDates = [], minDate = new Date() }) {
     const [currentMonth, setCurrentMonth] = useState(new Date())
 
     const year = currentMonth.getFullYear()
@@ -100,8 +100,11 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         const isPast = date.getTime() < parsedMinDate.getTime()
         const dayOfWeek = date.getDay()
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-        const isClosed = disabledDays.includes(dayOfWeek) || disabledDates.includes(dateStr)
-        const disabled = isPast || isClosed
+        // disabledDays/disabledDates impedem selecionar (uso do cliente); closedDays/closedDates
+        // só marcam visualmente (uso do admin, que precisa poder clicar num dia fechado pra editá-lo)
+        const isBlocked = disabledDays.includes(dayOfWeek) || disabledDates.includes(dateStr)
+        const isClosed = isBlocked || closedDays.includes(dayOfWeek) || closedDates.includes(dateStr)
+        const disabled = isPast || isBlocked
         const selected = isSelected(day)
         const todayClass = isToday(day)
 
