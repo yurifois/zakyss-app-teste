@@ -53,6 +53,17 @@ function isWithinLunchBreak(establishment, date, time) {
     return time >= lunchBreak.start && time < lunchBreak.end
 }
 
+// Verifica se o atendimento (horário + duração) terminaria depois do horário de
+// fechamento do estabelecimento no dia da semana correspondente à data.
+function endsAfterClosing(establishment, date, time, durationMinutes) {
+    const dayOfWeek = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+    const hours = establishment.workingHours?.[dayOfWeek]
+    if (!hours?.close) return false
+    const [h, m] = time.split(':').map(Number)
+    const [closeH, closeM] = hours.close.split(':').map(Number)
+    return (h * 60 + m) + durationMinutes > (closeH * 60 + closeM)
+}
+
 // Um admin autenticado (dashboard) pode criar agendamentos "de encaixe" mesmo
 // para um cliente restrito — a restrição vale apenas para autoagendamento público.
 function isAuthenticatedAdminRequest(req) {
@@ -209,6 +220,10 @@ router.post('/', async (req, res, next) => {
         })
 
         if (totalDuration === 0) totalDuration = 30; // fallback
+
+        if (endsAfterClosing(establishment, date, time, totalDuration)) {
+            throw new AppError('A duração do serviço não cabe antes do horário de fechamento. Por favor, escolha um horário mais cedo.', 409)
+        }
 
         // Helpers
         const timeToMinutes = (t) => {
@@ -404,6 +419,10 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
 
                 if (establishment && isWithinLunchBreak(establishment, newDate, newTime)) {
                     throw new AppError('Este horário cai na pausa para almoço do estabelecimento. Por favor, escolha outro horário.', 409)
+                }
+
+                if (establishment && endsAfterClosing(establishment, newDate, newTime, newTotalDuration)) {
+                    throw new AppError('A duração do serviço não cabe antes do horário de fechamento. Por favor, escolha um horário mais cedo.', 409)
                 }
             }
 
