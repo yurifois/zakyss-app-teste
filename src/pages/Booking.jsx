@@ -117,7 +117,9 @@ export default function Booking() {
             // Convert Date object to YYYY-MM-DD string if needed
             let dateStr = selectedDate
             if (selectedDate instanceof Date) {
-                dateStr = selectedDate.toISOString().split('T')[0]
+                // Monta a partir dos componentes locais em vez de toISOString() (UTC),
+                // que pode virar o dia errado dependendo do fuso horário do dispositivo.
+                dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
             }
             const serviceIds = services.map(s => s.id)
             const assignments = JSON.parse(sessionStorage.getItem('booking_assignments') || '[]')
@@ -200,7 +202,9 @@ export default function Booking() {
             // Convert Date object to YYYY-MM-DD string if needed
             let dateStr = selectedDate
             if (selectedDate instanceof Date) {
-                dateStr = selectedDate.toISOString().split('T')[0]
+                // Monta a partir dos componentes locais em vez de toISOString() (UTC),
+                // que pode virar o dia errado dependendo do fuso horário do dispositivo.
+                dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
             }
 
             // Get assignments from session

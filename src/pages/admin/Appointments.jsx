@@ -153,9 +153,15 @@ export default function AdminAppointments() {
         }
     }
 
+    // Monta a chave de data a partir dos componentes locais (ano/mês/dia), em vez de
+    // toISOString(), que converte para UTC e pode salvar sob a data errada dependendo
+    // do fuso horário do dispositivo — foi a causa de bloqueios "sumindo" do editor.
+    const toDateStr = (date) =>
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
     const handleScheduleDateChange = (date) => {
         setScheduleDate(date)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = toDateStr(date)
         const exception = scheduleExceptions[dateStr]
         if (exception) {
             setExceptionForm({
@@ -174,7 +180,7 @@ export default function AdminAppointments() {
         if (!admin) return
         setSavingSchedule(true)
         try {
-            const dateStr = scheduleDate.toISOString().split('T')[0]
+            const dateStr = toDateStr(scheduleDate)
             const newExceptions = { ...scheduleExceptions }
             
             if (exceptionForm.isClosed || exceptionForm.blockedRanges.length > 0) {
@@ -204,7 +210,7 @@ export default function AdminAppointments() {
     }
 
     const handleFilterByScheduleDate = () => {
-        const dateStr = scheduleDate.toISOString().split('T')[0]
+        const dateStr = toDateStr(scheduleDate)
         setDateFilter(dateStr)
         setShowScheduleModal(false)
     }
