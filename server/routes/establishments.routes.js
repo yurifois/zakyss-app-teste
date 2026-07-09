@@ -354,11 +354,7 @@ router.get('/:id/available-slots', async (req, res, next) => {
         })
         if (requestedDuration === 0) requestedDuration = 30 // fallback
 
-        // Não oferecer horários que fariam o atendimento terminar depois do fechamento
-        const closeMinutes = closeH * 60 + closeM
-        let availableSlots = slots.filter(slot => timeToMinutes(slot) + requestedDuration <= closeMinutes)
-
-        availableSlots = availableSlots.filter(slot => {
+        let availableSlots = slots.filter(slot => {
             if (isSolo) {
                 const hasConflict = activeAppointments.some(apt => checkOverlap(slot, requestedDuration, apt.time, apt.totalDuration))
                 if (hasConflict) return false
