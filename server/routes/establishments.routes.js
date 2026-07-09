@@ -225,9 +225,12 @@ router.get('/:id/market-prices', authMiddleware, premiumMiddleware, async (req, 
 // Agendamentos do estabelecimento (admin only)
 router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
     try {
-        const appointments = await appointmentsRepo.findAll({
-            establishmentId: parseInt(req.params.id)
-        })
+        const establishmentId = parseInt(req.params.id)
+        if (req.user.type !== 'admin' || req.user.establishmentId !== establishmentId) {
+            throw new AppError('Você não tem permissão para ver os agendamentos deste estabelecimento', 403)
+        }
+
+        const appointments = await appointmentsRepo.findAll({ establishmentId })
 
         // Filtrar por data se fornecido
         let filtered = appointments
@@ -245,6 +248,60 @@ router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
                 if (dateCompare !== 0) return dateCompare
                 return a.time.localeCompare(b.time)
             })
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Ficha de clientes: agrupa os agendamentos concluídos por cliente, com o
+// histórico de serviços já realizados no estabelecimento
+router.get('/:id/clients', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.params.id)
+        if (req.user.type !== 'admin' || req.user.establishmentId !== establishmentId) {
+            throw new AppError('Você não tem permissão para ver os clientes deste estabelecimento', 403)
+        }
+
+        const appointments = await appointmentsRepo.findAll({ establishmentId })
+        const completed = appointments.filter(a => a.status === 'completed')
+
+        const servicesRepo = getRepository('services.json')
+        const allServices = await servicesRepo.findAll()
+        const serviceNameById = {}
+        allServices.forEach(s => { serviceNameById[s.id] = s.name })
+
+        const normalizePhone = (phone) => (phone || '').replace(/\D/g, '')
+        const clientsByKey = {}
+
+        for (const apt of completed) {
+            const key = normalizePhone(apt.customerPhone) || `email:${(apt.customerEmail || '').toLowerCase()}`
+            if (!clientsByKey[key]) clientsByKey[key] = []
+            clientsByKey[key].push(apt)
+        }
+
+        const clients = Object.values(clientsByKey).map(apts => {
+            const sorted = [...apts].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))
+            const latest = sorted[0]
+            return {
+                name: latest.customerName,
+                phone: latest.customerPhone,
+                email: latest.customerEmail,
+                userId: latest.userId || null,
+                visitCount: sorted.length,
+                lastVisit: latest.date,
+                history: sorted.map(apt => ({
+                    date: apt.date,
+                    time: apt.time,
+                    services: (apt.services || []).map(id => serviceNameById[id] || 'Serviço removido'),
+                    totalPrice: apt.totalPrice
+                }))
+            }
+        }).sort((a, b) => (b.lastVisit || '').localeCompare(a.lastVisit || ''))
+
+        res.json({
+            success: true,
+            data: clients
         })
     } catch (error) {
         next(error)

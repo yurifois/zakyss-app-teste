@@ -300,6 +300,10 @@ export async function getAppointmentsByEstablishment(establishmentId, params = {
     return request(`/establishments/${establishmentId}/appointments${query ? `?${query}` : ''}`)
 }
 
+export async function getEstablishmentClients(establishmentId) {
+    return request(`/establishments/${establishmentId}/clients`)
+}
+
 export async function getAppointmentsByUser(userId) {
     return request(`/users/${userId}/appointments`)
 }

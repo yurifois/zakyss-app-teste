@@ -28,6 +28,7 @@ import PartnerSetup from './pages/partner/Setup'
 import AdminLogin from './pages/admin/Login'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminAppointments from './pages/admin/Appointments'
+import AdminClients from './pages/admin/Clients'
 import AdminSchedule from './pages/admin/Schedule'
 import AdminServices from './pages/admin/Services'
 import AdminEmployees from './pages/admin/Employees'
@@ -67,6 +68,7 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="agendamentos" element={<AdminAppointments />} />
+                <Route path="clientes" element={<AdminClients />} />
                 <Route path="horarios" element={<AdminSchedule />} />
                 <Route path="servicos" element={<AdminServices />} />
                 <Route path="funcionarios" element={<AdminEmployees />} />
