@@ -29,15 +29,20 @@ function isTokenValid(token) {
 
 // Helper para requisições
 async function request(endpoint, options = {}) {
-    const userToken = localStorage.getItem('zakys_token') || sessionStorage.getItem('zakys_token')
-    const adminToken = localStorage.getItem('zakys_admin_token') || sessionStorage.getItem('zakys_admin_token')
+    const userTokenLocal = localStorage.getItem('zakys_token')
+    const userTokenSession = sessionStorage.getItem('zakys_token')
+    const userToken = isTokenValid(userTokenLocal) ? userTokenLocal : (isTokenValid(userTokenSession) ? userTokenSession : null)
+
+    const adminTokenLocal = localStorage.getItem('zakys_admin_token')
+    const adminTokenSession = sessionStorage.getItem('zakys_admin_token')
+    const adminToken = isTokenValid(adminTokenLocal) ? adminTokenLocal : (isTokenValid(adminTokenSession) ? adminTokenSession : null)
 
     // Usar token baseado no contexto: admin para rotas /admin, user para o resto
     let token = null
     if (endpoint.includes('/admin') || endpoint.includes('/establishments/')) {
-        token = isTokenValid(adminToken) ? adminToken : (isTokenValid(userToken) ? userToken : null)
+        token = adminToken || userToken
     } else {
-        token = isTokenValid(userToken) ? userToken : (isTokenValid(adminToken) ? adminToken : null)
+        token = userToken || adminToken
     }
 
     const config = {
@@ -139,34 +144,59 @@ export function adminLogout() {
 }
 
 export function getCurrentUser() {
-    let user = localStorage.getItem('zakys_user') || sessionStorage.getItem('zakys_user')
-    let token = localStorage.getItem('zakys_token') || sessionStorage.getItem('zakys_token')
+    let userStr = localStorage.getItem('zakys_user')
+    let token = localStorage.getItem('zakys_token')
     
-    if (!user || !isTokenValid(token)) {
-        // Limpar dados expirados
-        if (user && !isTokenValid(token)) {
-            localStorage.removeItem('zakys_user')
-            localStorage.removeItem('zakys_token')
-            sessionStorage.removeItem('zakys_user')
-            sessionStorage.removeItem('zakys_token')
-        }
-        return null
+    if (userStr && isTokenValid(token)) {
+        return JSON.parse(userStr)
     }
-    return JSON.parse(user)
+    
+    if (userStr || token) {
+        localStorage.removeItem('zakys_user')
+        localStorage.removeItem('zakys_token')
+    }
+    
+    userStr = sessionStorage.getItem('zakys_user')
+    token = sessionStorage.getItem('zakys_token')
+    
+    if (userStr && isTokenValid(token)) {
+        return JSON.parse(userStr)
+    }
+    
+    if (userStr || token) {
+        sessionStorage.removeItem('zakys_user')
+        sessionStorage.removeItem('zakys_token')
+    }
+    
+    return null
 }
 
 export function getCurrentAdmin() {
-    const admin = localStorage.getItem('zakys_admin')
-    const token = localStorage.getItem('zakys_admin_token')
-    if (!admin || !isTokenValid(token)) {
-        // Limpar dados expirados
-        if (admin && !isTokenValid(token)) {
-            localStorage.removeItem('zakys_admin')
-            localStorage.removeItem('zakys_admin_token')
-        }
-        return null
+    let adminStr = localStorage.getItem('zakys_admin')
+    let token = localStorage.getItem('zakys_admin_token')
+
+    if (adminStr && isTokenValid(token)) {
+        return JSON.parse(adminStr)
     }
-    return JSON.parse(admin)
+
+    if (adminStr || token) {
+        localStorage.removeItem('zakys_admin')
+        localStorage.removeItem('zakys_admin_token')
+    }
+
+    adminStr = sessionStorage.getItem('zakys_admin')
+    token = sessionStorage.getItem('zakys_admin_token')
+
+    if (adminStr && isTokenValid(token)) {
+        return JSON.parse(adminStr)
+    }
+
+    if (adminStr || token) {
+        sessionStorage.removeItem('zakys_admin')
+        sessionStorage.removeItem('zakys_admin_token')
+    }
+
+    return null
 }
 
 export function getToken() {

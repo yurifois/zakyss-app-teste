@@ -22,6 +22,8 @@ export default function Booking() {
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [allEstablishmentServices, setAllEstablishmentServices] = useState([])
+    const [showReviewModal, setShowReviewModal] = useState(false)
+    const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
     const calendarRef = useRef(null)
 
@@ -43,6 +45,20 @@ export default function Booking() {
             }))
         }
     }, [user])
+
+    // Salva o estado do agendamento incompleto no localStorage
+    useEffect(() => {
+        if (id && (services.length > 0 || selectedDate || selectedTime || formData.notes)) {
+            const stateToSave = {
+                establishmentId: id,
+                services: services.map(s => s.id),
+                selectedDate: selectedDate instanceof Date ? selectedDate.toISOString() : selectedDate,
+                selectedTime,
+                formData
+            }
+            localStorage.setItem('zakys_unfinished_booking', JSON.stringify(stateToSave))
+        }
+    }, [id, services, selectedDate, selectedTime, formData])
 
     useEffect(() => {
         // We no longer require login immediately to view the page.
@@ -82,11 +98,26 @@ export default function Booking() {
     const loadData = async () => {
         setLoading(true)
         try {
-            // Get selected services from session
+            // Get selected services from session or unfinished booking
             const storedServices = sessionStorage.getItem('booking_services')
+            const unfinishedStr = localStorage.getItem('zakys_unfinished_booking')
             let serviceIds = []
+            let unfinished = null
 
-            if (storedServices) {
+            if (unfinishedStr) {
+                try {
+                    const parsed = JSON.parse(unfinishedStr)
+                    if (parsed.establishmentId === id) {
+                        unfinished = parsed
+                        serviceIds = parsed.services || []
+                        if (parsed.selectedDate) setSelectedDate(new Date(parsed.selectedDate))
+                        if (parsed.selectedTime) setSelectedTime(parsed.selectedTime)
+                        if (parsed.formData) setFormData(parsed.formData)
+                    }
+                } catch (e) {
+                    console.error('Error parsing unfinished booking', e)
+                }
+            } else if (storedServices) {
                 serviceIds = JSON.parse(storedServices)
             }
 
@@ -176,7 +207,7 @@ export default function Booking() {
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
-    const handleSubmit = async (e) => {
+    const handleReview = (e) => {
         e.preventDefault()
 
         if (!selectedDate || !selectedTime) {
@@ -190,12 +221,14 @@ export default function Booking() {
         }
 
         if (!user) {
-            error('Você precisa estar logado para agendar')
-            sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
-            navigate('/entrar')
+            setShowLoginPrompt(true)
             return
         }
 
+        setShowReviewModal(true)
+    }
+
+    const handleSubmit = async () => {
         setSubmitting(true)
 
         try {
@@ -225,6 +258,7 @@ export default function Booking() {
 
             sessionStorage.removeItem('booking_services')
             sessionStorage.removeItem('booking_assignments')
+            localStorage.removeItem('zakys_unfinished_booking')
             success('Agendamento realizado com sucesso!')
             navigate(`/confirmacao/${appointment.id}`)
         } catch (err) {
@@ -393,11 +427,11 @@ export default function Booking() {
                             {/* Submit */}
                             {selectedTime && (
                                 <button
-                                    type="submit"
+                                    type="button"
                                     className="btn btn-primary btn-lg w-full"
-                                    disabled={submitting}
+                                    onClick={handleReview}
                                 >
-                                    {submitting ? 'Agendando...' : 'Confirmar agendamento'}
+                                    Revisar agendamento
                                 </button>
                             )}
                         </form>
@@ -448,6 +482,98 @@ export default function Booking() {
                     </div>
                 </div>
             </div>
+
+            {/* Review Modal */}
+            {showReviewModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-base-100 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CalendarIcon size={32} />
+                            </div>
+                            <h2 className="text-2xl font-bold mb-2">Quase lá!</h2>
+                            <p className="text-muted mb-6">Confirme os dados do seu agendamento abaixo.</p>
+
+                            <div className="bg-base-200 rounded-xl p-4 text-left mb-6 space-y-3">
+                                <div>
+                                    <span className="text-xs text-muted uppercase font-bold tracking-wider">Local</span>
+                                    <p className="font-medium">{establishment?.name}</p>
+                                </div>
+                                <div>
+                                    <span className="text-xs text-muted uppercase font-bold tracking-wider">Data e Hora</span>
+                                    <p className="font-medium capitalize">{formatDate(selectedDate)} às {selectedTime}</p>
+                                </div>
+                                <div>
+                                    <span className="text-xs text-muted uppercase font-bold tracking-wider">Serviços ({services.length})</span>
+                                    <p className="font-medium">{services.map(s => s.name).join(', ')}</p>
+                                </div>
+                                <div className="pt-3 mt-3 border-t border-base-300 flex justify-between items-center">
+                                    <span className="text-sm font-bold">Total a pagar:</span>
+                                    <span className="text-xl font-black text-primary">R$ {getTotalPrice().toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    className="btn btn-primary btn-lg w-full text-lg shadow-lg shadow-primary/20"
+                                    onClick={handleSubmit}
+                                    disabled={submitting}
+                                >
+                                    {submitting ? 'Confirmando...' : 'Confirmar Agendamento'}
+                                </button>
+                                <button
+                                    className="btn btn-ghost"
+                                    onClick={() => setShowReviewModal(false)}
+                                    disabled={submitting}
+                                >
+                                    Voltar e editar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Login Prompt Modal */}
+            {showLoginPrompt && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-base-100 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center animate-in fade-in zoom-in duration-200">
+                        <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                            <UserIcon size={32} />
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">Identifique-se</h2>
+                        <p className="text-muted mb-6 text-sm">Para concluir o agendamento, você precisa entrar na sua conta ou criar uma nova.</p>
+                        
+                        <div className="flex flex-col gap-3">
+                            <button 
+                                className="btn btn-primary w-full"
+                                onClick={() => {
+                                    sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
+                                    navigate('/entrar')
+                                }}
+                            >
+                                Fazer Login
+                            </button>
+                            <button 
+                                className="btn w-full"
+                                style={{ backgroundColor: 'var(--base-200)' }}
+                                onClick={() => {
+                                    sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
+                                    navigate('/cadastro')
+                                }}
+                            >
+                                Criar Conta
+                            </button>
+                            <button 
+                                className="btn btn-ghost w-full mt-2"
+                                onClick={() => setShowLoginPrompt(false)}
+                            >
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import NotificationManager from './components/NotificationManager'
 import ScrollToTop from './components/ScrollToTop'
 import './index.css'
@@ -32,8 +33,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ScrollToTop />
             <AuthProvider>
                 <ToastProvider>
-                    <NotificationManager />
-                    <App />
+                    <NotificationProvider>
+                        <NotificationManager />
+                        <App />
+                    </NotificationProvider>
                 </ToastProvider>
             </AuthProvider>
         </BrowserRouter>

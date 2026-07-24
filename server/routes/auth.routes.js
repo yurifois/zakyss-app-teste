@@ -59,7 +59,8 @@ router.post('/register', async (req, res, next) => {
             throw new AppError('Nome, email e senha são obrigatórios', 400)
         }
 
-        const existing = await usersRepo.findOne({ email })
+        const normalizedEmail = email.toLowerCase().trim()
+        const existing = await usersRepo.findOne({ email: normalizedEmail })
         if (existing) {
             throw new AppError('Email já cadastrado', 400)
         }
@@ -143,7 +144,8 @@ router.post('/admin/register', async (req, res, next) => {
             throw new AppError('Dados incompletos', 400)
         }
 
-        const existing = await adminsRepo.findOne({ email })
+        const normalizedEmail = email.toLowerCase().trim()
+        const existing = await adminsRepo.findOne({ email: normalizedEmail })
         if (existing) {
             throw new AppError('Email já cadastrado', 400)
         }
