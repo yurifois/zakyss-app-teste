@@ -72,8 +72,8 @@ function isAuthenticatedAdminRequest(req) {
 function canManageAppointment(req, appointment) {
     const user = req.user
     if (!user || !appointment) return false
-    if (user.type === 'admin') return user.establishmentId === appointment.establishmentId
-    if (user.type === 'customer') return Boolean(appointment.userId) && user.id === appointment.userId
+    if (user.type === 'admin') return parseInt(user.establishmentId) === parseInt(appointment.establishmentId)
+    if (user.type === 'customer') return Boolean(appointment.userId) && parseInt(user.id) === parseInt(appointment.userId)
     return false
 }
 
@@ -348,7 +348,7 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
         }
 
         // Edição completa (serviços, preço, reagendamento) é uma ação administrativa
-        if (req.user?.type !== 'admin' || req.user.establishmentId !== existingAppointment.establishmentId) {
+        if (req.user?.type !== 'admin' || parseInt(req.user.establishmentId) !== parseInt(existingAppointment.establishmentId)) {
             throw new AppError('Você não tem permissão para editar este agendamento', 403)
         }
 

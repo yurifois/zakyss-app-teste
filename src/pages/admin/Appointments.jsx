@@ -287,6 +287,7 @@ export default function AdminAppointments() {
             success(`Status atualizado para ${newStatus}`)
         } catch (err) {
             console.error('Error updating status:', err)
+            error(err.message || 'Erro ao atualizar status do agendamento')
         }
     }
 

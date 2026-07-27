@@ -78,8 +78,9 @@ export default function AdminDashboard() {
             await api.updateAppointmentStatus(appointmentId, 'confirmed')
             loadData()
             success('Agendamento confirmado!')
-        } catch (error) {
-            console.error('Error confirming:', error)
+        } catch (err) {
+            console.error('Error confirming:', err)
+            error(err.message || 'Erro ao confirmar agendamento')
         }
     }
 

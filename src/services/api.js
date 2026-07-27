@@ -37,9 +37,10 @@ async function request(endpoint, options = {}) {
     const adminTokenSession = sessionStorage.getItem('zakys_admin_token')
     const adminToken = isTokenValid(adminTokenLocal) ? adminTokenLocal : (isTokenValid(adminTokenSession) ? adminTokenSession : null)
 
-    // Usar token baseado no contexto: admin para rotas /admin, user para o resto
+    // Usar token baseado no contexto: priorizar adminToken se estiver no painel admin ou em rotas admin
     let token = null
-    if (endpoint.includes('/admin') || endpoint.includes('/establishments/')) {
+    const isAdminContext = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+    if (isAdminContext || endpoint.includes('/admin') || endpoint.includes('/establishments/')) {
         token = adminToken || userToken
     } else {
         token = userToken || adminToken
