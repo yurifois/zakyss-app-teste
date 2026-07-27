@@ -82,6 +82,12 @@ const generateEmailTemplate = (customerName, date, time, reminderType) => {
                                     </p>
                                 </div>
                                 
+                                <div style="background-color: #fff1f2; border: 1px solid #f43f5e; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+                                    <p style="color: #be123c; font-size: 13px; margin: 0; line-height: 1.5;">
+                                        ⚠️ <strong>Comunicado importante:</strong> Alguns serviços podem sofrer alteração de valor e necessitam de diagnóstico prévio no momento do atendimento.
+                                    </p>
+                                </div>
+                                
                                 <p style="color: #5c5752; font-size: 14px; margin: 0;">
                                     Não se esqueça! Estamos te esperando. ✨
                                 </p>
@@ -207,6 +213,12 @@ const generateConfirmationTemplate = (customerName, date, time, establishmentNam
                                     </p>
                                 </div>
                                 
+                                <div style="background-color: #fff1f2; border: 1px solid #f43f5e; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+                                    <p style="color: #be123c; font-size: 13px; margin: 0; line-height: 1.5;">
+                                        ⚠️ <strong>Comunicado importante:</strong> Alguns serviços podem sofrer alteração de valor e necessitam de diagnóstico prévio no momento do atendimento.
+                                    </p>
+                                </div>
+
                                 <p style="color: #5c5752; font-size: 14px; margin: 0;">
                                     Você receberá lembretes antes do seu horário. Até lá! ✨
                                 </p>
@@ -447,10 +459,95 @@ export const sendReturnReminder = async (email, customerName, establishmentName,
     }
 }
 
+export const sendReactivationEmailToCustomer = async (email, customerName, date, time, establishmentName) => {
+    if (!email) return false
+    const formattedDate = formatDate(date)
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr><td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr><td style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); padding: 30px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🔄 Agendamento Reativado!</h1>
+                    </td></tr>
+                    <tr><td style="padding: 40px 30px;">
+                        <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">Olá <strong style="color: #ec4899;">${customerName}</strong>! 👋</h2>
+                        <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">Seu agendamento foi reativado com sucesso e está confirmado novamente!</p>
+                        <div style="background-color: #fdf2f8; border-left: 4px solid #ec4899; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                            <p style="color: #db2777; font-size: 14px; margin: 0 0 10px 0; font-weight: 600;">📍 ${establishmentName}</p>
+                            <p style="color: #171615; font-size: 20px; margin: 0; line-height: 1.6;">📅 <strong>${formattedDate}</strong><br>🕐 <strong>${time}</strong></p>
+                        </div>
+                        <p style="color: #5c5752; font-size: 14px; margin: 0;">Estamos te esperando! ✨</p>
+                    </td></tr>
+                    <tr><td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                        <p style="color: #5c5752; font-size: 12px; margin: 0;">Este é um email automático do Zakys.</p>
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>`
+    try {
+        await sendViaVercelGateway(email, `🔄 Agendamento Reativado - ${establishmentName}`, html)
+        console.log(`[EmailService] ✅ Email de reativação enviado para o cliente: ${email}`)
+        return true
+    } catch (err) {
+        console.error(`[EmailService] ❌ Erro ao enviar email de reativação para ${email}:`, err.message)
+        return false
+    }
+}
+
+export const sendReactivationEmailToEstablishment = async (establishmentEmail, establishmentName, customerName, date, time, servicesListStr) => {
+    if (!establishmentEmail) return false
+    const formattedDate = formatDate(date)
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr><td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr><td style="background: linear-gradient(135deg, #db2777 0%, #9d174d 100%); padding: 30px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🔄 Agendamento Reativado!</h1>
+                    </td></tr>
+                    <tr><td style="padding: 40px 30px;">
+                        <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">Olá, <strong style="color: #db2777;">${establishmentName}</strong>! 👋</h2>
+                        <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">Um agendamento prévio foi reativado no sistema. Confira os detalhes:</p>
+                        <div style="background-color: #fdf2f8; border-left: 4px solid #db2777; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                            <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">👤 <strong>Cliente:</strong> ${customerName}</p>
+                            <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">📅 <strong>Data:</strong> ${formattedDate}</p>
+                            <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">🕐 <strong>Horário:</strong> ${time}</p>
+                            <p style="color: #171615; font-size: 16px; margin: 0; line-height: 1.6;">💅 <strong>Serviços:</strong> ${servicesListStr}</p>
+                        </div>
+                    </td></tr>
+                    <tr><td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                        <p style="color: #5c5752; font-size: 12px; margin: 0;">Este é um email automático do Zakys.</p>
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>`
+    try {
+        await sendViaVercelGateway(establishmentEmail, `🔄 Agendamento Reativado - ${customerName}`, html)
+        console.log(`[EmailService] ✅ Email de reativação enviado para o estabelecimento: ${establishmentEmail}`)
+        return true
+    } catch (err) {
+        console.error(`[EmailService] ❌ Erro ao enviar email de reativação para o estabelecimento ${establishmentEmail}:`, err.message)
+        return false
+    }
+}
+
 export default {
     sendAppointmentReminder,
     sendConfirmationEmail,
     sendNewAppointmentEmail,
     sendReturnReminder,
+    sendReactivationEmailToCustomer,
+    sendReactivationEmailToEstablishment,
     testEmail
 }

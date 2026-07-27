@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
 import { validateCNPJ, maskCNPJ, lookupCNPJ, validateCPF, maskCPF, lookupCEP } from '../../services/validation'
 import GooglePlacesInput from '../../components/GooglePlacesInput'
@@ -214,23 +214,44 @@ export default function PartnerRegister() {
                     </div>
                 </div>
 
+                {/* Client Redirect Banner */}
+                <div className="p-3 mb-6 rounded-xl border text-center text-xs" style={{ backgroundColor: '#fdf2f8', borderColor: 'rgba(236, 72, 153, 0.3)', color: '#db2777' }}>
+                    ℹ️ <strong>Quer apenas agendar serviços de beleza?</strong>{' '}
+                    <Link to="/cadastro" className="underline font-bold ml-1" style={{ color: '#be123c' }}>
+                        Clique aqui para Cadastro de Cliente
+                    </Link>
+                </div>
+
                 <form onSubmit={handleSubmit}>
                     {/* Document Type Selection */}
-                    <div className="flex justify-center mb-6">
-                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <div className="flex flex-col items-center mb-6">
+                        <span className="text-xs text-muted font-semibold uppercase tracking-wider mb-2">Tipo de Cadastro Parceiro</span>
+                        <div className="flex p-1 rounded-xl w-full max-w-md" style={{ backgroundColor: 'var(--bg-tertiary, #f3f4f6)', border: '1px solid var(--border-color, #e5e7eb)' }}>
                             <button
                                 type="button"
-                                className={`px-4 py-2 rounded-md transition-all ${documentType === 'cnpj' ? 'bg-white shadow text-primary font-bold' : 'text-gray-500'}`}
+                                className="flex-1 py-3 px-3 rounded-lg font-bold text-xs sm:text-sm transition-all flex flex-col items-center gap-1"
+                                style={{
+                                    backgroundColor: documentType === 'cnpj' ? 'var(--white, #ffffff)' : 'transparent',
+                                    color: documentType === 'cnpj' ? 'var(--primary-600, #db2777)' : 'var(--gray-600, #4b5563)',
+                                    boxShadow: documentType === 'cnpj' ? '0 2px 4px rgba(0,0,0,0.08)' : 'none'
+                                }}
                                 onClick={() => handleDocumentTypeChange('cnpj')}
                             >
-                                Pessoa Jurídica (CNPJ)
+                                <span>🏢 Pessoa Jurídica (CNPJ)</span>
+                                <span className="text-xs font-normal text-secondary">Salões, Clínicas, Estúdios</span>
                             </button>
                             <button
                                 type="button"
-                                className={`px-4 py-2 rounded-md transition-all ${documentType === 'cpf' ? 'bg-white shadow text-primary font-bold' : 'text-gray-500'}`}
+                                className="flex-1 py-3 px-3 rounded-lg font-bold text-xs sm:text-sm transition-all flex flex-col items-center gap-1"
+                                style={{
+                                    backgroundColor: documentType === 'cpf' ? 'var(--white, #ffffff)' : 'transparent',
+                                    color: documentType === 'cpf' ? 'var(--primary-600, #db2777)' : 'var(--gray-600, #4b5563)',
+                                    boxShadow: documentType === 'cpf' ? '0 2px 4px rgba(0,0,0,0.08)' : 'none'
+                                }}
                                 onClick={() => handleDocumentTypeChange('cpf')}
                             >
-                                Pessoa Física (CPF)
+                                <span>💼 Autônomo (CPF)</span>
+                                <span className="text-xs font-normal text-secondary">Profissionais em geral</span>
                             </button>
                         </div>
                     </div>

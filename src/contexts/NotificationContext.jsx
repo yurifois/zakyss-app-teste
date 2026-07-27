@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 import * as api from '../services/api'
+import { showLocalNotification, areNotificationsEnabled } from '../services/notificationService'
 
 const NotificationContext = createContext({})
 
@@ -27,10 +28,20 @@ export function NotificationProvider({ children }) {
                 
                 confirmedAppointments.forEach(apt => {
                     if (!notifiedIds.includes(apt.id)) {
-                        // Novo agendamento confirmado!
-                        info(`Seu agendamento para o dia ${new Date(apt.date).toLocaleDateString('pt-BR')} às ${apt.time} foi confirmado!`, {
-                            duration: 8000
-                        })
+                        const dateStr = new Date(apt.date).toLocaleDateString('pt-BR')
+                        const message = `Seu agendamento para o dia ${dateStr} às ${apt.time} foi confirmado!`
+                        
+                        // 1. Toast in-app
+                        info(message, { duration: 8000 })
+                        
+                        // 2. Notificação nativa (push notification)
+                        if (areNotificationsEnabled()) {
+                            showLocalNotification(
+                                'Agendamento Confirmado',
+                                message,
+                                { tag: `confirmed-${apt.id}`, requireInteraction: true }
+                            )
+                        }
                         notifiedIds.push(apt.id)
                         hasNewNotification = true
                     }

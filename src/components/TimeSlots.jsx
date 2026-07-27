@@ -21,27 +21,21 @@ export default function TimeSlots({ slots, selectedTime, onSelectTime, bookedTim
     )
 }
 
-// Helper function to generate time slots
-export function generateTimeSlots(openTime, closeTime, intervalMinutes = 30) {
+// Helper function to generate time slots (horas redondas)
+export function generateTimeSlots(openTime, closeTime, intervalMinutes = 60) {
     const slots = []
     const [openHour, openMin] = openTime.split(':').map(Number)
     const [closeHour, closeMin] = closeTime.split(':').map(Number)
 
-    let currentHour = openHour
-    let currentMin = openMin
+    let currentHour = openMin > 0 ? openHour + 1 : openHour
 
     while (
         currentHour < closeHour ||
-        (currentHour === closeHour && currentMin < closeMin)
+        (currentHour === closeHour && closeMin > 0)
     ) {
-        const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`
+        const timeStr = `${String(currentHour).padStart(2, '0')}:00`
         slots.push(timeStr)
-
-        currentMin += intervalMinutes
-        if (currentMin >= 60) {
-            currentHour += Math.floor(currentMin / 60)
-            currentMin = currentMin % 60
-        }
+        currentHour += 1
     }
 
     return slots

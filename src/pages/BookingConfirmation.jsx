@@ -14,6 +14,8 @@ export default function BookingConfirmation() {
     const [cancelling, setCancelling] = useState(false)
     const [guestPhone, setGuestPhone] = useState('')
     const [showGuestForm, setShowGuestForm] = useState(false)
+    const [showCancelModal, setShowCancelModal] = useState(false)
+    const [showReactivateModal, setShowReactivateModal] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -35,27 +37,43 @@ export default function BookingConfirmation() {
 
     const isOwner = isAuthenticated && appointment && user?.id === appointment.userId
 
-    const handleCancel = async () => {
+    const handleCancel = () => {
         if (!isOwner && !guestPhone.trim()) {
             setShowGuestForm(true)
             return
         }
+        setShowCancelModal(true)
+    }
 
-        if (!window.confirm('Tem certeza que deseja cancelar este agendamento?')) return
-
+    const confirmCancel = async () => {
         setCancelling(true)
         try {
             if (isOwner) {
-                await api.updateAppointmentStatus(appointment.id, 'cancelled')
+                await api.updateAppointmentStatus(appointment.id, 'cancelled', 'customer')
             } else {
                 await api.cancelGuestAppointment(appointment.id, guestPhone)
             }
-            setAppointment(prev => ({ ...prev, status: 'cancelled' }))
+            setAppointment(prev => ({ ...prev, status: 'cancelled', cancelledBy: 'customer' }))
             success('Agendamento cancelado com sucesso.')
         } catch (err) {
             showError(err.message || 'Erro ao cancelar agendamento')
         } finally {
             setCancelling(false)
+            setShowCancelModal(false)
+        }
+    }
+
+    const confirmReactivate = async () => {
+        setCancelling(true)
+        try {
+            await api.reactivateAppointment(appointment.id)
+            setAppointment(prev => ({ ...prev, status: 'confirmed', cancelledBy: null, cancelledAt: null }))
+            success('Agendamento reativado com sucesso! Notificações enviadas.')
+        } catch (err) {
+            showError(err.message || 'Erro ao reativar agendamento')
+        } finally {
+            setCancelling(false)
+            setShowReactivateModal(false)
         }
     }
 
@@ -149,9 +167,18 @@ export default function BookingConfirmation() {
                         </div>
                     </div>
 
-                    <div className="p-4" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-lg)' }}>
+                    <div className="p-4 mb-4" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-lg)' }}>
                         <p className="text-sm" style={{ color: '#fcd34d' }}>
                             <strong>⚠️ Status:</strong> Aguardando confirmação do estabelecimento
+                        </p>
+                    </div>
+
+                    <div className="p-4" style={{ backgroundColor: '#fdf2f8', border: '1px solid rgba(236, 72, 153, 0.3)', borderRadius: 'var(--radius-lg)' }}>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#db2777' }}>
+                            ℹ️ Comunicado ao Cliente:
+                        </p>
+                        <p className="text-xs leading-relaxed" style={{ color: '#5c5752' }}>
+                            Alguns serviços podem sofrer alteração de valor e necessitam de diagnóstico prévio presencial no momento do atendimento.
                         </p>
                     </div>
 
@@ -175,14 +202,27 @@ export default function BookingConfirmation() {
                                 className="btn btn-sm"
                                 style={{ backgroundColor: 'var(--error-500)', color: 'white' }}
                             >
-                                {cancelling ? 'Cancelando...' : '✕ Cancelar agendamento'}
+                                ✕ Cancelar agendamento
                             </button>
                         </div>
                     )}
 
                     {appointment.status === 'cancelled' && (
-                        <div className="mt-6 pt-6 text-sm text-secondary" style={{ borderTop: '1px solid var(--border-color)' }}>
-                            Este agendamento foi cancelado.
+                        <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
+                            <p className="text-sm text-secondary mb-4">
+                                {appointment.cancelledBy === 'customer'
+                                    ? '🚫 Este agendamento foi cancelado pelo cliente.'
+                                    : appointment.cancelledBy === 'establishment'
+                                    ? '🏢 Este agendamento foi cancelado pelo estabelecimento.'
+                                    : '✕ Este agendamento foi cancelado.'}
+                            </p>
+                            <button
+                                onClick={() => setShowReactivateModal(true)}
+                                disabled={cancelling}
+                                className="btn btn-primary w-full"
+                            >
+                                🔄 Reativar este Agendamento
+                            </button>
                         </div>
                     )}
                 </div>
@@ -196,6 +236,69 @@ export default function BookingConfirmation() {
                     </Link>
                 </div>
             </div>
+
+            {/* Modal de Confirmação de Cancelamento */}
+            {showCancelModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
+                            <span style={{ fontSize: '2rem' }}>⚠️</span>
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">Confirmar Cancelamento?</h2>
+                        <p className="text-muted text-sm mb-6">
+                            Tem certeza que deseja cancelar seu agendamento em <strong>{establishment?.name}</strong> para <strong>{formatDate(appointment.date)} às {appointment.time}</strong>?
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                className="btn w-full"
+                                onClick={confirmCancel}
+                                disabled={cancelling}
+                                style={{ backgroundColor: 'var(--error-500)', color: 'white' }}
+                            >
+                                {cancelling ? 'Cancelando...' : 'Sim, Cancelar Agendamento'}
+                            </button>
+                            <button
+                                className="btn btn-ghost w-full"
+                                onClick={() => setShowCancelModal(false)}
+                                disabled={cancelling}
+                            >
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Reativação */}
+            {showReactivateModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(236, 72, 153, 0.1)' }}>
+                            <span style={{ fontSize: '2rem' }}>🔄</span>
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">Reativar Agendamento?</h2>
+                        <p className="text-muted text-sm mb-6">
+                            Deseja restaurar seu agendamento em <strong>{establishment?.name}</strong> para <strong>{formatDate(appointment.date)} às {appointment.time}</strong>? Notificaremos o estabelecimento por e-mail.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                className="btn btn-primary w-full"
+                                onClick={confirmReactivate}
+                                disabled={cancelling}
+                            >
+                                {cancelling ? 'Reativando...' : 'Sim, Reativar Agendamento'}
+                            </button>
+                            <button
+                                className="btn btn-ghost w-full"
+                                onClick={() => setShowReactivateModal(false)}
+                                disabled={cancelling}
+                            >
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

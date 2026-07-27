@@ -352,21 +352,16 @@ router.get('/:id/available-slots', async (req, res, next) => {
             blockedRanges = [...blockedRanges, hours.lunchBreak]
         }
 
-        // Gerar slots de 30 minutos
+        // Gerar slots de horas redondas (60 minutos)
         const slots = []
         const [openH, openM] = hours.open.split(':').map(Number)
         const [closeH, closeM] = hours.close.split(':').map(Number)
 
-        let currentH = openH
-        let currentM = openM
+        let currentH = openM > 0 ? openH + 1 : openH
 
-        while (currentH < closeH || (currentH === closeH && currentM < closeM)) {
-            slots.push(`${String(currentH).padStart(2, '0')}:${String(currentM).padStart(2, '0')}`)
-            currentM += 30
-            if (currentM >= 60) {
-                currentH++
-                currentM = 0
-            }
+        while (currentH < closeH || (currentH === closeH && closeM > 0)) {
+            slots.push(`${String(currentH).padStart(2, '0')}:00`)
+            currentH++
         }
 
         // Remover horários já agendados (exceto cancelados e no_show)

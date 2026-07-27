@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
-import { sendConfirmationEmail, sendNewAppointmentEmail } from '../services/emailService.js'
+import { sendConfirmationEmail, sendNewAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment } from '../services/emailService.js'
 import nodemailer from 'nodemailer'
 
 const router = Router()
@@ -529,13 +529,23 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
             throw new AppError('Você não tem permissão para alterar este agendamento', 403)
         }
 
-        // Cliente só pode cancelar; os demais status são de gestão do estabelecimento
-        if (req.user.type === 'customer' && status !== 'cancelled') {
+        // Cliente pode cancelar ou reativar um agendamento previamente cancelado
+        if (req.user.type === 'customer' && status !== 'cancelled' && currentAppointment.status !== 'cancelled') {
             throw new AppError('Você só pode cancelar seu agendamento', 403)
         }
 
         // Preparar dados de atualização
         const updateData = { status }
+
+        if (status === 'cancelled') {
+            const cancelledBy = req.body.cancelledBy || (req.user?.type === 'admin' ? 'establishment' : 'customer')
+            updateData.cancelledBy = cancelledBy
+            updateData.cancelledAt = new Date().toISOString()
+        } else if (currentAppointment.status === 'cancelled') {
+            // Se está reativando um agendamento cancelado
+            updateData.cancelledBy = null
+            updateData.cancelledAt = null
+        }
 
         // Se está confirmando, inicializar campo de notificações
         if (status === 'confirmed') {
@@ -548,8 +558,10 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
 
         const appointment = await appointmentsRepo.update(req.params.id, updateData)
 
-        // Se está confirmando (e não estava confirmado antes), enviar email ao cliente
-        if (status === 'confirmed' && currentAppointment.status !== 'confirmed') {
+        // Se está confirmando ou reativando, enviar e-mails aos envolvidos
+        const isReactivation = currentAppointment.status === 'cancelled' && status !== 'cancelled'
+
+        if ((status === 'confirmed' && currentAppointment.status !== 'confirmed') || isReactivation) {
             try {
                 const establishmentsRepo = getRepository('establishments.json')
                 const establishment = await establishmentsRepo.findById(appointment.establishmentId)
@@ -566,7 +578,39 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
                     }
                 }
 
-                if (recipientEmail) {
+                if (isReactivation) {
+                    // Notificar o cliente da reativação
+                    if (recipientEmail) {
+                        await sendReactivationEmailToCustomer(
+                            recipientEmail,
+                            recipientName,
+                            appointment.date,
+                            appointment.time,
+                            establishment?.name || 'Estabelecimento'
+                        )
+                    }
+                    // Notificar o estabelecimento da reativação
+                    let estEmail = establishment?.email
+                    if (!estEmail) {
+                        const adminsRepo = getRepository('admins.json')
+                        const admin = await adminsRepo.findOne({ establishmentId: parseInt(appointment.establishmentId) })
+                        estEmail = admin?.email
+                    }
+                    if (estEmail) {
+                        const allServices = await servicesRepo.findAll()
+                        const selectedServices = allServices.filter(s => (appointment.services || []).includes(s.id))
+                        const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                        await sendReactivationEmailToEstablishment(
+                            estEmail,
+                            establishment?.name || 'Estabelecimento',
+                            recipientName,
+                            appointment.date,
+                            appointment.time,
+                            servicesListStr
+                        )
+                    }
+                    console.log(`[Appointments] E-mails de reativação enviados para cliente (${recipientEmail}) e estabelecimento (${estEmail})`)
+                } else if (recipientEmail) {
                     await sendConfirmationEmail(
                         recipientEmail,
                         recipientName,
@@ -575,11 +619,9 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
                         establishment?.name || 'Estabelecimento'
                     )
                     console.log(`[Appointments] Email de confirmação enviado para ${recipientEmail}`)
-                } else {
-                    console.log(`[Appointments] Nenhum email encontrado para o cliente do agendamento ID ${appointment.id}`)
                 }
             } catch (emailErr) {
-                console.error('[Appointments] Erro ao enviar email de confirmação ao cliente:', emailErr.message)
+                console.error('[Appointments] Erro ao enviar emails de notificação:', emailErr.message)
             }
         }
 
@@ -618,7 +660,11 @@ router.patch('/:id/cancel-guest', async (req, res, next) => {
             throw new AppError('Este agendamento não pode mais ser cancelado.', 409)
         }
 
-        const updated = await appointmentsRepo.update(req.params.id, { status: 'cancelled' })
+        const updated = await appointmentsRepo.update(req.params.id, {
+            status: 'cancelled',
+            cancelledBy: 'customer',
+            cancelledAt: new Date().toISOString()
+        })
 
         res.json({
             success: true,
@@ -641,8 +687,11 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
             throw new AppError('Você não tem permissão para cancelar este agendamento', 403)
         }
 
+        const cancelledBy = req.user?.type === 'admin' ? 'establishment' : 'customer'
         await appointmentsRepo.update(req.params.id, {
-            status: 'cancelled'
+            status: 'cancelled',
+            cancelledBy,
+            cancelledAt: new Date().toISOString()
         })
 
         res.json({

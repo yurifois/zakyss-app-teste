@@ -348,11 +348,15 @@ export async function createAppointment(data) {
     })
 }
 
-export async function updateAppointmentStatus(id, status) {
+export async function updateAppointmentStatus(id, status, cancelledBy) {
     return request(`/appointments/${id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(cancelledBy && { cancelledBy }) }),
     })
+}
+
+export async function reactivateAppointment(id) {
+    return updateAppointmentStatus(id, 'confirmed')
 }
 
 export async function updateAppointment(id, data) {

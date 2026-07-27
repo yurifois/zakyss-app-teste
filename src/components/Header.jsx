@@ -53,6 +53,10 @@ export default function Header() {
                         Buscar
                     </NavLink>
 
+                    <NavLink to="/parceiro/cadastro" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
+                        Sou Parceiro
+                    </NavLink>
+
                     {isAuthenticated ? (
                         <>
                             <NavLink to="/perfil" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>

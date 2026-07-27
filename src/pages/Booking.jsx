@@ -478,6 +478,10 @@ export default function Booking() {
                                     Duração: {getTotalDuration()} min
                                 </div>
                             </div>
+
+                            <div className="mt-4 p-3 rounded-xl border text-xs leading-relaxed" style={{ backgroundColor: '#fdf2f8', borderColor: 'rgba(236, 72, 153, 0.2)', color: '#171615' }}>
+                                <strong style={{ color: '#db2777' }}>ℹ️ Aviso importante:</strong> Alguns serviços podem sofrer alteração de valor e necessitam de diagnóstico prévio presencial.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -494,7 +498,7 @@ export default function Booking() {
                             <h2 className="text-2xl font-bold mb-2">Quase lá!</h2>
                             <p className="text-muted mb-6">Confirme os dados do seu agendamento abaixo.</p>
 
-                            <div className="bg-base-200 rounded-xl p-4 text-left mb-6 space-y-3">
+                            <div className="bg-base-200 rounded-xl p-4 text-left mb-4 space-y-3">
                                 <div>
                                     <span className="text-xs text-muted uppercase font-bold tracking-wider">Local</span>
                                     <p className="font-medium">{establishment?.name}</p>
@@ -511,6 +515,11 @@ export default function Booking() {
                                     <span className="text-sm font-bold">Total a pagar:</span>
                                     <span className="text-xl font-black text-primary">R$ {getTotalPrice().toFixed(2)}</span>
                                 </div>
+                            </div>
+
+                            <div className="p-3 rounded-xl border text-left text-xs leading-relaxed mb-6" style={{ backgroundColor: '#fdf2f8', borderColor: 'rgba(236, 72, 153, 0.3)', color: '#171615' }}>
+                                <strong className="block mb-1" style={{ color: '#db2777' }}>⚠️ Comunicado Importante:</strong>
+                                Alguns serviços podem sofrer alteração de valor e necessitam de diagnóstico prévio.
                             </div>
 
                             <div className="flex flex-col gap-3">

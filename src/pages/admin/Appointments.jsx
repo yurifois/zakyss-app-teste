@@ -259,9 +259,30 @@ export default function AdminAppointments() {
         setFilteredAppointments(filtered)
     }
 
+    const [confirmAction, setConfirmAction] = useState(null)
+
+    const handleConfirmAction = async () => {
+        if (!confirmAction) return
+        const { type, appointment } = confirmAction
+        try {
+            if (type === 'cancel') {
+                await api.updateAppointmentStatus(appointment.id, 'cancelled', 'establishment')
+                success('Agendamento cancelado com sucesso.')
+            } else if (type === 'reactivate') {
+                await api.reactivateAppointment(appointment.id)
+                success('Agendamento reativado com sucesso! E-mails de notificação foram enviados.')
+            }
+            loadAppointments()
+        } catch (err) {
+            error(err.message || 'Erro ao processar ação')
+        } finally {
+            setConfirmAction(null)
+        }
+    }
+
     const handleStatusChange = async (appointmentId, newStatus) => {
         try {
-            await api.updateAppointmentStatus(appointmentId, newStatus)
+            await api.updateAppointmentStatus(appointmentId, newStatus, newStatus === 'cancelled' ? 'establishment' : undefined)
             loadAppointments()
             success(`Status atualizado para ${newStatus}`)
         } catch (err) {
@@ -462,7 +483,15 @@ export default function AdminAppointments() {
         })
     }
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, cancelledBy = null) => {
+        if (status === 'cancelled') {
+            const label = cancelledBy === 'customer'
+                ? '🚫 Cancelado p/ Cliente'
+                : cancelledBy === 'establishment'
+                ? '🏢 Cancelado p/ Estabelecimento'
+                : '✕ Cancelado'
+            return <span className="badge badge-error">{label}</span>
+        }
         const styles = {
             pending: { class: 'badge-warning', label: 'Pendente' },
             confirmed: { class: 'badge-success', label: 'Confirmado' },
@@ -582,7 +611,7 @@ export default function AdminAppointments() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    {getStatusBadge(apt.status)}
+                                    {getStatusBadge(apt.status, apt.cancelledBy)}
                                     <span className="text-secondary text-xs">{isExpanded ? '▲ Menos' : '▼ Mais'}</span>
                                 </div>
                             </div>
@@ -636,43 +665,58 @@ export default function AdminAppointments() {
                                 </div>
 
                                 {/* Actions */}
-                                {(apt.status === 'pending' || apt.status === 'confirmed') && (
-                                    <div className="flex gap-2 mt-3" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
-                                        {apt.status === 'pending' && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleStatusChange(apt.id, 'confirmed')}
-                                                    className="btn btn-primary btn-sm flex-1"
-                                                >
-                                                    ✓ Confirmar
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStatusChange(apt.id, 'cancelled')}
-                                                    className="btn btn-secondary btn-sm"
-                                                >
-                                                    ✕
-                                                </button>
-                                            </>
-                                        )}
-                                        {apt.status === 'confirmed' && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleStatusChange(apt.id, 'completed')}
-                                                    className="btn btn-secondary btn-sm flex-1"
-                                                >
-                                                    ✓ Concluir
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStatusChange(apt.id, 'no_show')}
-                                                    className="btn btn-ghost btn-sm"
-                                                    style={{ color: 'var(--error-500)' }}
-                                                >
-                                                    🚫 Faltou
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+                                <div className="flex flex-wrap gap-2 mt-3" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
+                                    {apt.status === 'pending' && (
+                                        <>
+                                            <button
+                                                onClick={() => handleStatusChange(apt.id, 'confirmed')}
+                                                className="btn btn-primary btn-sm flex-1"
+                                            >
+                                                ✓ Confirmar
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmAction({ type: 'cancel', appointment: apt })}
+                                                className="btn btn-secondary btn-sm"
+                                                title="Cancelar agendamento"
+                                            >
+                                                ✕
+                                            </button>
+                                        </>
+                                    )}
+                                    {apt.status === 'confirmed' && (
+                                        <>
+                                            <button
+                                                onClick={() => handleStatusChange(apt.id, 'completed')}
+                                                className="btn btn-secondary btn-sm flex-1"
+                                            >
+                                                ✓ Concluir
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmAction({ type: 'cancel', appointment: apt })}
+                                                className="btn btn-ghost btn-sm"
+                                                style={{ color: 'var(--error-500)' }}
+                                                title="Cancelar agendamento"
+                                            >
+                                                ✕ Cancelar
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusChange(apt.id, 'no_show')}
+                                                className="btn btn-ghost btn-sm"
+                                                style={{ color: 'var(--error-500)' }}
+                                            >
+                                                🚫 Faltou
+                                            </button>
+                                        </>
+                                    )}
+                                    {apt.status === 'cancelled' && (
+                                        <button
+                                            onClick={() => setConfirmAction({ type: 'reactivate', appointment: apt })}
+                                            className="btn btn-primary btn-sm w-full"
+                                        >
+                                            🔄 Reativar Agendamento
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             )}
                         </div>
@@ -875,7 +919,7 @@ export default function AdminAppointments() {
                                         if (!window.confirm(`Tem certeza que deseja cancelar o atendimento de ${editingAppointment.customerName}?`)) return
                                         setCancelling(true)
                                         try {
-                                            await api.updateAppointmentStatus(editingAppointment.id, 'cancelled')
+                                            await api.updateAppointmentStatus(editingAppointment.id, 'cancelled', 'establishment')
                                             success('Atendimento cancelado com sucesso!')
                                             setEditingAppointment(null)
                                             loadAppointments()
@@ -1208,6 +1252,41 @@ export default function AdminAppointments() {
                                     Fechar
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmação (Cancelamento / Reativação) */}
+            {confirmAction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style={{ zIndex: 1100 }}>
+                    <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200" style={{ backgroundColor: 'var(--white, #ffffff)' }}>
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: confirmAction.type === 'cancel' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(236, 72, 153, 0.1)' }}>
+                            <span style={{ fontSize: '2rem' }}>{confirmAction.type === 'cancel' ? '⚠️' : '🔄'}</span>
+                        </div>
+                        <h2 className="text-xl font-bold mb-2 text-gray-900">
+                            {confirmAction.type === 'cancel' ? 'Confirmar Cancelamento?' : 'Reativar Agendamento?'}
+                        </h2>
+                        <p className="text-secondary text-sm mb-6">
+                            {confirmAction.type === 'cancel'
+                                ? `Tem certeza que deseja cancelar o agendamento de ${confirmAction.appointment?.customerName || 'este cliente'} em ${confirmAction.appointment?.date} às ${confirmAction.appointment?.time}?`
+                                : `Deseja restaurar e reativar o agendamento de ${confirmAction.appointment?.customerName || 'este cliente'} em ${confirmAction.appointment?.date} às ${confirmAction.appointment?.time}? E-mails de notificação serão enviados.`
+                            }
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                className="btn w-full"
+                                onClick={handleConfirmAction}
+                                style={confirmAction.type === 'cancel' ? { backgroundColor: 'var(--error-500)', color: 'white' } : { backgroundColor: 'var(--primary-500)', color: 'white' }}
+                            >
+                                {confirmAction.type === 'cancel' ? 'Sim, Cancelar Agendamento' : 'Sim, Reativar Agendamento'}
+                            </button>
+                            <button
+                                className="btn btn-ghost w-full"
+                                onClick={() => setConfirmAction(null)}
+                            >
+                                Voltar
+                            </button>
                         </div>
                     </div>
                 </div>
