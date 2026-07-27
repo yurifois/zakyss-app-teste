@@ -45,10 +45,10 @@ export default function AdminDashboard() {
 
             setAppointments(enriched)
 
-            // Filter today's appointments
+            // Filter today's appointments (incluindo cancelados para visibilidade e reativação)
             const today = new Date().toISOString().split('T')[0]
             const todayApts = enriched
-                .filter(apt => apt.date === today && apt.status !== 'cancelled')
+                .filter(apt => apt.date === today)
                 .sort((a, b) => a.time.localeCompare(b.time))
             setTodayAppointments(todayApts)
 
@@ -84,24 +84,26 @@ export default function AdminDashboard() {
         }
     }
 
-    const [confirmAction, setConfirmAction] = useState(null)
-
-    const handleConfirmAction = async () => {
-        if (!confirmAction) return
-        const { type, appointment } = confirmAction
+    const handleCancel = async (appointmentId) => {
+        if (!window.confirm('Tem certeza que deseja cancelar este agendamento?')) return
         try {
-            if (type === 'cancel') {
-                await api.updateAppointmentStatus(appointment.id, 'cancelled', 'establishment')
-                success('Agendamento cancelado com sucesso.')
-            } else if (type === 'reactivate') {
-                await api.reactivateAppointment(appointment.id)
-                success('Agendamento reativado com sucesso! E-mails enviados.')
-            }
+            await api.updateAppointmentStatus(appointmentId, 'cancelled', 'establishment')
+            success('Agendamento cancelado com sucesso!')
             loadData()
         } catch (err) {
-            error(err.message || 'Erro ao processar ação')
-        } finally {
-            setConfirmAction(null)
+            console.error('Error cancelling:', err)
+            error(err.message || 'Erro ao cancelar agendamento')
+        }
+    }
+
+    const handleReactivate = async (appointmentId) => {
+        try {
+            await api.reactivateAppointment(appointmentId)
+            success('Agendamento reativado com sucesso! E-mails enviados.')
+            loadData()
+        } catch (err) {
+            console.error('Error reactivating:', err)
+            error(err.message || 'Erro ao reativar agendamento')
         }
     }
 
@@ -326,8 +328,9 @@ export default function AdminDashboard() {
                                                 ✓ Confirmar
                                             </button>
                                             <button
-                                                onClick={() => setConfirmAction({ type: 'cancel', appointment: apt })}
+                                                onClick={() => handleCancel(apt.id)}
                                                 className="btn btn-secondary btn-sm"
+                                                title="Cancelar agendamento"
                                             >
                                                 ✕
                                             </button>
@@ -337,7 +340,7 @@ export default function AdminDashboard() {
                                     {apt.status === 'confirmed' && (
                                         <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
                                             <button
-                                                onClick={() => setConfirmAction({ type: 'cancel', appointment: apt })}
+                                                onClick={() => handleCancel(apt.id)}
                                                 className="btn btn-ghost btn-sm text-danger flex-1"
                                             >
                                                 ✕ Cancelar
@@ -348,7 +351,7 @@ export default function AdminDashboard() {
                                     {apt.status === 'cancelled' && (
                                         <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
                                             <button
-                                                onClick={() => setConfirmAction({ type: 'reactivate', appointment: apt })}
+                                                onClick={() => handleReactivate(apt.id)}
                                                 className="btn btn-primary btn-sm flex-1"
                                             >
                                                 🔄 Reativar Agendamento
@@ -481,41 +484,6 @@ export default function AdminDashboard() {
                     </p>
                 </div>
             </div>
-
-            {/* Modal de Confirmação (Cancelamento / Reativação) */}
-            {confirmAction && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style={{ zIndex: 1100 }}>
-                    <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200" style={{ backgroundColor: 'var(--white, #ffffff)' }}>
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: confirmAction.type === 'cancel' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(236, 72, 153, 0.1)' }}>
-                            <span style={{ fontSize: '2rem' }}>{confirmAction.type === 'cancel' ? '⚠️' : '🔄'}</span>
-                        </div>
-                        <h2 className="text-xl font-bold mb-2 text-gray-900">
-                            {confirmAction.type === 'cancel' ? 'Confirmar Cancelamento?' : 'Reativar Agendamento?'}
-                        </h2>
-                        <p className="text-secondary text-sm mb-6">
-                            {confirmAction.type === 'cancel'
-                                ? `Tem certeza que deseja cancelar o agendamento de ${confirmAction.appointment?.customerName || 'este cliente'} em ${confirmAction.appointment?.date} às ${confirmAction.appointment?.time}?`
-                                : `Deseja restaurar e reativar o agendamento de ${confirmAction.appointment?.customerName || 'este cliente'} em ${confirmAction.appointment?.date} às ${confirmAction.appointment?.time}? E-mails de notificação serão enviados.`
-                            }
-                        </p>
-                        <div className="flex flex-col gap-3">
-                            <button
-                                className="btn w-full"
-                                onClick={handleConfirmAction}
-                                style={confirmAction.type === 'cancel' ? { backgroundColor: 'var(--error-500)', color: 'white' } : { backgroundColor: 'var(--primary-500)', color: 'white' }}
-                            >
-                                {confirmAction.type === 'cancel' ? 'Sim, Cancelar Agendamento' : 'Sim, Reativar Agendamento'}
-                            </button>
-                            <button
-                                className="btn btn-ghost w-full"
-                                onClick={() => setConfirmAction(null)}
-                            >
-                                Voltar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }
