@@ -68,17 +68,24 @@ export class SupabaseRepository {
         const { id, ...itemWithoutId } = item
         const newItem = { ...itemWithoutId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
 
-        const { data, error } = await supabase
-            .from(this.tableName)
-            .insert([newItem])
-            .select()
-            .single()
+        let attempts = 0
+        let lastError = null
 
-        if (error) {
-            // Se o erro for de violação de chave única (ex: sequence dessincronizada no Postgres)
-            if (error.code === '23505' && error.message.includes('pkey')) {
+        while (attempts < 5) {
+            attempts++
+            const { data, error } = await supabase
+                .from(this.tableName)
+                .insert([newItem])
+                .select()
+                .single()
+
+            if (!error) return data
+
+            lastError = error
+
+            // Se o erro for de violação de chave única (sequence dessincronizada)
+            if (error.code === '23505' && error.message?.includes('pkey')) {
                 console.log(`[SupabaseRepository] Sequence out of sync for ${this.tableName}. Attempting to heal...`)
-                // Pegar o maior ID atual
                 const { data: maxIdData } = await supabase
                     .from(this.tableName)
                     .select('id')
@@ -87,32 +94,57 @@ export class SupabaseRepository {
                 
                 const maxId = maxIdData?.[0]?.id || 0
                 newItem.id = maxId + 1
-
-                const retry = await supabase
-                    .from(this.tableName)
-                    .insert([newItem])
-                    .select()
-                    .single()
-                
-                if (retry.error) throw retry.error
-                return retry.data
+                continue
             }
+
+            // Se o erro for de coluna inexistente no schema do Supabase
+            const missingColMatch = error.message?.match(/Could not find the '([^']+)' column/i)
+            if (missingColMatch && missingColMatch[1]) {
+                const missingCol = missingColMatch[1]
+                console.warn(`[SupabaseRepository] Column '${missingCol}' missing in table '${this.tableName}' on insert. Removing field and retrying...`)
+                delete newItem[missingCol]
+                continue
+            }
+
             throw error
         }
-        return data
+
+        if (lastError) throw lastError
     }
 
     async update(id, updates) {
         if (!supabase) throw new Error('Serviço de banco de dados indisponível')
-        const { data, error } = await supabase
-            .from(this.tableName)
-            .update({ ...updates, updatedAt: new Date().toISOString() })
-            .eq('id', id)
-            .select()
-            .single()
+        const updatePayload = { ...updates, updatedAt: new Date().toISOString() }
 
-        if (error) throw error
-        return data
+        let attempts = 0
+        let lastError = null
+
+        while (attempts < 5) {
+            attempts++
+            const { data, error } = await supabase
+                .from(this.tableName)
+                .update(updatePayload)
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (!error) return data
+
+            lastError = error
+
+            // Se o erro for de coluna inexistente no schema do Supabase (ex: cancelledAt, cancelledBy)
+            const missingColMatch = error.message?.match(/Could not find the '([^']+)' column/i)
+            if (missingColMatch && missingColMatch[1]) {
+                const missingCol = missingColMatch[1]
+                console.warn(`[SupabaseRepository] Column '${missingCol}' missing in table '${this.tableName}' on update. Removing field and retrying...`)
+                delete updatePayload[missingCol]
+                continue
+            }
+
+            throw error
+        }
+
+        if (lastError) throw lastError
     }
 
     async delete(id) {
