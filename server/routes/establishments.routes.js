@@ -290,13 +290,26 @@ router.get('/:id/clients', authMiddleware, async (req, res, next) => {
                 userId: latest.userId || null,
                 visitCount: sorted.length,
                 lastVisit: latest.date,
-                history: sorted.map(apt => ({
-                    date: apt.date,
-                    time: apt.time,
-                    services: (apt.services || []).map(id => serviceNameById[id] || 'Serviço removido'),
-                    totalPrice: apt.totalPrice,
-                    notes: apt.notes || null
-                }))
+                history: sorted.map(apt => {
+                    let parsedNotes = apt.notes;
+                    let isManual = false;
+                    let manualDescription = "";
+                    try {
+                        const parsed = JSON.parse(apt.notes);
+                        if (parsed && parsed.type === 'MANUAL_FINANCE') {
+                            isManual = true;
+                            manualDescription = parsed.description;
+                        }
+                    } catch (e) {}
+
+                    return {
+                        date: apt.date,
+                        time: apt.time,
+                        services: isManual ? ['Lançamento Manual'] : (apt.services || []).map(id => serviceNameById[id] || 'Serviço removido'),
+                        totalPrice: apt.totalPrice,
+                        notes: isManual ? manualDescription : apt.notes || null
+                    };
+                })
             }
         }).sort((a, b) => (b.lastVisit || '').localeCompare(a.lastVisit || ''))
 

@@ -27,6 +27,12 @@ export default function Analytics() {
     const [manualValue, setManualValue] = useState('')
     const [manualDescription, setManualDescription] = useState('')
     const [isSubmittingManual, setIsSubmittingManual] = useState(false)
+    
+    // Manual Finance - Client Selection
+    const [clients, setClients] = useState([])
+    const [isRegisteredClient, setIsRegisteredClient] = useState(false)
+    const [selectedClientKey, setSelectedClientKey] = useState('') // key: phone or email
+    const [manualCustomerName, setManualCustomerName] = useState('')
 
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -45,6 +51,11 @@ export default function Analytics() {
 
     useEffect(() => {
         loadData()
+        if (admin) {
+            api.getEstablishmentClients(admin.establishmentId)
+                .then(setClients)
+                .catch(console.error)
+        }
     }, [admin])
 
     const loadData = async () => {
@@ -76,16 +87,36 @@ export default function Analytics() {
         e.preventDefault()
         if (!manualDate || !manualValue || !manualDescription) return
         
+        let customerData = {}
+        if (isRegisteredClient) {
+            const client = clients.find(c => c.name === selectedClientKey)
+            if (!client) {
+                alert('Selecione um cliente válido da lista.')
+                return
+            }
+            customerData = {
+                customerName: client.name,
+                customerPhone: client.phone,
+                customerEmail: client.email,
+                userId: client.userId
+            }
+        } else if (manualCustomerName.trim()) {
+            customerData = { customerName: manualCustomerName.trim() }
+        }
+        
         setIsSubmittingManual(true)
         try {
             await api.addManualFinance(admin.establishmentId, {
                 date: manualDate,
                 value: parseFloat(manualValue),
-                description: manualDescription
+                description: manualDescription,
+                ...customerData
             })
             setManualDate('')
             setManualValue('')
             setManualDescription('')
+            setManualCustomerName('')
+            setSelectedClientKey('')
             loadData() // reload data to show new entry
         } catch (err) {
             console.error('Error adding manual finance:', err)
@@ -494,6 +525,67 @@ export default function Analytics() {
                         <div className="card lg:col-span-1" style={{ padding: '1.25rem' }}>
                             <h3 className="font-bold mb-4">💰 Novo Lançamento Manual</h3>
                             <form onSubmit={handleAddManualFinance} className="flex flex-col gap-4">
+                                <div className="flex gap-4 mb-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            checked={!isRegisteredClient} 
+                                            onChange={() => {
+                                                setIsRegisteredClient(false)
+                                                setSelectedClientKey('')
+                                            }}
+                                            className="form-radio text-primary-500"
+                                        />
+                                        <span className="text-sm font-medium">Sem cadastro</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            checked={isRegisteredClient} 
+                                            onChange={() => {
+                                                setIsRegisteredClient(true)
+                                                setManualCustomerName('')
+                                            }}
+                                            className="form-radio text-primary-500"
+                                        />
+                                        <span className="text-sm font-medium">Cliente com cadastro</span>
+                                    </label>
+                                </div>
+
+                                {isRegisteredClient ? (
+                                    <div>
+                                        <label className="text-sm font-medium mb-1 block">Buscar Cliente</label>
+                                        <input 
+                                            type="text" 
+                                            list="registered-clients-list"
+                                            className="form-input w-full"
+                                            placeholder="Digite o nome..."
+                                            value={selectedClientKey}
+                                            onChange={e => setSelectedClientKey(e.target.value)}
+                                            required
+                                        />
+                                        <datalist id="registered-clients-list">
+                                            {clients.map(c => (
+                                                <option key={c.phone || c.email} value={c.name}>
+                                                    {c.phone} {c.email ? `(${c.email})` : ''}
+                                                </option>
+                                            ))}
+                                        </datalist>
+                                        <span className="text-xs text-muted mt-1 block">Apenas clientes com histórico aparecerão.</span>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="text-sm font-medium mb-1 block">Nome (Opcional)</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-input w-full"
+                                            placeholder="Ex: João Silva"
+                                            value={manualCustomerName}
+                                            onChange={e => setManualCustomerName(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="text-sm font-medium mb-1 block">Data</label>
                                     <input 
@@ -545,6 +637,7 @@ export default function Analytics() {
                                         <thead>
                                             <tr>
                                                 <th>Data</th>
+                                                <th>Cliente</th>
                                                 <th>Descrição</th>
                                                 <th style={{ textAlign: 'right' }}>Valor</th>
                                             </tr>
@@ -554,6 +647,11 @@ export default function Analytics() {
                                                 <tr key={idx}>
                                                     <td>
                                                         {new Date(entry.date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                                                    </td>
+                                                    <td>
+                                                        <span className="font-medium">
+                                                            {entry.customerName && entry.customerName !== 'Lançamento Manual' ? entry.customerName : 'Sem cadastro'}
+                                                        </span>
                                                     </td>
                                                     <td>{entry.description}</td>
                                                     <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--success-600)' }}>

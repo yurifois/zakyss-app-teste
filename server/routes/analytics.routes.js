@@ -317,7 +317,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
 router.post('/:establishmentId/manual-finance', authMiddleware, async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId);
-        const { date, value, description } = req.body;
+        const { date, value, description, customerName, customerPhone, customerEmail, userId } = req.body;
         
         if (!date || value === undefined || !description) {
             throw new AppError('Dados incompletos', 400);
@@ -325,16 +325,16 @@ router.post('/:establishmentId/manual-finance', authMiddleware, async (req, res,
 
         const apt = await appointmentsRepo.create({
             establishmentId,
-            userId: null,
+            userId: userId || null,
             services: [],
             date: date,
             time: "00:00",
             status: "completed",
             totalPrice: parseFloat(value),
             totalDuration: 0,
-            customerName: "Lançamento Manual",
-            customerPhone: "00000000000",
-            customerEmail: "",
+            customerName: customerName || "Lançamento Manual",
+            customerPhone: customerPhone || "00000000000",
+            customerEmail: customerEmail || "",
             notes: JSON.stringify({ type: 'MANUAL_FINANCE', description })
         });
         
