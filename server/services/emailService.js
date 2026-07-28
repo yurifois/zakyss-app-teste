@@ -1,24 +1,31 @@
 import nodemailer from 'nodemailer'
 
-// Gateway Serverless da Vercel para envio de emails (dribla o bloqueio do Render)
-const sendViaVercelGateway = async (to, subject, html) => {
-    // Aponta diretamente para a API Serverless hospedada na Vercel
-    const gatewayUrl = `https://zakyss-app-teste.vercel.app/api/send-email`;
+// Função para envio direto de e-mails usando nodemailer (evita falhas com gateways externos)
+const sendEmailDirectly = async (to, subject, html) => {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.warn('[EmailService] Credenciais SMTP não configuradas. E-mail não enviado.');
+        return false;
+    }
 
-    const response = await fetch(gatewayUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.EMAIL_GATEWAY_SECRET || 'zakys-secret-gateway-123'}`
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT) || 465,
+        secure: true, // Use true for 465, false for 587 se necessário, mas 465/true geralmente funciona com Gmail/SSL.
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
         },
-        body: JSON.stringify({ to, subject, html })
+        connectionTimeout: 10000,
+        tls: { rejectUnauthorized: false }
     });
 
-    const data = await response.json();
-    if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Erro desconhecido no Gateway da Vercel');
-    }
-    return data;
+    const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || `"Zakys" <${process.env.SMTP_USER}>`,
+        to,
+        subject,
+        html
+    });
+    return info;
 }
 
 /**
@@ -128,7 +135,7 @@ export const sendAppointmentReminder = async (email, customerName, date, time, r
     }
 
     try {
-        await sendViaVercelGateway(
+        await sendEmailDirectly(
             email,
             `⏰ Lembrete: Seu agendamento é ${reminderType === '24h' ? 'amanhã' : 'hoje'}!`,
             generateEmailTemplate(customerName, date, time, reminderType)
@@ -259,7 +266,7 @@ export const sendConfirmationEmail = async (email, customerName, date, time, est
     }
 
     try {
-        await sendViaVercelGateway(
+        await sendEmailDirectly(
             email,
             `✅ Agendamento Confirmado - ${establishmentName}`,
             generateConfirmationTemplate(customerName, date, time, establishmentName)
@@ -357,7 +364,7 @@ export const sendNewAppointmentEmail = async (establishmentEmail, establishmentN
     }
 
     try {
-        await sendViaVercelGateway(
+        await sendEmailDirectly(
             establishmentEmail,
             `📅 Novo Agendamento Recebido - ${customerName}`,
             generateNewAppointmentTemplate(establishmentName, customerName, date, time, servicesListStr)
@@ -446,7 +453,7 @@ export const sendReturnReminder = async (email, customerName, establishmentName,
     }
 
     try {
-        await sendViaVercelGateway(
+        await sendEmailDirectly(
             email,
             `✨ Que tal agendar seu próximo ${serviceNames}?`,
             generateReturnReminderTemplate(customerName, establishmentName, serviceNames)
@@ -491,7 +498,7 @@ export const sendReactivationEmailToCustomer = async (email, customerName, date,
     </body>
     </html>`
     try {
-        await sendViaVercelGateway(email, `🔄 Agendamento Reativado - ${establishmentName}`, html)
+        await sendEmailDirectly(email, `🔄 Agendamento Reativado - ${establishmentName}`, html)
         console.log(`[EmailService] ✅ Email de reativação enviado para o cliente: ${email}`)
         return true
     } catch (err) {
@@ -533,7 +540,7 @@ export const sendReactivationEmailToEstablishment = async (establishmentEmail, e
     </body>
     </html>`
     try {
-        await sendViaVercelGateway(establishmentEmail, `🔄 Agendamento Reativado - ${customerName}`, html)
+        await sendEmailDirectly(establishmentEmail, `🔄 Agendamento Reativado - ${customerName}`, html)
         console.log(`[EmailService] ✅ Email de reativação enviado para o estabelecimento: ${establishmentEmail}`)
         return true
     } catch (err) {

@@ -431,7 +431,7 @@ export default function Booking() {
                                     className="btn btn-primary btn-lg w-full"
                                     onClick={handleReview}
                                 >
-                                    Revisar agendamento
+                                    Agendar
                                 </button>
                             )}
                         </form>
@@ -488,57 +488,20 @@ export default function Booking() {
             </div>
 
             {/* Review Modal */}
+            {/* Simple Confirmation Modal */}
             {showReviewModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-base-100 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 text-center">
-                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                                <CalendarIcon size={32} />
-                            </div>
-                            <h2 className="text-2xl font-bold mb-2">Quase lá!</h2>
-                            <p className="text-muted mb-6">Confirme os dados do seu agendamento abaixo.</p>
-
-                            <div className="bg-base-200 rounded-xl p-4 text-left mb-4 space-y-3">
-                                <div>
-                                    <span className="text-xs text-muted uppercase font-bold tracking-wider">Local</span>
-                                    <p className="font-medium">{establishment?.name}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-muted uppercase font-bold tracking-wider">Data e Hora</span>
-                                    <p className="font-medium capitalize">{formatDate(selectedDate)} às {selectedTime}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-muted uppercase font-bold tracking-wider">Serviços ({services.length})</span>
-                                    <p className="font-medium">{services.map(s => s.name).join(', ')}</p>
-                                </div>
-                                <div className="pt-3 mt-3 border-t border-base-300 flex justify-between items-center">
-                                    <span className="text-sm font-bold">Total a pagar:</span>
-                                    <span className="text-xl font-black text-primary">R$ {getTotalPrice().toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            <div className="p-3 rounded-xl border text-left text-xs leading-relaxed mb-6" style={{ backgroundColor: '#fdf2f8', borderColor: 'rgba(236, 72, 153, 0.3)', color: '#171615' }}>
-                                <strong className="block mb-1" style={{ color: '#db2777' }}>⚠️ Comunicado Importante:</strong>
-                                Alguns serviços podem sofrer alteração de valor e necessitam de diagnóstico prévio.
-                            </div>
-
-                            <div className="flex flex-col gap-3">
-                                <button
-                                    className="btn btn-primary btn-lg w-full text-lg shadow-lg shadow-primary/20"
-                                    onClick={handleSubmit}
-                                    disabled={submitting}
-                                >
-                                    {submitting ? 'Confirmando...' : 'Confirmar Agendamento'}
-                                </button>
-                                <button
-                                    className="btn btn-ghost"
-                                    onClick={() => setShowReviewModal(false)}
-                                    disabled={submitting}
-                                >
-                                    Voltar e editar
-                                </button>
-                            </div>
-                        </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !submitting && setShowReviewModal(false)}>
+                    <div 
+                        className="bg-base-100 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-300 p-6 flex flex-col gap-3"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="btn btn-primary btn-lg w-full text-lg shadow-lg shadow-primary/20"
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                        >
+                            {submitting ? 'Confirmando...' : 'Confirmar agendamento'}
+                        </button>
                     </div>
                 </div>
             )}
