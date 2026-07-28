@@ -1,15 +1,44 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import * as api from '../services/api'
-
+import EstablishmentCard from '../components/EstablishmentCard'
 export default function Profile() {
     const { user, isAuthenticated, updateProfile, refreshUser, logout, loading: authLoading } = useAuth()
     const { success, error } = useToast()
 
     const [tab, setTab] = useState('appointments')
     const [appointments, setAppointments] = useState([])
+    
+    // Calcula os estabelecimentos bem avaliados com base no histórico de agendamentos
+    const topRatedEstablishments = useMemo(() => {
+        const ratedApts = appointments.filter(apt => apt.rating !== undefined && apt.rating >= 1 && apt.establishment)
+        const estMap = new Map()
+        
+        ratedApts.forEach(apt => {
+            if (!estMap.has(apt.establishmentId)) {
+                estMap.set(apt.establishmentId, {
+                    ...apt.establishment,
+                    totalRating: 0,
+                    ratingCount: 0,
+                    highestRating: 0
+                })
+            }
+            const est = estMap.get(apt.establishmentId)
+            est.totalRating += apt.rating
+            est.ratingCount += 1
+            if (apt.rating > est.highestRating) est.highestRating = apt.rating
+        })
+
+        return Array.from(estMap.values())
+            .map(est => ({
+                ...est,
+                userAvgRating: est.totalRating / est.ratingCount
+            }))
+            .sort((a, b) => b.userAvgRating - a.userAvgRating) // Sort by average user rating, descending
+    }, [appointments])
+
     const [statusFilter, setStatusFilter] = useState('upcoming')
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(true)
@@ -106,6 +135,18 @@ export default function Profile() {
             if (!silent) setLoading(false)
         }
     }
+    const handleRateAppointment = async (appointmentId, rating) => {
+        try {
+            await api.rateAppointment(appointmentId, rating)
+            success('Avaliação salva com sucesso!')
+            setAppointments(prev => prev.map(apt => 
+                apt.id === appointmentId ? { ...apt, rating } : apt
+            ))
+        } catch (err) {
+            error('Erro ao salvar avaliação')
+        }
+    }
+
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -407,6 +448,13 @@ export default function Profile() {
                                 ❤️ Favoritos
                             </button>
                             <button
+                                onClick={() => setTab('top-rated')}
+                                className="w-full text-left p-4"
+                                style={{ border: 'none', background: tab === 'top-rated' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: tab === 'top-rated' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'top-rated' ? '600' : '400' }}
+                            >
+                                ⭐ Bem Avaliados
+                            </button>
+                            <button
                                 onClick={() => setTab('profile')}
                                 className="w-full text-left p-4"
                                 style={{ border: 'none', background: tab === 'profile' ? 'rgba(255, 0, 127, 0.15)' : 'transparent', cursor: 'pointer', borderTop: '1px solid var(--border-color)', color: tab === 'profile' ? '#FF007F' : '#FF69B4', fontWeight: tab === 'profile' ? '600' : '400' }}
@@ -574,6 +622,35 @@ export default function Profile() {
                                                                                 </button>
                                                                             )}
                                                                         </div>
+
+                                                                        {apt.status === 'completed' && (
+                                                                            <div className="mt-4 pt-4 border-t border-base-300">
+                                                                                <div className="flex flex-col items-start gap-2">
+                                                                                    <span className="text-sm font-semibold">Avalie seu atendimento:</span>
+                                                                                    <div className="flex gap-1">
+                                                                                        {[1, 2, 3, 4, 5].map(star => (
+                                                                                            <button
+                                                                                                key={star}
+                                                                                                onClick={() => handleRateAppointment(apt.id, star)}
+                                                                                                className="text-2xl transition-transform hover:scale-110"
+                                                                                                style={{
+                                                                                                    color: apt.rating >= star ? '#eab308' : '#d1d5db',
+                                                                                                    background: 'none',
+                                                                                                    border: 'none',
+                                                                                                    cursor: 'pointer'
+                                                                                                }}
+                                                                                                title={`Avaliar com ${star} estrela${star > 1 ? 's' : ''}`}
+                                                                                            >
+                                                                                                ★
+                                                                                            </button>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                    {apt.rating && (
+                                                                                        <span className="text-xs text-muted">Você avaliou com {apt.rating} estrela{apt.rating > 1 ? 's' : ''}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -695,6 +772,35 @@ export default function Profile() {
                                                         ✕
                                                     </button>
                                                 </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Bem Avaliados */}
+                        {tab === 'top-rated' && (
+                            <>
+                                <h1 className="text-2xl font-bold mb-6">Meus Estabelecimentos Bem Avaliados</h1>
+                                {topRatedEstablishments.length === 0 ? (
+                                    <div className="card text-center py-16">
+                                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⭐</div>
+                                        <h3 className="text-xl font-semibold mb-2">Nenhuma avaliação ainda</h3>
+                                        <p className="text-secondary mb-6">Você ainda não avaliou nenhum estabelecimento com notas altas.</p>
+                                        <button onClick={() => setTab('appointments')} className="btn btn-primary">
+                                            Avaliar meus agendamentos
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {topRatedEstablishments.map(est => (
+                                            <div key={est.id} style={{ position: 'relative' }}>
+                                                <div className="absolute top-2 right-2 z-10 bg-base-100 rounded-full px-2 py-1 shadow-sm flex items-center gap-1 text-sm font-bold border border-base-200">
+                                                    <span style={{ color: '#eab308' }}>⭐</span>
+                                                    {est.userAvgRating.toFixed(1)}
+                                                </div>
+                                                <EstablishmentCard establishment={est} />
                                             </div>
                                         ))}
                                     </div>

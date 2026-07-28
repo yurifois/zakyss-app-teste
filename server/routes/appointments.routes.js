@@ -731,4 +731,41 @@ router.patch('/:id/assignments', authMiddleware, async (req, res, next) => {
     }
 })
 
+// Avaliar agendamento
+router.patch('/:id/rate', authMiddleware, async (req, res, next) => {
+    try {
+        const { rating } = req.body
+        const appointmentId = req.params.id
+
+        if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+            throw new AppError('A nota deve ser um número entre 1 e 5', 400)
+        }
+
+        const appointment = await appointmentsRepo.findById(appointmentId)
+        if (!appointment) {
+            throw new AppError('Agendamento não encontrado', 404)
+        }
+
+        // Apenas o cliente (dono do agendamento) pode avaliar
+        if (req.user?.type !== 'customer' || String(req.user.id) !== String(appointment.userId)) {
+            throw new AppError('Você não tem permissão para avaliar este agendamento', 403)
+        }
+
+        if (appointment.status !== 'completed') {
+            throw new AppError('Apenas agendamentos concluídos podem ser avaliados', 400)
+        }
+
+        const updatedAppointment = await appointmentsRepo.update(appointmentId, {
+            rating: Math.floor(rating)
+        })
+
+        res.json({
+            success: true,
+            data: updatedAppointment
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
 export default router

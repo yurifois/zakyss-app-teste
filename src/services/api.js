@@ -360,6 +360,13 @@ export async function reactivateAppointment(id) {
     return updateAppointmentStatus(id, 'confirmed')
 }
 
+export async function rateAppointment(id, rating) {
+    return request(`/appointments/${id}/rate`, {
+        method: 'PATCH',
+        body: JSON.stringify({ rating }),
+    })
+}
+
 export async function updateAppointment(id, data) {
     return request(`/appointments/${id}`, {
         method: 'PUT',
