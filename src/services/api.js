@@ -598,5 +598,12 @@ export async function getAnalytics(establishmentId, filters = {}) {
     return request(`/analytics/${establishmentId}${query ? `?${query}` : ''}`)
 }
 
+export async function addManualFinance(establishmentId, data) {
+    return request(`/analytics/${establishmentId}/manual-finance`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
 
 

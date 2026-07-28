@@ -22,6 +22,12 @@ export default function Analytics() {
     const [employees, setEmployees] = useState([])
     const [services, setServices] = useState([])
 
+    // Manual Finance Form
+    const [manualDate, setManualDate] = useState('')
+    const [manualValue, setManualValue] = useState('')
+    const [manualDescription, setManualDescription] = useState('')
+    const [isSubmittingManual, setIsSubmittingManual] = useState(false)
+
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
     const statuses = [
@@ -63,6 +69,29 @@ export default function Analytics() {
             console.error('Error loading analytics:', err)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleAddManualFinance = async (e) => {
+        e.preventDefault()
+        if (!manualDate || !manualValue || !manualDescription) return
+        
+        setIsSubmittingManual(true)
+        try {
+            await api.addManualFinance(admin.establishmentId, {
+                date: manualDate,
+                value: parseFloat(manualValue),
+                description: manualDescription
+            })
+            setManualDate('')
+            setManualValue('')
+            setManualDescription('')
+            loadData() // reload data to show new entry
+        } catch (err) {
+            console.error('Error adding manual finance:', err)
+            alert('Erro ao adicionar lançamento manual. Verifique os dados e tente novamente.')
+        } finally {
+            setIsSubmittingManual(false)
         }
     }
 
@@ -258,14 +287,20 @@ export default function Analytics() {
                             </div>
                         </div>
                         <div className="card" style={{ padding: '1.25rem' }}>
-                            <div className="text-sm text-muted mb-1">Ticket Médio</div>
+                            <div className="text-sm text-muted mb-1">Lançamentos Manuais</div>
                             <div className="text-2xl font-bold" style={{ color: 'var(--success-600)' }}>
+                                R$ {(data.summary?.totalManual || 0).toFixed(2)}
+                            </div>
+                        </div>
+                        <div className="card" style={{ padding: '1.25rem' }}>
+                            <div className="text-sm text-muted mb-1">Ticket Médio</div>
+                            <div className="text-2xl font-bold" style={{ color: 'var(--primary-500)' }}>
                                 R$ {(data.summary?.ticketMedio || 0).toFixed(2)}
                             </div>
                         </div>
                         <div className="card" style={{ padding: '1.25rem' }}>
                             <div className="text-sm text-muted mb-1">Comissões</div>
-                            <div className="text-2xl font-bold" style={{ color: 'var(--primary-500)' }}>
+                            <div className="text-2xl font-bold" style={{ color: 'var(--error-500)' }}>
                                 R$ {(data.summary?.totalCommission || 0).toFixed(2)}
                             </div>
                         </div>
@@ -450,6 +485,89 @@ export default function Analytics() {
                                 </div>
                             ) : (
                                 <div className="text-center text-muted py-4">Sem dados</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Manual Finances */}
+                    <div className="grid lg:grid-cols-3 gap-6 mt-6">
+                        <div className="card lg:col-span-1" style={{ padding: '1.25rem' }}>
+                            <h3 className="font-bold mb-4">💰 Novo Lançamento Manual</h3>
+                            <form onSubmit={handleAddManualFinance} className="flex flex-col gap-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Data</label>
+                                    <input 
+                                        type="date" 
+                                        className="form-input w-full"
+                                        value={manualDate}
+                                        onChange={e => setManualDate(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Valor (R$)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        className="form-input w-full"
+                                        placeholder="Ex: 150.00"
+                                        value={manualValue}
+                                        onChange={e => setManualValue(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1 block">Descrição</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input w-full"
+                                        placeholder="Motivo do lançamento"
+                                        value={manualDescription}
+                                        onChange={e => setManualDescription(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-primary w-full mt-2"
+                                    disabled={isSubmittingManual}
+                                >
+                                    {isSubmittingManual ? 'Salvando...' : 'Adicionar Lançamento'}
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="card lg:col-span-2" style={{ padding: '1.25rem' }}>
+                            <h3 className="font-bold mb-4">📝 Histórico de Lançamentos Manuais</h3>
+                            {data.manualEntries?.length > 0 ? (
+                                <div className="table-container">
+                                    <table className="table" style={{ fontSize: '0.875rem' }}>
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Descrição</th>
+                                                <th style={{ textAlign: 'right' }}>Valor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.manualEntries.map((entry, idx) => (
+                                                <tr key={idx}>
+                                                    <td>
+                                                        {new Date(entry.date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                                                    </td>
+                                                    <td>{entry.description}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--success-600)' }}>
+                                                        R$ {entry.value.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="text-center text-muted py-8">
+                                    Nenhum lançamento manual no período selecionado.
+                                </div>
                             )}
                         </div>
                     </div>

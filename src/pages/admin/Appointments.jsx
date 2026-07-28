@@ -574,10 +574,34 @@ export default function AdminAppointments() {
                     <p className="text-secondary">Nenhum agendamento encontrado</p>
                 </div>
             ) : (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-                    {filteredAppointments.map(apt => {
-                        const isExpanded = expandedAptId === apt.id;
-                        return (
+                <div className="flex flex-col gap-8">
+                    {Object.entries(
+                        filteredAppointments.reduce((acc, apt) => {
+                            const [year, month] = apt.date.split('-')
+                            const date = new Date(year, month - 1, 1)
+                            const monthName = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+                            const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1)
+                            
+                            if (!acc[capitalizedMonthName]) {
+                                acc[capitalizedMonthName] = []
+                            }
+                            acc[capitalizedMonthName].push(apt)
+                            return acc
+                        }, {})
+                    ).map(([monthName, apts]) => (
+                        <div key={monthName}>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--primary-400)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                                📅 {monthName}
+                            </h2>
+                            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                                {apts.map(apt => {
+                                    const isExpanded = expandedAptId === apt.id;
+                                    
+                                    // Format DD/MM/YYYY
+                                    const [y, m, d] = apt.date.split('-')
+                                    const fullDate = `${d}/${m}/${y}`
+                                    
+                                    return (
                         <div
                             key={apt.id}
                             className="card"
@@ -587,8 +611,8 @@ export default function AdminAppointments() {
                             {/* Compact View */}
                             <div className="flex justify-between items-center">
                                 <div className="flex gap-4 items-center">
-                                    <div className="text-center" style={{ minWidth: '60px' }}>
-                                        <div className="text-xs text-secondary">{formatDate(apt.date).split(' ')[0]}</div>
+                                    <div className="text-center" style={{ minWidth: '70px' }}>
+                                        <div className="text-xs font-medium text-secondary mb-1">{fullDate}</div>
                                         <div className="text-lg font-bold" style={{ color: 'var(--primary-400)' }}>{apt.time}</div>
                                     </div>
                                     <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
@@ -709,6 +733,9 @@ export default function AdminAppointments() {
                             )}
                         </div>
                     )})}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 

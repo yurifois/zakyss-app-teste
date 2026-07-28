@@ -72,8 +72,8 @@ function isAuthenticatedAdminRequest(req) {
 function canManageAppointment(req, appointment) {
     const user = req.user
     if (!user || !appointment) return false
-    if (user.type === 'admin') return parseInt(user.establishmentId) === parseInt(appointment.establishmentId)
-    if (user.type === 'customer') return Boolean(appointment.userId) && parseInt(user.id) === parseInt(appointment.userId)
+    if (user.type === 'admin') return String(user.establishmentId) === String(appointment.establishmentId)
+    if (user.type === 'customer') return Boolean(appointment.userId) && String(user.id) === String(appointment.userId)
     return false
 }
 

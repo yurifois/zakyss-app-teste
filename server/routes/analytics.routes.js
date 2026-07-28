@@ -117,6 +117,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         let totalRevenue = 0
         let totalCommission = 0
         let totalEstablishment = 0
+        let totalManual = 0
 
         // Dados por funcionário
         const employeeStats = {}
@@ -148,8 +149,36 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
             6: { day: 'Sábado', appointments: 0, revenue: 0 }
         }
 
+        const manualEntries = []
+
         // Processar agendamentos
         appointments.forEach(apt => {
+            const isManual = apt.notes && typeof apt.notes === 'string' && apt.notes.includes('"type":"MANUAL_FINANCE"');
+
+            if (isManual) {
+                totalManual += (apt.totalPrice || 0);
+                totalRevenue += (apt.totalPrice || 0);
+                
+                try {
+                    const parsed = JSON.parse(apt.notes);
+                    manualEntries.push({
+                        id: apt.id,
+                        date: apt.date,
+                        value: apt.totalPrice,
+                        description: parsed.description
+                    });
+                } catch (e) {}
+
+                const [year, month] = apt.date.split('-').map(Number);
+                const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                if (!monthlyStats[monthKey]) {
+                    monthlyStats[monthKey] = { month: monthKey, appointments: 0, revenue: 0, commission: 0, manual: 0 };
+                }
+                monthlyStats[monthKey].revenue += (apt.totalPrice || 0);
+                monthlyStats[monthKey].manual = (monthlyStats[monthKey].manual || 0) + (apt.totalPrice || 0);
+                return;
+            }
+
             // Verificar status completed para métricas financeiras
             const isCompleted = apt.status === 'completed'
 
@@ -263,6 +292,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                     totalRevenue,
                     totalCommission,
                     totalEstablishment,
+                    totalManual,
                     ticketMedio,
                     topService: topService ? topService.name : null,
                     topEmployee: topEmployee ? topEmployee.name : null
@@ -271,6 +301,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 serviceRanking,
                 monthlyData,
                 weekdayData,
+                manualEntries: manualEntries.sort((a, b) => new Date(b.date) - new Date(a.date)),
                 employees: employees.map(e => ({ id: e.id, name: e.name })),
                 services: allServices.filter(s =>
                     establishment?.services?.includes(s.id)
@@ -281,5 +312,36 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         next(error)
     }
 })
+
+// Adicionar lançamento manual
+router.post('/:establishmentId/manual-finance', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.params.establishmentId);
+        const { date, value, description } = req.body;
+        
+        if (!date || value === undefined || !description) {
+            throw new AppError('Dados incompletos', 400);
+        }
+
+        const apt = await appointmentsRepo.create({
+            establishmentId,
+            userId: null,
+            services: [],
+            date: date,
+            time: "00:00",
+            status: "completed",
+            totalPrice: parseFloat(value),
+            totalDuration: 0,
+            customerName: "Lançamento Manual",
+            customerPhone: "00000000000",
+            customerEmail: "",
+            notes: JSON.stringify({ type: 'MANUAL_FINANCE', description })
+        });
+        
+        res.json({ success: true, data: apt });
+    } catch (e) { 
+        next(e); 
+    }
+});
 
 export default router
