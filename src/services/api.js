@@ -200,14 +200,6 @@ export function getCurrentAdmin() {
     return null
 }
 
-export function getToken() {
-    return localStorage.getItem('zakys_token')
-}
-
-export function getAdminToken() {
-    return localStorage.getItem('zakys_admin_token')
-}
-
 // ========== CATEGORIES ==========
 
 export async function getCategories() {

@@ -1,33 +1,7 @@
-import nodemailer from 'nodemailer'
 import dotenv from 'dotenv'
+import { sendEmail } from './sendEmail.js'
 
 dotenv.config()
-
-const isGmail = process.env.SMTP_HOST === 'smtp.gmail.com';
-
-const transporter = nodemailer.createTransport(
-    isGmail 
-        ? {
-            service: 'gmail',
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            },
-            connectionTimeout: 10000,
-        }
-        : {
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_PORT === '465',
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            },
-            connectionTimeout: 10000, // 10 segundos
-            greetingTimeout: 10000,
-            socketTimeout: 15000,
-        }
-)
 
 export async function sendPasswordResetEmail(to, token) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -51,34 +25,8 @@ export async function sendPasswordResetEmail(to, token) {
     `
 
     try {
-        if (process.env.NODE_ENV === 'production') {
-            // Em produção, o Render bloqueia a porta SMTP (587). 
-            // Então usamos o gateway da Vercel que foi criado no arquivo api/send-email.js
-            const gatewayUrl = `${frontendUrl}/api/send-email`
-            const response = await fetch(gatewayUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.EMAIL_GATEWAY_SECRET || 'zakys-secret-gateway-123'}`
-                },
-                body: JSON.stringify({ to, subject, html })
-            });
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || 'Falha no gateway da Vercel');
-            }
-            console.log(`[Email] Password reset sent via Vercel Gateway to ${to}`)
-        } else {
-            // Em desenvolvimento (localhost), envia direto pelo nodemailer
-            await transporter.sendMail({
-                from: process.env.SMTP_FROM || '"Zakys" <noreply@zakys.com>',
-                to,
-                subject,
-                html
-            })
-            console.log(`[Email] Password reset sent directly to ${to}`)
-        }
+        await sendEmail(to, subject, html)
+        console.log(`[Email] Password reset sent to ${to}`)
     } catch (error) {
         console.error(`[Email] Error sending to ${to}:`, error)
         throw new Error('Falha ao enviar e-mail: ' + error.message)

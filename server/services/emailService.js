@@ -1,32 +1,4 @@
-import nodemailer from 'nodemailer'
-
-// Função para envio direto de e-mails usando nodemailer (evita falhas com gateways externos)
-const sendEmailDirectly = async (to, subject, html) => {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-        console.warn('[EmailService] Credenciais SMTP não configuradas. E-mail não enviado.');
-        return false;
-    }
-
-    const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 465,
-        secure: true, // Use true for 465, false for 587 se necessário, mas 465/true geralmente funciona com Gmail/SSL.
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-        },
-        connectionTimeout: 10000,
-        tls: { rejectUnauthorized: false }
-    });
-
-    const info = await transporter.sendMail({
-        from: process.env.SMTP_FROM || `"Zakys" <${process.env.SMTP_USER}>`,
-        to,
-        subject,
-        html
-    });
-    return info;
-}
+import { sendEmail, verifySmtpConfig } from '../utils/sendEmail.js'
 
 /**
  * Formata data para exibição em português
@@ -135,7 +107,7 @@ export const sendAppointmentReminder = async (email, customerName, date, time, r
     }
 
     try {
-        await sendEmailDirectly(
+        await sendEmail(
             email,
             `⏰ Lembrete: Seu agendamento é ${reminderType === '24h' ? 'amanhã' : 'hoje'}!`,
             generateEmailTemplate(customerName, date, time, reminderType)
@@ -164,8 +136,7 @@ export const testEmail = async () => {
     }
 
     try {
-        const transporter = createTransporter()
-        await transporter.verify()
+        await verifySmtpConfig()
         console.log('[EmailService] ✅ Conexão SMTP verificada com sucesso!')
         return true
     } catch (error) {
@@ -266,7 +237,7 @@ export const sendConfirmationEmail = async (email, customerName, date, time, est
     }
 
     try {
-        await sendEmailDirectly(
+        await sendEmail(
             email,
             `✅ Agendamento Confirmado - ${establishmentName}`,
             generateConfirmationTemplate(customerName, date, time, establishmentName)
@@ -364,7 +335,7 @@ export const sendNewAppointmentEmail = async (establishmentEmail, establishmentN
     }
 
     try {
-        await sendEmailDirectly(
+        await sendEmail(
             establishmentEmail,
             `📅 Novo Agendamento Recebido - ${customerName}`,
             generateNewAppointmentTemplate(establishmentName, customerName, date, time, servicesListStr)
@@ -453,7 +424,7 @@ export const sendReturnReminder = async (email, customerName, establishmentName,
     }
 
     try {
-        await sendEmailDirectly(
+        await sendEmail(
             email,
             `✨ Que tal agendar seu próximo ${serviceNames}?`,
             generateReturnReminderTemplate(customerName, establishmentName, serviceNames)
@@ -498,7 +469,7 @@ export const sendReactivationEmailToCustomer = async (email, customerName, date,
     </body>
     </html>`
     try {
-        await sendEmailDirectly(email, `🔄 Agendamento Reativado - ${establishmentName}`, html)
+        await sendEmail(email, `🔄 Agendamento Reativado - ${establishmentName}`, html)
         console.log(`[EmailService] ✅ Email de reativação enviado para o cliente: ${email}`)
         return true
     } catch (err) {
@@ -540,7 +511,7 @@ export const sendReactivationEmailToEstablishment = async (establishmentEmail, e
     </body>
     </html>`
     try {
-        await sendEmailDirectly(establishmentEmail, `🔄 Agendamento Reativado - ${customerName}`, html)
+        await sendEmail(establishmentEmail, `🔄 Agendamento Reativado - ${customerName}`, html)
         console.log(`[EmailService] ✅ Email de reativação enviado para o estabelecimento: ${establishmentEmail}`)
         return true
     } catch (err) {
