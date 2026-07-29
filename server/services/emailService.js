@@ -520,6 +520,89 @@ export const sendReactivationEmailToEstablishment = async (establishmentEmail, e
     }
 }
 
+export const sendCancellationEmailToCustomer = async (email, customerName, date, time, establishmentName) => {
+    if (!email) return false
+    const formattedDate = formatDate(date)
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr><td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr><td style="background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); padding: 30px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 28px;">❌ Agendamento Cancelado</h1>
+                    </td></tr>
+                    <tr><td style="padding: 40px 30px;">
+                        <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">Olá <strong style="color: #e11d48;">${customerName}</strong>,</h2>
+                        <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">O estabelecimento cancelou o seu agendamento abaixo.</p>
+                        <div style="background-color: #fff1f2; border-left: 4px solid #e11d48; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                            <p style="color: #9f1239; font-size: 14px; margin: 0 0 10px 0; font-weight: 600;">📍 ${establishmentName}</p>
+                            <p style="color: #171615; font-size: 20px; margin: 0; line-height: 1.6;">📅 <strong>${formattedDate}</strong><br>🕐 <strong>${time}</strong></p>
+                        </div>
+                        <p style="color: #5c5752; font-size: 14px; margin: 0;">Você pode agendar um novo horário quando quiser. Sentimos muito pelo transtorno.</p>
+                    </td></tr>
+                    <tr><td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                        <p style="color: #5c5752; font-size: 12px; margin: 0;">Este é um email automático do Zakys.</p>
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>`
+    try {
+        await sendEmail(email, `❌ Agendamento Cancelado - ${establishmentName}`, html)
+        console.log(`[EmailService] ✅ Email de cancelamento enviado para o cliente: ${email}`)
+        return true
+    } catch (err) {
+        console.error(`[EmailService] ❌ Erro ao enviar email de cancelamento para ${email}:`, err.message)
+        return false
+    }
+}
+
+export const sendCancellationEmailToEstablishment = async (establishmentEmail, establishmentName, customerName, date, time, servicesListStr) => {
+    if (!establishmentEmail) return false
+    const formattedDate = formatDate(date)
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr><td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr><td style="background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); padding: 30px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 28px;">❌ Agendamento Cancelado</h1>
+                    </td></tr>
+                    <tr><td style="padding: 40px 30px;">
+                        <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">Olá, <strong style="color: #e11d48;">${establishmentName}</strong>,</h2>
+                        <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">O cliente cancelou o agendamento abaixo.</p>
+                        <div style="background-color: #fff1f2; border-left: 4px solid #e11d48; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                            <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">👤 <strong>Cliente:</strong> ${customerName}</p>
+                            <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">📅 <strong>Data:</strong> ${formattedDate}</p>
+                            <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">🕐 <strong>Horário:</strong> ${time}</p>
+                            <p style="color: #171615; font-size: 16px; margin: 0; line-height: 1.6;">💅 <strong>Serviços:</strong> ${servicesListStr}</p>
+                        </div>
+                    </td></tr>
+                    <tr><td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                        <p style="color: #5c5752; font-size: 12px; margin: 0;">Este é um email automático do Zakys.</p>
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>`
+    try {
+        await sendEmail(establishmentEmail, `❌ Agendamento Cancelado - ${customerName}`, html)
+        console.log(`[EmailService] ✅ Email de cancelamento enviado para o estabelecimento: ${establishmentEmail}`)
+        return true
+    } catch (err) {
+        console.error(`[EmailService] ❌ Erro ao enviar email de cancelamento para o estabelecimento ${establishmentEmail}:`, err.message)
+        return false
+    }
+}
+
 export default {
     sendAppointmentReminder,
     sendConfirmationEmail,
@@ -527,5 +610,7 @@ export default {
     sendReturnReminder,
     sendReactivationEmailToCustomer,
     sendReactivationEmailToEstablishment,
+    sendCancellationEmailToCustomer,
+    sendCancellationEmailToEstablishment,
     testEmail
 }

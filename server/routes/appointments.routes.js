@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
-import { sendConfirmationEmail, sendNewAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment } from '../services/emailService.js'
+import { sendConfirmationEmail, sendNewAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
 import nodemailer from 'nodemailer'
 
 const router = Router()
@@ -625,6 +625,62 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
             }
         }
 
+        // Se está cancelando, avisar a outra parte (quem não pediu o cancelamento)
+        if (status === 'cancelled' && currentAppointment.status !== 'cancelled') {
+            try {
+                const establishmentsRepo = getRepository('establishments.json')
+                const establishment = await establishmentsRepo.findById(appointment.establishmentId)
+
+                let recipientEmail = appointment.customerEmail
+                let recipientName = appointment.customerName
+
+                if (appointment.userId) {
+                    const usersRepo = getRepository('users.json')
+                    const user = await usersRepo.findById(appointment.userId)
+                    if (user?.email) {
+                        recipientEmail = user.email
+                        recipientName = user.name || appointment.customerName
+                    }
+                }
+
+                if (updateData.cancelledBy === 'establishment') {
+                    if (recipientEmail) {
+                        await sendCancellationEmailToCustomer(
+                            recipientEmail,
+                            recipientName,
+                            appointment.date,
+                            appointment.time,
+                            establishment?.name || 'Estabelecimento'
+                        )
+                        console.log(`[Appointments] Email de cancelamento enviado para o cliente ${recipientEmail}`)
+                    }
+                } else {
+                    let estEmail = establishment?.email
+                    if (!estEmail) {
+                        const adminsRepo = getRepository('admins.json')
+                        const admin = await adminsRepo.findOne({ establishmentId: parseInt(appointment.establishmentId) })
+                        estEmail = admin?.email
+                    }
+                    if (estEmail) {
+                        const allServices = await servicesRepo.findAll()
+                        const selectedServices = allServices.filter(s => (appointment.services || []).includes(s.id))
+                        const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                        await sendCancellationEmailToEstablishment(
+                            estEmail,
+                            establishment?.name || 'Estabelecimento',
+                            recipientName,
+                            appointment.date,
+                            appointment.time,
+                            servicesListStr
+                        )
+                        console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${estEmail}`)
+                    }
+                }
+            } catch (emailErr) {
+                console.error('[Appointments] Erro ao enviar email de cancelamento:', emailErr.message)
+            }
+        }
+
         res.json({
             success: true,
             data: appointment
@@ -666,6 +722,33 @@ router.patch('/:id/cancel-guest', async (req, res, next) => {
             cancelledAt: new Date().toISOString()
         })
 
+        try {
+            const establishmentsRepo = getRepository('establishments.json')
+            const establishment = await establishmentsRepo.findById(appointment.establishmentId)
+            let estEmail = establishment?.email
+            if (!estEmail) {
+                const adminsRepo = getRepository('admins.json')
+                const admin = await adminsRepo.findOne({ establishmentId: parseInt(appointment.establishmentId) })
+                estEmail = admin?.email
+            }
+            if (estEmail) {
+                const allServices = await servicesRepo.findAll()
+                const selectedServices = allServices.filter(s => (appointment.services || []).includes(s.id))
+                const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                await sendCancellationEmailToEstablishment(
+                    estEmail,
+                    establishment?.name || 'Estabelecimento',
+                    appointment.customerName,
+                    appointment.date,
+                    appointment.time,
+                    servicesListStr
+                )
+                console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${estEmail}`)
+            }
+        } catch (emailErr) {
+            console.error('[Appointments] Erro ao enviar email de cancelamento:', emailErr.message)
+        }
+
         res.json({
             success: true,
             data: updated
@@ -693,6 +776,58 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
             cancelledBy,
             cancelledAt: new Date().toISOString()
         })
+
+        try {
+            const establishmentsRepo = getRepository('establishments.json')
+            const establishment = await establishmentsRepo.findById(existingAppointment.establishmentId)
+
+            let recipientEmail = existingAppointment.customerEmail
+            let recipientName = existingAppointment.customerName
+            if (existingAppointment.userId) {
+                const usersRepo = getRepository('users.json')
+                const user = await usersRepo.findById(existingAppointment.userId)
+                if (user?.email) {
+                    recipientEmail = user.email
+                    recipientName = user.name || existingAppointment.customerName
+                }
+            }
+
+            if (cancelledBy === 'establishment') {
+                if (recipientEmail) {
+                    await sendCancellationEmailToCustomer(
+                        recipientEmail,
+                        recipientName,
+                        existingAppointment.date,
+                        existingAppointment.time,
+                        establishment?.name || 'Estabelecimento'
+                    )
+                    console.log(`[Appointments] Email de cancelamento enviado para o cliente ${recipientEmail}`)
+                }
+            } else {
+                let estEmail = establishment?.email
+                if (!estEmail) {
+                    const adminsRepo = getRepository('admins.json')
+                    const admin = await adminsRepo.findOne({ establishmentId: parseInt(existingAppointment.establishmentId) })
+                    estEmail = admin?.email
+                }
+                if (estEmail) {
+                    const allServices = await servicesRepo.findAll()
+                    const selectedServices = allServices.filter(s => (existingAppointment.services || []).includes(s.id))
+                    const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                    await sendCancellationEmailToEstablishment(
+                        estEmail,
+                        establishment?.name || 'Estabelecimento',
+                        recipientName,
+                        existingAppointment.date,
+                        existingAppointment.time,
+                        servicesListStr
+                    )
+                    console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${estEmail}`)
+                }
+            }
+        } catch (emailErr) {
+            console.error('[Appointments] Erro ao enviar email de cancelamento:', emailErr.message)
+        }
 
         res.json({
             success: true,
