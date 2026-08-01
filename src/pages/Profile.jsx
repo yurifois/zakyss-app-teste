@@ -43,6 +43,7 @@ export default function Profile() {
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(true)
     const [expandedAptId, setExpandedAptId] = useState(null)
+    const [confirmAction, setConfirmAction] = useState(null)
     const [uploadingAvatar, setUploadingAvatar] = useState(false)
     const [avatarPreview, setAvatarPreview] = useState(null)
     const fileInputRef = useRef(null)
@@ -306,29 +307,11 @@ export default function Profile() {
         }
     }, [tab])
 
-    // Aguardar carregamento do localStorage
-    if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-4xl mb-4">⏳</div>
-                    <p>Carregando...</p>
-                </div>
-            </div>
-        )
-    }
-
-    if (!isAuthenticated) {
-        return <Navigate to="/entrar" replace />
-    }
-
     const formatShortDate = (dateStr) => {
         const [year, month, day] = dateStr.split('-')
         const date = new Date(year, month - 1, day)
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     }
-
-    const [confirmAction, setConfirmAction] = useState(null)
 
     const handleConfirmAction = async () => {
         if (!confirmAction) return
@@ -373,6 +356,22 @@ export default function Profile() {
             window.removeEventListener('focus', handleVisibilityChange)
         }
     }, [statusFilter, user])
+
+    // Aguardar carregamento do localStorage
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">⏳</div>
+                    <p>Carregando...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!isAuthenticated) {
+        return <Navigate to="/entrar" replace />
+    }
 
     const getStatusBadge = (status, cancelledBy = null) => {
         if (status === 'cancelled') {
