@@ -310,7 +310,11 @@ export default function Profile() {
     const formatShortDate = (dateStr) => {
         const [year, month, day] = dateStr.split('-')
         const date = new Date(year, month - 1, day)
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        const parts = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).formatToParts(date)
+        const d = parts.find(p => p.type === 'day').value
+        const m = parts.find(p => p.type === 'month').value.replace('.', '')
+        const y = parts.find(p => p.type === 'year').value
+        return `${d} ${m.charAt(0).toUpperCase()}${m.slice(1)}/${y}`
     }
 
     const handleConfirmAction = async () => {

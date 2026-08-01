@@ -227,13 +227,18 @@ export default function BookingConfirmation() {
                     )}
                 </div>
 
-                <div className="flex gap-4 mt-8">
-                    <Link to="/" className="btn btn-secondary flex-1">
-                        Voltar ao início
+                <div className="flex flex-col gap-4 mt-8">
+                    <Link to={`/agendar/${appointment.establishmentId}`} className="btn btn-primary w-full">
+                        📅 Fazer novo agendamento
                     </Link>
-                    <Link to="/perfil" className="btn btn-primary flex-1">
-                        Ver meus agendamentos
-                    </Link>
+                    <div className="flex gap-4">
+                        <Link to="/" className="btn btn-secondary flex-1">
+                            Voltar ao início
+                        </Link>
+                        <Link to="/perfil" className="btn btn-primary flex-1">
+                            Ver meus agendamentos
+                        </Link>
+                    </div>
                 </div>
             </div>
 
