@@ -239,7 +239,10 @@ export default function BookingConfirmation() {
 
             {/* Modal de Confirmação de Cancelamento */}
             {showCancelModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div
+                    className="modal-backdrop"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                >
                     <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
                             <span style={{ fontSize: '2rem' }}>⚠️</span>
@@ -271,7 +274,10 @@ export default function BookingConfirmation() {
 
             {/* Modal de Reativação */}
             {showReactivateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div
+                    className="modal-backdrop"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                >
                     <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(236, 72, 153, 0.1)' }}>
                             <span style={{ fontSize: '2rem' }}>🔄</span>

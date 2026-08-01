@@ -322,10 +322,10 @@ export default function Profile() {
         return <Navigate to="/entrar" replace />
     }
 
-    const formatDate = (dateStr) => {
+    const formatShortDate = (dateStr) => {
         const [year, month, day] = dateStr.split('-')
         const date = new Date(year, month - 1, day)
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     }
 
     const [confirmAction, setConfirmAction] = useState(null)
@@ -567,7 +567,7 @@ export default function Profile() {
                                                                 <div className="flex justify-between items-center">
                                                                     <div className="flex gap-4 items-center">
                                                                         <div className="text-center" style={{ minWidth: '60px' }}>
-                                                                            <div className="text-sm text-secondary">{formatDate(apt.date).split(' ')[0]}</div>
+                                                                            <div className="text-sm text-secondary">{formatShortDate(apt.date)}</div>
                                                                             <div className="text-lg font-bold" style={{ color: 'var(--primary-400)' }}>{apt.time}</div>
                                                                         </div>
                                                                         <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
@@ -990,8 +990,28 @@ export default function Profile() {
 
             {/* Modal de Confirmação (Cancelamento / Reativação) */}
             {confirmAction && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-base-100 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div
+                    className="modal-backdrop"
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '1rem',
+                        zIndex: 1000
+                    }}
+                    onClick={() => setConfirmAction(null)}
+                >
+                    <div
+                        className="card"
+                        style={{ width: '100%', maxWidth: '28rem', padding: '1.5rem', textAlign: 'center' }}
+                        onClick={e => e.stopPropagation()}
+                    >
                         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: confirmAction.type === 'cancel' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(236, 72, 153, 0.1)' }}>
                             <span style={{ fontSize: '2rem' }}>{confirmAction.type === 'cancel' ? '⚠️' : '🔄'}</span>
                         </div>

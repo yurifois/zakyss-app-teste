@@ -490,7 +490,11 @@ export default function Booking() {
             {/* Review Modal */}
             {/* Simple Confirmation Modal */}
             {showReviewModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !submitting && setShowReviewModal(false)}>
+                <div
+                    className="modal-backdrop"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                    onClick={() => !submitting && setShowReviewModal(false)}
+                >
                     <div 
                         className="bg-base-100 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-300 p-6 flex flex-col gap-3"
                         onClick={(e) => e.stopPropagation()}
@@ -508,7 +512,10 @@ export default function Booking() {
 
             {/* Login Prompt Modal */}
             {showLoginPrompt && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div
+                    className="modal-backdrop"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                >
                     <div className="bg-base-100 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center animate-in fade-in zoom-in duration-200">
                         <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
                             <UserIcon size={32} />
