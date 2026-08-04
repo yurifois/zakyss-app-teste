@@ -635,13 +635,26 @@ export default function AdminAppointments() {
                                     <div>
                                         <div className="text-sm text-muted">📱 {apt.customerPhone}</div>
                                     </div>
-                                    <button
-                                        onClick={() => openEditModal(apt)}
-                                        className="btn btn-outline btn-sm"
-                                        title="Editar"
-                                    >
-                                        ✏️ Editar
-                                    </button>
+                                    <div className="flex gap-2">
+                                        {apt.customerPhone && (
+                                            <a
+                                                href={`https://wa.me/${apt.customerPhone.replace(/\D/g, '').replace(/^(?!55)/, '55')}?text=${encodeURIComponent(`Olá ${apt.customerName}! Passando para falar sobre seu agendamento no dia ${fullDate} às ${apt.time}.`)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn btn-outline btn-sm"
+                                                title="Enviar mensagem no WhatsApp"
+                                            >
+                                                💬 WhatsApp
+                                            </a>
+                                        )}
+                                        <button
+                                            onClick={() => openEditModal(apt)}
+                                            className="btn btn-outline btn-sm"
+                                            title="Editar"
+                                        >
+                                            ✏️ Editar
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {apt.notes && (

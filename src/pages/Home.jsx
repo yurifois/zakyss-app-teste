@@ -265,6 +265,31 @@ export default function Home() {
                 </div>
             </section>
 
+            {/* Depoimentos (prova social) */}
+            {/* Conteúdo estático/curado por enquanto — trocar pelas frases reais de clientes quando tiver. */}
+            <section className="py-16">
+                <div className="container">
+                    <h2 className="text-3xl font-bold mb-10 text-center">O que dizem sobre a Zakys</h2>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[
+                            { name: 'Ana Paula', text: 'Agendar ficou muito mais fácil. Encontro o profissional certo em minutos.' },
+                            { name: 'Carlos Eduardo', text: 'Uso toda semana pra marcar meu corte, nunca mais esqueci um horário.' },
+                            { name: 'Fernanda Lima', text: 'Achei um salão excelente perto de casa que eu nem sabia que existia.' },
+                        ].map((t, i) => (
+                            <div key={i} className="card" style={{ padding: '1.5rem' }}>
+                                <div className="flex gap-1 mb-3">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <LucideIcons.Star key={star} size={16} className="text-yellow-500 fill-yellow-500" />
+                                    ))}
+                                </div>
+                                <p className="text-secondary mb-4" style={{ fontStyle: 'italic' }}>"{t.text}"</p>
+                                <p className="font-semibold text-sm">{t.name}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* CTA Section */}
             <section className="py-20" style={{ position: 'relative', overflow: 'hidden' }}>
                 {/* Decorative glow */}

@@ -168,7 +168,44 @@ export default function Establishment() {
                                     {establishment.address}
                                 </span>
                             </div>
-                            <p className="text-secondary">{establishment.description}</p>
+                            <p className="text-secondary mb-4">{establishment.description}</p>
+
+                            {/* Ações rápidas: Maps, Instagram, WhatsApp */}
+                            <div className="flex flex-wrap gap-3">
+                                {establishment.lat && establishment.lng && (
+                                    <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${establishment.lat},${establishment.lng}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-secondary btn-sm flex items-center gap-2"
+                                    >
+                                        <LucideIcons.MapPin size={16} />
+                                        Ver no Maps
+                                    </a>
+                                )}
+                                {establishment.instagram && (
+                                    <a
+                                        href={establishment.instagram.startsWith('http') ? establishment.instagram : `https://instagram.com/${establishment.instagram.replace('@', '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-secondary btn-sm flex items-center gap-2"
+                                    >
+                                        <LucideIcons.Instagram size={16} />
+                                        Instagram
+                                    </a>
+                                )}
+                                {establishment.phone && (
+                                    <a
+                                        href={`https://wa.me/${establishment.phone.replace(/\D/g, '').replace(/^(?!55)/, '55')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-secondary btn-sm flex items-center gap-2"
+                                    >
+                                        <LucideIcons.MessageCircle size={16} />
+                                        WhatsApp
+                                    </a>
+                                )}
+                            </div>
                         </div>
 
                         {/* Services */}

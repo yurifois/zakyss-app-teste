@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext'
 import Calendar from '../components/Calendar'
 import TimeSlots from '../components/TimeSlots'
 import ServiceCard from '../components/ServiceCard'
-import { ArrowLeft, Clock, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Clock, Calendar as CalendarIcon, User as UserIcon, MapPin, Instagram } from 'lucide-react'
 
 export default function Booking() {
     const { id } = useParams()
@@ -300,7 +300,31 @@ export default function Booking() {
                         Voltar
                     </button>
                     <h1 className="text-3xl font-bold mb-2">Agendar horário</h1>
-                    <p className="text-secondary">{establishment?.name}</p>
+                    <p className="text-secondary mb-3">{establishment?.name}</p>
+                    <div className="flex flex-wrap gap-3">
+                        {establishment?.lat && establishment?.lng && (
+                            <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${establishment.lat},${establishment.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary btn-sm flex items-center gap-2"
+                            >
+                                <MapPin size={16} />
+                                Como chegar
+                            </a>
+                        )}
+                        {establishment?.instagram && (
+                            <a
+                                href={establishment.instagram.startsWith('http') ? establishment.instagram : `https://instagram.com/${establishment.instagram.replace('@', '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary btn-sm flex items-center gap-2"
+                            >
+                                <Instagram size={16} />
+                                Instagram
+                            </a>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid lg:grid-cols-3 gap-8">
