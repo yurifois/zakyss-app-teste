@@ -84,6 +84,8 @@ function HeroDecorations() {
 
 export default function Home() {
     const [searchQuery, setSearchQuery] = useState('')
+    const [listening, setListening] = useState(false)
+    const SpeechRecognitionAPI = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)
     const [categories, setCategories] = useState([])
     const [nearbyEstablishments, setNearbyEstablishments] = useState([])
     const [loading, setLoading] = useState(true)
@@ -123,6 +125,26 @@ export default function Home() {
         navigate(`/buscar?categoria=${categoryId}`)
     }
 
+    const handleVoiceSearch = () => {
+        if (!SpeechRecognitionAPI || listening) return
+
+        const recognition = new SpeechRecognitionAPI()
+        recognition.lang = 'pt-BR'
+        recognition.interimResults = false
+        recognition.maxAlternatives = 1
+
+        recognition.onstart = () => setListening(true)
+        recognition.onend = () => setListening(false)
+        recognition.onerror = () => setListening(false)
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript
+            setSearchQuery(transcript)
+            navigate(`/buscar?q=${encodeURIComponent(transcript)}`)
+        }
+
+        recognition.start()
+    }
+
     return (
         <div>
             {/* Hero Section */}
@@ -147,6 +169,17 @@ export default function Home() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        {SpeechRecognitionAPI && (
+                            <button
+                                type="button"
+                                className="search-btn"
+                                onClick={handleVoiceSearch}
+                                title="Buscar por voz"
+                                style={listening ? { backgroundColor: 'var(--error-500)' } : undefined}
+                            >
+                                <LucideIcons.Mic size={20} />
+                            </button>
+                        )}
                         <button type="submit" className="search-btn">
                             <LucideIcons.Search size={20} />
                             Buscar

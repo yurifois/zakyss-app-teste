@@ -17,6 +17,10 @@ export default function Search() {
     const distanceFilter = searchParams.get('distancia') || ''
     const domiciliarFilter = searchParams.get('domiciliar') === 'true'
     const acessivelFilter = searchParams.get('acessivel') === 'true'
+    const estacionamentoFilter = searchParams.get('estacionamento') === 'true'
+    const minRatingFilter = searchParams.get('avaliacao') || ''
+    const minPriceFilter = searchParams.get('precoMin') || ''
+    const maxPriceFilter = searchParams.get('precoMax') || ''
 
     useEffect(() => {
         loadCategories()
@@ -27,7 +31,7 @@ export default function Search() {
         if (userPosition) {
             loadResults()
         }
-    }, [query, categoryFilter, distanceFilter, domiciliarFilter, acessivelFilter, userPosition])
+    }, [query, categoryFilter, distanceFilter, domiciliarFilter, acessivelFilter, estacionamentoFilter, minRatingFilter, minPriceFilter, maxPriceFilter, userPosition])
 
     const updateFilter = (key, value) => {
         const next = new URLSearchParams(searchParams)
@@ -66,6 +70,10 @@ export default function Search() {
             if (distanceFilter) params.maxDistance = distanceFilter
             if (domiciliarFilter) params.domiciliar = 'true'
             if (acessivelFilter) params.acessivel = 'true'
+            if (estacionamentoFilter) params.estacionamento = 'true'
+            if (minRatingFilter) params.minRating = minRatingFilter
+            if (minPriceFilter) params.minPrice = minPriceFilter
+            if (maxPriceFilter) params.maxPrice = maxPriceFilter
 
             const establishments = await api.getEstablishments(params)
 
@@ -128,6 +136,50 @@ export default function Search() {
                         />
                         Acessível
                     </label>
+
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={estacionamentoFilter}
+                            onChange={(e) => updateFilter('estacionamento', e.target.checked ? 'true' : '')}
+                        />
+                        Estacionamento
+                    </label>
+
+                    <select
+                        className="form-input"
+                        style={{ width: 'auto' }}
+                        value={minRatingFilter}
+                        onChange={(e) => updateFilter('avaliacao', e.target.value)}
+                    >
+                        <option value="">Qualquer avaliação</option>
+                        <option value="4.5">4.5+ estrelas</option>
+                        <option value="4">4+ estrelas</option>
+                        <option value="3">3+ estrelas</option>
+                    </select>
+
+                    <div className="flex items-center gap-2 text-sm">
+                        <span>Preço:</span>
+                        <input
+                            type="number"
+                            className="form-input"
+                            style={{ width: '80px' }}
+                            placeholder="Min"
+                            min="0"
+                            value={minPriceFilter}
+                            onChange={(e) => updateFilter('precoMin', e.target.value)}
+                        />
+                        <span>–</span>
+                        <input
+                            type="number"
+                            className="form-input"
+                            style={{ width: '80px' }}
+                            placeholder="Max"
+                            min="0"
+                            value={maxPriceFilter}
+                            onChange={(e) => updateFilter('precoMax', e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 {/* Cards Grid */}

@@ -259,6 +259,10 @@ export async function getEstablishments(params = {}) {
     if (params.maxDistance) queryParams.append('maxDistance', params.maxDistance)
     if (params.domiciliar) queryParams.append('domiciliar', params.domiciliar)
     if (params.acessivel) queryParams.append('acessivel', params.acessivel)
+    if (params.estacionamento) queryParams.append('estacionamento', params.estacionamento)
+    if (params.minRating) queryParams.append('minRating', params.minRating)
+    if (params.minPrice) queryParams.append('minPrice', params.minPrice)
+    if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice)
 
     const query = queryParams.toString()
     return request(`/establishments${query ? `?${query}` : ''}`)

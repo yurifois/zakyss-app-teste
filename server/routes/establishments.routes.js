@@ -51,6 +51,47 @@ router.get('/', async (req, res, next) => {
             establishments = establishments.filter(e => e.accessible === true)
         }
 
+        // Filtrar por estacionamento
+        if (req.query.estacionamento === 'true') {
+            establishments = establishments.filter(e => e.parking === true)
+        }
+
+        // Avaliação real: calcula a média a partir das notas de agendamentos
+        // concluídos (appointment.rating), não do campo estático de seed.
+        if (req.query.minRating) {
+            const allAppointments = await appointmentsRepo.findAll()
+            const ratingSums = {}
+            allAppointments.forEach(a => {
+                if (typeof a.rating === 'number' && a.rating >= 1) {
+                    const key = a.establishmentId
+                    if (!ratingSums[key]) ratingSums[key] = { sum: 0, count: 0 }
+                    ratingSums[key].sum += a.rating
+                    ratingSums[key].count += 1
+                }
+            })
+            establishments = establishments
+                .map(e => {
+                    const agg = ratingSums[e.id]
+                    return agg ? { ...e, rating: agg.sum / agg.count, reviewCount: agg.count } : e
+                })
+                .filter(e => ratingSums[e.id] && ratingSums[e.id].sum / ratingSums[e.id].count >= parseFloat(req.query.minRating))
+        }
+
+        // Filtrar por faixa de preço (com base no menor preço entre os serviços do estabelecimento)
+        if (req.query.minPrice || req.query.maxPrice) {
+            const allServices = await servicesRepo.findAll()
+            const priceById = new Map(allServices.map(s => [s.id, s.price]))
+            const min = req.query.minPrice ? parseFloat(req.query.minPrice) : 0
+            const max = req.query.maxPrice ? parseFloat(req.query.maxPrice) : Infinity
+
+            establishments = establishments.filter(e => {
+                const prices = (e.services || []).map(id => priceById.get(id)).filter(p => typeof p === 'number')
+                if (prices.length === 0) return false
+                const cheapest = Math.min(...prices)
+                return cheapest >= min && cheapest <= max
+            })
+        }
+
         // Busca por texto
         if (req.query.q) {
             const query = req.query.q.toLowerCase()

@@ -13,7 +13,8 @@ export default function AdminProfile() {
         email: '',
         phone: '',
         locationType: 'fixed',
-        accessible: false
+        accessible: false,
+        parking: false
     })
 
     useEffect(() => {
@@ -34,7 +35,8 @@ export default function AdminProfile() {
                     email: establishment.email || admin.email || '',
                     phone: establishment.phone || '',
                     locationType: establishment.locationType || 'fixed',
-                    accessible: establishment.accessible || false
+                    accessible: establishment.accessible || false,
+                    parking: establishment.parking || false
                 })
             }
         } catch (err) {
@@ -62,7 +64,8 @@ export default function AdminProfile() {
                 email: formData.email,
                 phone: formData.phone,
                 locationType: formData.locationType,
-                accessible: formData.accessible
+                accessible: formData.accessible,
+                parking: formData.parking
             })
 
             setSuccess(true)
@@ -71,7 +74,8 @@ export default function AdminProfile() {
                     email: updated.email || formData.email,
                     phone: updated.phone || formData.phone,
                     locationType: updated.locationType || formData.locationType,
-                    accessible: updated.accessible ?? formData.accessible
+                    accessible: updated.accessible ?? formData.accessible,
+                    parking: updated.parking ?? formData.parking
                 })
             }
         } catch (err) {
@@ -172,6 +176,16 @@ export default function AdminProfile() {
                                 onChange={handleChange}
                             />
                             Estabelecimento acessível (aparece no filtro "Acessível" da busca)
+                        </label>
+
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                name="parking"
+                                checked={formData.parking}
+                                onChange={handleChange}
+                            />
+                            Possui estacionamento (aparece no filtro "Estacionamento" da busca)
                         </label>
 
                         <div className="pt-4">
