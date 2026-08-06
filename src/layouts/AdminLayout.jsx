@@ -40,13 +40,51 @@ const playNotificationSound = () => {
 
 export default function AdminLayout() {
     const { admin, isAdmin, adminLogout, loading } = useAuth()
-    const { info } = useToast()
+    const { info, success, error: showError } = useToast()
     const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [establishmentName, setEstablishmentName] = useState(null)
+    const [editingName, setEditingName] = useState(false)
+    const [nameInput, setNameInput] = useState('')
+    const [savingName, setSavingName] = useState(false)
     const location = useLocation()
     const knownPendingIds = useRef(new Set())
 
     // Fechar sidebar ao navegar (mobile)
     const handleNavClick = () => setSidebarOpen(false)
+
+    // Nome real do estabelecimento (não o nome do admin, que fica travado no
+    // que foi digitado no cadastro). Rebusca a cada navegação pra refletir
+    // edições feitas por aqui mesmo sem precisar recarregar a página.
+    useEffect(() => {
+        if (!admin?.establishmentId) return
+        api.getEstablishmentById(admin.establishmentId)
+            .then(est => setEstablishmentName(est?.name || null))
+            .catch(() => {})
+    }, [admin?.establishmentId, location.pathname])
+
+    const startEditingName = () => {
+        setNameInput(establishmentName || '')
+        setEditingName(true)
+    }
+
+    const saveEstablishmentName = async () => {
+        const trimmed = nameInput.trim()
+        if (!trimmed) {
+            showError('O nome não pode ficar vazio')
+            return
+        }
+        setSavingName(true)
+        try {
+            await api.updateEstablishment(admin.establishmentId, { name: trimmed })
+            setEstablishmentName(trimmed)
+            setEditingName(false)
+            success('Nome atualizado! Já vale pra busca, agendamento e favoritos.')
+        } catch (err) {
+            showError(err.message || 'Erro ao salvar o nome')
+        } finally {
+            setSavingName(false)
+        }
+    }
 
     // Polling de novos agendamentos
     useEffect(() => {
@@ -130,6 +168,47 @@ export default function AdminLayout() {
                 <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '0.75rem' }}>
                     <div className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>Logado como</div>
                     <div className="font-medium" style={{ color: 'white' }}>{admin?.name}</div>
+                    <div className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.7)' }}>Estabelecimento</div>
+                    {editingName ? (
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="text"
+                                value={nameInput}
+                                onChange={(e) => setNameInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && saveEstablishmentName()}
+                                autoFocus
+                                disabled={savingName}
+                                style={{ width: '100%', padding: '0.25rem 0.5rem', borderRadius: '0.375rem', border: 'none', fontSize: '0.9rem' }}
+                            />
+                            <button
+                                onClick={saveEstablishmentName}
+                                disabled={savingName}
+                                title="Salvar"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white' }}
+                            >
+                                ✅
+                            </button>
+                            <button
+                                onClick={() => setEditingName(false)}
+                                disabled={savingName}
+                                title="Cancelar"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="font-medium flex items-center gap-2" style={{ color: 'white' }}>
+                            {establishmentName || '...'}
+                            <button
+                                onClick={startEditingName}
+                                title="Editar nome do estabelecimento"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                            >
+                                ✏️
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <nav className="admin-nav">

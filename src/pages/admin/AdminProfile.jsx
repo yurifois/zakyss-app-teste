@@ -56,7 +56,7 @@ export default function AdminProfile() {
         e.preventDefault()
         setError(null)
         setSuccess(false)
-        
+
         try {
             setSaving(true)
             // request() já retorna data.data, então 'updated' é o objeto direto
