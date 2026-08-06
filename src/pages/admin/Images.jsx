@@ -94,8 +94,9 @@ export default function AdminImages() {
                     </p>
 
                     <ImageUploader
-                        label="Adicionar nova imagem"
+                        label="Adicionar novas imagens"
                         onUpload={handleServiceImageUpload}
+                        multiple
                     />
 
                     {establishment?.serviceImages && establishment.serviceImages.length > 0 && (

@@ -6,45 +6,55 @@ export default function ImageUploader({
     label = 'Imagem',
     accept = 'image/jpeg,image/png,image/webp,image/gif',
     maxSize = 5 * 1024 * 1024, // 5MB
+    multiple = false,
     className = ''
 }) {
     const [preview, setPreview] = useState(null)
     const [isDragging, setIsDragging] = useState(false)
     const [isUploading, setIsUploading] = useState(false)
+    const [progress, setProgress] = useState(null) // { current, total }
     const [error, setError] = useState(null)
     const fileInputRef = useRef(null)
 
-    const handleFile = async (file) => {
-        if (!file) return
-
-        // Validar tipo
+    const uploadOne = async (file) => {
         if (!file.type.startsWith('image/')) {
-            setError('Por favor, selecione um arquivo de imagem')
-            return
+            throw new Error('Por favor, selecione um arquivo de imagem')
         }
-
-        // Validar tamanho
         if (file.size > maxSize) {
-            setError(`O arquivo deve ter no máximo ${Math.round(maxSize / 1024 / 1024)}MB`)
-            return
+            throw new Error(`O arquivo deve ter no máximo ${Math.round(maxSize / 1024 / 1024)}MB`)
         }
+        await onUpload(file)
+    }
+
+    const handleFiles = async (fileList) => {
+        const files = Array.from(fileList || [])
+        if (files.length === 0) return
 
         setError(null)
-
-        // Preview
-        const reader = new FileReader()
-        reader.onload = (e) => setPreview(e.target.result)
-        reader.readAsDataURL(file)
-
-        // Upload
         setIsUploading(true)
+
+        // Preview só faz sentido pra um arquivo só (ex: logo); em lote, mostra progresso.
+        if (files.length === 1 && !multiple) {
+            const reader = new FileReader()
+            reader.onload = (e) => setPreview(e.target.result)
+            reader.readAsDataURL(files[0])
+        }
+
         try {
-            await onUpload(file)
+            // Um de cada vez: o backend lê a galeria atual e regrava com a nova
+            // imagem — em paralelo, uma requisição pode sobrescrever a outra.
+            for (let i = 0; i < files.length; i++) {
+                setProgress({ current: i + 1, total: files.length })
+                await uploadOne(files[i])
+            }
         } catch (err) {
             setError(err.message)
-            setPreview(null)
         } finally {
             setIsUploading(false)
+            setProgress(null)
+            // Volta pro estado "clique ou arraste" — sem isso a caixa fica presa
+            // mostrando a última imagem enviada, em vez de ficar pronta pra próxima.
+            setPreview(null)
         }
     }
 
@@ -61,13 +71,11 @@ export default function ImageUploader({
     const handleDrop = (e) => {
         e.preventDefault()
         setIsDragging(false)
-        const file = e.dataTransfer.files[0]
-        handleFile(file)
+        handleFiles(e.dataTransfer.files)
     }
 
     const handleChange = (e) => {
-        const file = e.target.files[0]
-        handleFile(file)
+        handleFiles(e.target.files)
     }
 
     const handleClick = () => {
@@ -91,6 +99,7 @@ export default function ImageUploader({
                     ref={fileInputRef}
                     type="file"
                     accept={accept}
+                    multiple={multiple}
                     onChange={handleChange}
                     style={{ display: 'none' }}
                 />
@@ -101,18 +110,27 @@ export default function ImageUploader({
                         {isUploading && (
                             <div className="upload-overlay">
                                 <div className="spinner"></div>
-                                <span>Enviando...</span>
+                                <span>{progress ? `Enviando ${progress.current} de ${progress.total}...` : 'Enviando...'}</span>
                             </div>
                         )}
+                    </div>
+                ) : isUploading ? (
+                    <div className="upload-placeholder">
+                        <div className="spinner"></div>
+                        <span className="upload-text">
+                            {progress ? `Enviando ${progress.current} de ${progress.total}...` : 'Enviando...'}
+                        </span>
                     </div>
                 ) : (
                     <div className="upload-placeholder">
                         <span className="upload-icon">📷</span>
                         <span className="upload-text">
-                            {isDragging ? 'Solte a imagem aqui' : 'Clique ou arraste uma imagem'}
+                            {isDragging
+                                ? 'Solte as imagens aqui'
+                                : multiple ? 'Clique ou arraste uma ou várias imagens' : 'Clique ou arraste uma imagem'}
                         </span>
                         <span className="upload-hint">
-                            JPG, PNG, WEBP ou GIF (máx. {Math.round(maxSize / 1024 / 1024)}MB)
+                            JPG, PNG, WEBP ou GIF (máx. {Math.round(maxSize / 1024 / 1024)}MB cada)
                         </span>
                     </div>
                 )}
