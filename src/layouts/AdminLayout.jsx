@@ -148,6 +148,12 @@ export default function AdminLayout() {
                     <NavLink to="/admin/servicos" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         ✂️ Serviços
                     </NavLink>
+                    <NavLink to="/admin/imagens" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+                        🖼️ Imagens
+                    </NavLink>
+                    <NavLink to="/admin/links" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+                        🔗 Links
+                    </NavLink>
                     <NavLink to="/admin/funcionarios" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         👥 Funcionários
                     </NavLink>

@@ -14,8 +14,7 @@ export default function AdminProfile() {
         phone: '',
         locationType: 'fixed',
         accessible: false,
-        parking: false,
-        instagram: ''
+        parking: false
     })
 
     useEffect(() => {
@@ -37,8 +36,7 @@ export default function AdminProfile() {
                     phone: establishment.phone || '',
                     locationType: establishment.locationType || 'fixed',
                     accessible: establishment.accessible || false,
-                    parking: establishment.parking || false,
-                    instagram: establishment.instagram || ''
+                    parking: establishment.parking || false
                 })
             }
         } catch (err) {
@@ -67,8 +65,7 @@ export default function AdminProfile() {
                 phone: formData.phone,
                 locationType: formData.locationType,
                 accessible: formData.accessible,
-                parking: formData.parking,
-                instagram: formData.instagram
+                parking: formData.parking
             })
 
             setSuccess(true)
@@ -78,8 +75,7 @@ export default function AdminProfile() {
                     phone: updated.phone || formData.phone,
                     locationType: updated.locationType || formData.locationType,
                     accessible: updated.accessible ?? formData.accessible,
-                    parking: updated.parking ?? formData.parking,
-                    instagram: updated.instagram ?? formData.instagram
+                    parking: updated.parking ?? formData.parking
                 })
             }
         } catch (err) {
@@ -191,19 +187,6 @@ export default function AdminProfile() {
                             />
                             Possui estacionamento (aparece no filtro "Estacionamento" da busca)
                         </label>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Instagram</label>
-                            <input
-                                type="text"
-                                name="instagram"
-                                className="input w-full"
-                                placeholder="@seuinstagram ou link completo"
-                                value={formData.instagram}
-                                onChange={handleChange}
-                            />
-                            <p className="text-xs opacity-60 mt-1">Aparece como botão "Instagram" na página do estabelecimento.</p>
-                        </div>
 
                         <div className="pt-4">
                             <button

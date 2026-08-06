@@ -146,6 +146,38 @@ router.get('/:id', async (req, res, next) => {
     }
 })
 
+// Avaliações públicas do estabelecimento: agendamentos concluídos com nota
+// e comentário escrito. Nome do cliente é mostrado abreviado (privacidade).
+router.get('/:id/reviews', async (req, res, next) => {
+    try {
+        const allAppointments = await appointmentsRepo.findAll({ establishmentId: parseInt(req.params.id) })
+
+        const reviews = allAppointments
+            .filter(a => typeof a.rating === 'number' && a.comment)
+            .map(a => {
+                const nameParts = (a.customerName || 'Cliente').trim().split(' ')
+                const displayName = nameParts.length > 1
+                    ? `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`
+                    : nameParts[0]
+                return {
+                    id: a.id,
+                    name: displayName,
+                    rating: a.rating,
+                    comment: a.comment,
+                    date: a.ratedAt || a.date
+                }
+            })
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+
+        res.json({
+            success: true,
+            data: reviews
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
 // Serviços do estabelecimento (com preços personalizados)
 router.get('/:id/services', async (req, res, next) => {
     try {

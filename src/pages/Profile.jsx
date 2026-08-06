@@ -44,6 +44,7 @@ export default function Profile() {
     const [loading, setLoading] = useState(true)
     const [expandedAptId, setExpandedAptId] = useState(null)
     const [confirmAction, setConfirmAction] = useState(null)
+    const [reviewDrafts, setReviewDrafts] = useState({}) // { [appointmentId]: { rating, comment } }, rascunho antes de enviar
     const [uploadingAvatar, setUploadingAvatar] = useState(false)
     const [avatarPreview, setAvatarPreview] = useState(null)
     const fileInputRef = useRef(null)
@@ -136,12 +137,12 @@ export default function Profile() {
             if (!silent) setLoading(false)
         }
     }
-    const handleRateAppointment = async (appointmentId, rating) => {
+    const handleRateAppointment = async (appointmentId, rating, comment) => {
         try {
-            await api.rateAppointment(appointmentId, rating)
+            await api.rateAppointment(appointmentId, rating, comment)
             success('Avaliação salva com sucesso!')
-            setAppointments(prev => prev.map(apt => 
-                apt.id === appointmentId ? { ...apt, rating } : apt
+            setAppointments(prev => prev.map(apt =>
+                apt.id === appointmentId ? { ...apt, rating, comment } : apt
             ))
         } catch (err) {
             error('Erro ao salvar avaliação')
@@ -628,16 +629,19 @@ export default function Profile() {
 
                                                                         {apt.status === 'completed' && (
                                                                             <div className="mt-4 pt-4 border-t border-base-300">
-                                                                                <div className="flex flex-col items-start gap-2">
+                                                                                <div className="flex flex-col items-start gap-2" style={{ width: '100%' }}>
                                                                                     <span className="text-sm font-semibold">Avalie seu atendimento:</span>
                                                                                     <div className="flex gap-1">
                                                                                         {[1, 2, 3, 4, 5].map(star => (
                                                                                             <button
                                                                                                 key={star}
-                                                                                                onClick={() => handleRateAppointment(apt.id, star)}
+                                                                                                onClick={() => setReviewDrafts(prev => ({
+                                                                                                    ...prev,
+                                                                                                    [apt.id]: { ...prev[apt.id], rating: star }
+                                                                                                }))}
                                                                                                 className="text-2xl transition-transform hover:scale-110"
                                                                                                 style={{
-                                                                                                    color: apt.rating >= star ? '#eab308' : '#d1d5db',
+                                                                                                    color: (reviewDrafts[apt.id]?.rating ?? apt.rating) >= star ? '#eab308' : '#d1d5db',
                                                                                                     background: 'none',
                                                                                                     border: 'none',
                                                                                                     cursor: 'pointer'
@@ -648,8 +652,30 @@ export default function Profile() {
                                                                                             </button>
                                                                                         ))}
                                                                                     </div>
+                                                                                    <textarea
+                                                                                        className="input w-full"
+                                                                                        style={{ minHeight: '60px', fontSize: '0.85rem' }}
+                                                                                        placeholder="Escreva sua avaliação (opcional, fica visível pra outros clientes)"
+                                                                                        value={reviewDrafts[apt.id]?.comment ?? apt.comment ?? ''}
+                                                                                        onChange={(e) => setReviewDrafts(prev => ({
+                                                                                            ...prev,
+                                                                                            [apt.id]: { ...prev[apt.id], comment: e.target.value }
+                                                                                        }))}
+                                                                                        maxLength={500}
+                                                                                    />
+                                                                                    <button
+                                                                                        className="btn btn-primary btn-sm"
+                                                                                        disabled={!(reviewDrafts[apt.id]?.rating ?? apt.rating)}
+                                                                                        onClick={() => handleRateAppointment(
+                                                                                            apt.id,
+                                                                                            reviewDrafts[apt.id]?.rating ?? apt.rating,
+                                                                                            reviewDrafts[apt.id]?.comment ?? apt.comment ?? ''
+                                                                                        )}
+                                                                                    >
+                                                                                        {apt.rating ? 'Atualizar avaliação' : 'Enviar avaliação'}
+                                                                                    </button>
                                                                                     {apt.rating && (
-                                                                                        <span className="text-xs text-muted">Você avaliou com {apt.rating} estrela{apt.rating > 1 ? 's' : ''}</span>
+                                                                                        <span className="text-xs text-muted">Sua nota: {apt.rating} estrela{apt.rating > 1 ? 's' : ''}</span>
                                                                                     )}
                                                                                 </div>
                                                                             </div>

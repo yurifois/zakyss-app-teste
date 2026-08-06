@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
-import ImageUploader from '../../components/ImageUploader'
 
 export default function AdminDashboard() {
     const { admin, adminLogout } = useAuth()
@@ -104,41 +103,6 @@ export default function AdminDashboard() {
         } catch (err) {
             console.error('Error reactivating:', err)
             error(err.message || 'Erro ao reativar agendamento')
-        }
-    }
-
-    const handleLogoUpload = async (file) => {
-        try {
-            const result = await api.uploadEstablishmentLogo(admin.establishmentId, file)
-            setEstablishment(prev => ({ ...prev, image: result.image }))
-            success('Logo atualizada com sucesso!')
-        } catch (error) {
-            console.error('Error uploading logo:', error)
-            throw error
-        }
-    }
-
-    const handleServiceImageUpload = async (file) => {
-        try {
-            const result = await api.uploadServiceImage(admin.establishmentId, file)
-            setEstablishment(prev => ({ ...prev, serviceImages: result.serviceImages }))
-            success('Imagem adicionada com sucesso!')
-        } catch (error) {
-            console.error('Error uploading service image:', error)
-            throw error
-        }
-    }
-
-    const handleDeleteServiceImage = async (index) => {
-        try {
-            await api.deleteServiceImage(admin.establishmentId, index)
-            setEstablishment(prev => ({
-                ...prev,
-                serviceImages: prev.serviceImages.filter((_, i) => i !== index)
-            }))
-            success('Imagem removida')
-        } catch (error) {
-            console.error('Error deleting image:', error)
         }
     }
 
@@ -411,56 +375,6 @@ export default function AdminDashboard() {
                                 ))}
                         </div>
                     )}
-                </div>
-            </div>
-
-            {/* Images Section */}
-            <div className="mt-8">
-                <h2 className="text-xl font-bold mb-4">🖼️ Imagens do Estabelecimento</h2>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                    {/* Logo Upload */}
-                    <div className="card" style={{ padding: '1.5rem' }}>
-                        <h3 className="font-bold mb-4">Logo / Imagem Principal</h3>
-                        <p className="text-sm text-secondary mb-4">
-                            Esta imagem será exibida no card do seu estabelecimento.
-                        </p>
-                        <ImageUploader
-                            label=""
-                            currentImage={api.getImageUrl(establishment?.image)}
-                            onUpload={handleLogoUpload}
-                        />
-                    </div>
-
-                    {/* Service Images */}
-                    <div className="card" style={{ padding: '1.5rem' }}>
-                        <h3 className="font-bold mb-4">Galeria de Serviços</h3>
-                        <p className="text-sm text-secondary mb-4">
-                            Adicione fotos do seu trabalho para atrair mais clientes.
-                        </p>
-
-                        <ImageUploader
-                            label="Adicionar nova imagem"
-                            onUpload={handleServiceImageUpload}
-                        />
-
-                        {establishment?.serviceImages && establishment.serviceImages.length > 0 && (
-                            <div className="service-images-gallery">
-                                {establishment.serviceImages.map((img, index) => (
-                                    <div key={index} className="service-image-item">
-                                        <img src={api.getImageUrl(img)} alt={`Serviço ${index + 1}`} />
-                                        <button
-                                            className="service-image-remove"
-                                            onClick={() => handleDeleteServiceImage(index)}
-                                            title="Remover imagem"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
             </div>
 

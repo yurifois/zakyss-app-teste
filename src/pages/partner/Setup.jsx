@@ -62,6 +62,23 @@ export default function PartnerSetup() {
         }))
     }
 
+    // Converte o endereço digitado em coordenadas de verdade (Nominatim/OpenStreetMap,
+    // gratuito, sem chave de API). Sem isso, a coordenada cai num fallback aleatório
+    // perto do centro de Brasília — foi exatamente isso que estava acontecendo antes.
+    const geocodeAddress = async ({ address, number, city, state, cep }) => {
+        try {
+            const query = encodeURIComponent(`${address}, ${number}, ${city}, ${state}, ${cep}, Brasil`)
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${query}`)
+            const results = await response.json()
+            if (results?.[0]) {
+                return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) }
+            }
+        } catch (err) {
+            console.warn('[Geocoding] Falha ao geocodificar endereço:', err.message)
+        }
+        return null
+    }
+
     const handleSubmit = async () => {
         setLoading(true)
 
@@ -92,6 +109,19 @@ export default function PartnerSetup() {
             const cleanRazaoSocial = partnerData.razaoSocial ? partnerData.razaoSocial.replace(/^[\d.\-/]+\s*/, '') : ''
             const establishmentName = partnerData.nomeFantasia || cleanRazaoSocial
 
+            const geocoded = await geocodeAddress({
+                address: partnerData.address,
+                number: partnerData.number,
+                city: partnerData.city,
+                state: partnerData.state,
+                cep: partnerData.cep,
+            })
+            const lat = geocoded?.lat ?? partnerData.lat ?? (-15.7942 + (Math.random() - 0.5) * 0.1)
+            const lng = geocoded?.lng ?? partnerData.lng ?? (-47.8822 + (Math.random() - 0.5) * 0.1)
+            if (!geocoded) {
+                console.warn('[Geocoding] Não foi possível localizar o endereço no mapa; usando coordenada aproximada.')
+            }
+
             const establishment = await api.createEstablishment({
                 name: establishmentName,
                 description: `${establishmentName} - ${partnerData.documentType === 'cpf' ? `Profissional: ${cleanRazaoSocial}` : 'Empresa'}`,
@@ -106,8 +136,8 @@ export default function PartnerSetup() {
                 city: partnerData.city,
                 state: partnerData.state,
                 zipCode: partnerData.cep,
-                lat: partnerData.lat || (-15.7942 + (Math.random() - 0.5) * 0.1),
-                lng: partnerData.lng || (-47.8822 + (Math.random() - 0.5) * 0.1),
+                lat,
+                lng,
                 image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
                 images: ['https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800'],
                 categories: Array.from(categorySet),

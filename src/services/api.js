@@ -356,11 +356,15 @@ export async function reactivateAppointment(id) {
     return updateAppointmentStatus(id, 'confirmed')
 }
 
-export async function rateAppointment(id, rating) {
+export async function rateAppointment(id, rating, comment) {
     return request(`/appointments/${id}/rate`, {
         method: 'PATCH',
-        body: JSON.stringify({ rating }),
+        body: JSON.stringify({ rating, comment }),
     })
+}
+
+export async function getEstablishmentReviews(establishmentId) {
+    return request(`/establishments/${establishmentId}/reviews`)
 }
 
 export async function updateAppointment(id, data) {

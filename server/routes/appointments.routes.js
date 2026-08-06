@@ -879,11 +879,15 @@ router.patch('/:id/assignments', authMiddleware, async (req, res, next) => {
 // Avaliar agendamento
 router.patch('/:id/rate', authMiddleware, async (req, res, next) => {
     try {
-        const { rating } = req.body
+        const { rating, comment } = req.body
         const appointmentId = req.params.id
 
         if (typeof rating !== 'number' || rating < 1 || rating > 5) {
             throw new AppError('A nota deve ser um número entre 1 e 5', 400)
+        }
+
+        if (comment && comment.length > 500) {
+            throw new AppError('A avaliação não pode passar de 500 caracteres', 400)
         }
 
         const appointment = await appointmentsRepo.findById(appointmentId)
@@ -901,7 +905,9 @@ router.patch('/:id/rate', authMiddleware, async (req, res, next) => {
         }
 
         const updatedAppointment = await appointmentsRepo.update(appointmentId, {
-            rating: Math.floor(rating)
+            rating: Math.floor(rating),
+            comment: comment ? comment.trim() : null,
+            ratedAt: new Date().toISOString()
         })
 
         res.json({

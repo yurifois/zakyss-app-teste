@@ -35,6 +35,8 @@ import AdminEmployees from './pages/admin/Employees'
 import AdminEmployeeReport from './pages/admin/EmployeeReport'
 import AdminAnalytics from './pages/admin/Analytics'
 import AdminProfile from './pages/admin/AdminProfile'
+import AdminImages from './pages/admin/Images'
+import AdminLinks from './pages/admin/Links'
 
 function App() {
     return (
@@ -75,6 +77,8 @@ function App() {
                 <Route path="relatorio" element={<AdminEmployeeReport />} />
                 <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="dados" element={<AdminProfile />} />
+                <Route path="imagens" element={<AdminImages />} />
+                <Route path="links" element={<AdminLinks />} />
             </Route>
         </Routes>
     )

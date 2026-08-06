@@ -24,6 +24,10 @@ export default function Establishment() {
     const [selectedServices, setSelectedServices] = useState([])
     const [employeePreferences, setEmployeePreferences] = useState({}) // { serviceId: employeeId }
     const [loading, setLoading] = useState(true)
+    const [expandedImage, setExpandedImage] = useState(null)
+    const [showReviewsModal, setShowReviewsModal] = useState(false)
+    const [reviews, setReviews] = useState([])
+    const [loadingReviews, setLoadingReviews] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -88,6 +92,19 @@ export default function Establishment() {
 
     const getTotalDuration = () => {
         return getSelectedServicesData().reduce((sum, s) => sum + s.duration, 0)
+    }
+
+    const handleOpenReviews = async () => {
+        setShowReviewsModal(true)
+        setLoadingReviews(true)
+        try {
+            const data = await api.getEstablishmentReviews(id)
+            setReviews(data || [])
+        } catch (err) {
+            console.error('Error loading reviews:', err)
+        } finally {
+            setLoadingReviews(false)
+        }
     }
 
     const handleBooking = () => {
@@ -163,6 +180,12 @@ export default function Establishment() {
                                     <LucideIcons.Star size={20} className="text-yellow-500 fill-yellow-500" />
                                     <strong>{establishment.rating}</strong>
                                     <span className="text-muted">({establishment.reviewCount} avaliações)</span>
+                                    <button
+                                        onClick={handleOpenReviews}
+                                        style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', color: 'var(--primary-400)' }}
+                                    >
+                                        Ver avaliações
+                                    </button>
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <LucideIcons.MapPin size={20} className="text-primary" />
@@ -204,7 +227,12 @@ export default function Establishment() {
                                 <h2 className="text-xl font-bold mb-4">Galeria de Serviços</h2>
                                 <div className="service-images-gallery">
                                     {establishment.serviceImages.map((img, index) => (
-                                        <div key={index} className="service-image-item" style={{ cursor: 'pointer' }}>
+                                        <div
+                                            key={index}
+                                            className="service-image-item"
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => setExpandedImage(img)}
+                                        >
                                             <img src={getImageUrl(img)} alt={`Serviço ${index + 1}`} />
                                         </div>
                                     ))}
@@ -279,6 +307,73 @@ export default function Establishment() {
                     </div>
                 </div>
             </div>
+
+            {/* Lightbox: expande a imagem clicada da galeria */}
+            {expandedImage && (
+                <div
+                    className="modal-backdrop"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                    onClick={() => setExpandedImage(null)}
+                >
+                    <img
+                        src={getImageUrl(expandedImage)}
+                        alt="Imagem ampliada"
+                        style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '0.75rem' }}
+                        onClick={e => e.stopPropagation()}
+                    />
+                </div>
+            )}
+
+            {/* Modal de avaliações escritas */}
+            {showReviewsModal && (
+                <div
+                    className="modal-backdrop"
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                    onClick={() => setShowReviewsModal(false)}
+                >
+                    <div
+                        className="card"
+                        style={{ width: '100%', maxWidth: '32rem', maxHeight: '80vh', overflow: 'auto', padding: '1.5rem' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">Avaliações</h2>
+                            <button
+                                onClick={() => setShowReviewsModal(false)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                <LucideIcons.X size={22} />
+                            </button>
+                        </div>
+
+                        {loadingReviews ? (
+                            <p className="text-muted text-center py-8">Carregando...</p>
+                        ) : reviews.length === 0 ? (
+                            <p className="text-muted text-center py-8">Ainda não há avaliações escritas para este estabelecimento.</p>
+                        ) : (
+                            <div className="flex flex-col gap-4">
+                                {reviews.map(review => (
+                                    <div key={review.id} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <strong>{review.name}</strong>
+                                            <div className="flex">
+                                                {[1, 2, 3, 4, 5].map(star => (
+                                                    <LucideIcons.Star
+                                                        key={star}
+                                                        size={14}
+                                                        className={star <= review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted'}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-secondary">{review.comment}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
