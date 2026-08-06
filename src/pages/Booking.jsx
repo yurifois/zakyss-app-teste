@@ -313,6 +313,14 @@ export default function Booking() {
 
                     <h1 className="text-3xl font-bold mb-2">Agendar horário</h1>
                     <p className="text-secondary mb-3">{establishment?.name}</p>
+
+                    {(establishment?.accessible || establishment?.parking) && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {establishment.accessible && <span className="badge">♿ Acessível</span>}
+                            {establishment.parking && <span className="badge">🅿️ Estacionamento</span>}
+                        </div>
+                    )}
+
                     <EstablishmentLocationCard establishment={establishment} />
 
                     {establishment?.serviceImages && establishment.serviceImages.length > 0 && (

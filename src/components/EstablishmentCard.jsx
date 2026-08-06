@@ -86,6 +86,9 @@ export default function EstablishmentCard({ establishment }) {
                     {establishment.accessible && (
                         <span className="badge">♿ Acessível</span>
                     )}
+                    {establishment.parking && (
+                        <span className="badge">🅿️ Estacionamento</span>
+                    )}
                 </div>
 
                 <p className="establishment-address">

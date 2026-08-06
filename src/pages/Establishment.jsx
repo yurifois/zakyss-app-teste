@@ -192,6 +192,14 @@ export default function Establishment() {
                                     {establishment.address}
                                 </span>
                             </div>
+
+                            {(establishment.accessible || establishment.parking) && (
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    {establishment.accessible && <span className="badge">♿ Acessível</span>}
+                                    {establishment.parking && <span className="badge">🅿️ Estacionamento</span>}
+                                </div>
+                            )}
+
                             <p className="text-secondary mb-4">{establishment.description}</p>
 
                             <EstablishmentLocationCard establishment={establishment} />
