@@ -300,9 +300,30 @@ export default function Booking() {
                         <ArrowLeft size={16} />
                         Voltar
                     </button>
+
+                    {establishment?.image && (
+                        <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                            <img
+                                src={api.getImageUrl(establishment.image)}
+                                alt={establishment.name}
+                                style={{ width: '100%', height: '220px', objectFit: 'cover' }}
+                            />
+                        </div>
+                    )}
+
                     <h1 className="text-3xl font-bold mb-2">Agendar horário</h1>
                     <p className="text-secondary mb-3">{establishment?.name}</p>
                     <EstablishmentLocationCard establishment={establishment} />
+
+                    {establishment?.serviceImages && establishment.serviceImages.length > 0 && (
+                        <div className="service-images-gallery">
+                            {establishment.serviceImages.map((img, index) => (
+                                <div key={index} className="service-image-item">
+                                    <img src={api.getImageUrl(img)} alt={`Serviço ${index + 1}`} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid lg:grid-cols-3 gap-8">
