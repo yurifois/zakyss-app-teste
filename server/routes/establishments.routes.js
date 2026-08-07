@@ -7,9 +7,17 @@ import { AppError } from '../middleware/error.middleware.js'
 const router = Router()
 const establishmentsRepo = getRepository('establishments.json')
 const servicesRepo = getRepository('services.json')
+const categoriesRepo = getRepository('categories.json')
 const appointmentsRepo = getRepository('appointments.json')
 const employeesRepo = getRepository('employees.json')
 const adminsRepo = getRepository('admins.json')
+
+// Remove acentos e caixa alta, pra "sao paulo" achar "São Paulo".
+const normalize = (str) => (str || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
 
 // Configurações de preços de mercado
 const MARKET_PRICE_RADIUS_KM = 10
@@ -92,14 +100,32 @@ router.get('/', async (req, res, next) => {
             })
         }
 
-        // Busca por texto
+        // Busca por texto: olha nome, descrição, endereço, cidade, estado e
+        // também nos nomes dos serviços/categorias do estabelecimento (antes
+        // só olhava nome/descrição/endereço — buscar "corte" ou "manicure"
+        // nunca achava nada, porque esses termos só existem nos serviços).
+        // Quebra a busca em palavras: cada palavra precisa aparecer em algum
+        // desses campos, não precisa ser a frase inteira igual — assim
+        // "corte sobradinho" acha um salão com o serviço "Corte" mesmo que
+        // só o endereço tenha "Sobradinho".
         if (req.query.q) {
-            const query = req.query.q.toLowerCase()
-            establishments = establishments.filter(e =>
-                e.name.toLowerCase().includes(query) ||
-                e.description.toLowerCase().includes(query) ||
-                e.address.toLowerCase().includes(query)
-            )
+            const allServices = await servicesRepo.findAll()
+            const allCategories = await categoriesRepo.findAll()
+            const serviceNamesById = new Map(allServices.map(s => [s.id, s.name]))
+            const categoryNamesById = new Map(allCategories.map(c => [c.id, c.name]))
+
+            const queryWords = normalize(req.query.q).split(/\s+/).filter(Boolean)
+
+            establishments = establishments.filter(e => {
+                const serviceNames = (e.services || []).map(id => serviceNamesById.get(id)).filter(Boolean)
+                const categoryNames = (e.categories || []).map(id => categoryNamesById.get(id)).filter(Boolean)
+                const searchableText = normalize([
+                    e.name, e.description, e.address, e.city, e.state,
+                    ...serviceNames, ...categoryNames
+                ].filter(Boolean).join(' '))
+
+                return queryWords.every(word => searchableText.includes(word))
+            })
         }
 
         // Ordenar por distância se coordenadas fornecidas

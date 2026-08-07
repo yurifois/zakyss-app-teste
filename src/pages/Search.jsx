@@ -119,6 +119,21 @@ export default function Search() {
                         ))}
                     </select>
 
+                    <select
+                        className="form-input"
+                        style={{ width: 'auto' }}
+                        value={distanceFilter}
+                        onChange={(e) => updateFilter('distancia', e.target.value)}
+                        title="Funciona a partir da sua localização atual (ou do centro de Brasília, se o GPS estiver desligado)"
+                    >
+                        <option value="">Qualquer distância</option>
+                        <option value="2">Até 2 km</option>
+                        <option value="5">Até 5 km</option>
+                        <option value="10">Até 10 km</option>
+                        <option value="20">Até 20 km</option>
+                        <option value="50">Até 50 km</option>
+                    </select>
+
                     <label className="flex items-center gap-2 text-sm">
                         <input
                             type="checkbox"
