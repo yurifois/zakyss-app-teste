@@ -6,7 +6,7 @@ const MONTHS = [
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ]
 
-export default function Calendar({ selectedDate, onSelectDate, disabledDays = [], disabledDates = [], closedDays = [], closedDates = [], minDate = new Date() }) {
+export default function Calendar({ selectedDate, onSelectDate, disabledDays = [], disabledDates = [], closedDays = [], closedDates = [], minDate = new Date(), allowPastDates = false }) {
     const [currentMonth, setCurrentMonth] = useState(new Date())
 
     const year = currentMonth.getFullYear()
@@ -32,15 +32,18 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         const date = new Date(year, month, day)
         date.setHours(0, 0, 0, 0)
 
-        let parsedMinDate = minDate;
-        if (typeof minDate === 'string') {
-            const [y, m, d] = minDate.split('-');
-            parsedMinDate = new Date(y, m - 1, d);
-        }
-        parsedMinDate.setHours(0, 0, 0, 0);
+        // Check if before min date (não se aplica quando o calendário precisa
+        // navegar pra datas passadas, ex: admin revisando histórico)
+        if (!allowPastDates) {
+            let parsedMinDate = minDate;
+            if (typeof minDate === 'string') {
+                const [y, m, d] = minDate.split('-');
+                parsedMinDate = new Date(y, m - 1, d);
+            }
+            parsedMinDate.setHours(0, 0, 0, 0);
 
-        // Check if before min date
-        if (date.getTime() < parsedMinDate.getTime()) return true
+            if (date.getTime() < parsedMinDate.getTime()) return true
+        }
 
         // Check if in disabled days (0 = Sunday, 6 = Saturday)
         const dayOfWeek = date.getDay()
@@ -97,7 +100,7 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         }
         parsedMinDate.setHours(0, 0, 0, 0);
 
-        const isPast = date.getTime() < parsedMinDate.getTime()
+        const isPast = !allowPastDates && date.getTime() < parsedMinDate.getTime()
         const dayOfWeek = date.getDay()
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
         // disabledDays/disabledDates impedem selecionar (uso do cliente); closedDays/closedDates
@@ -127,7 +130,7 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
                     type="button"
                     className="btn btn-ghost btn-icon"
                     onClick={prevMonth}
-                    disabled={month <= today.getMonth() && year <= today.getFullYear()}
+                    disabled={!allowPastDates && month <= today.getMonth() && year <= today.getFullYear()}
                 >
                     ←
                 </button>

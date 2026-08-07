@@ -1168,6 +1168,7 @@ export default function AdminAppointments() {
                                 onSelectDate={handleScheduleDateChange}
                                 closedDays={closedWeekdays}
                                 closedDates={closedDatesList}
+                                allowPastDates
                             />
                         </div>
 
