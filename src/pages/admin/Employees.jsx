@@ -14,6 +14,7 @@ export default function AdminEmployees() {
     const [adding, setAdding] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [editingName, setEditingName] = useState('')
+    const [servicesModalFor, setServicesModalFor] = useState(null) // employee sendo editado no modal de serviços
 
     useEffect(() => {
         loadData()
@@ -260,32 +261,20 @@ export default function AdminEmployees() {
                                     </div>
                                 )}
 
-                                {/* Services badges row */}
+                                {/* Resumo compacto + botão que abre o modal de seleção */}
                                 {editingId !== employee.id && services.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {services.map(service => {
-                                            const isSelected = (employee.services || []).includes(service.id)
-                                            return (
-                                                <button
-                                                    key={service.id}
-                                                    onClick={() => toggleService(employee.id, service.id)}
-                                                    style={{
-                                                        padding: '0.25rem 0.75rem',
-                                                        borderRadius: '9999px',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: '500',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        background: isSelected ? 'var(--primary-500)' : 'var(--gray-200)',
-                                                        color: isSelected ? 'white' : 'var(--gray-600)'
-                                                    }}
-                                                    title={isSelected ? 'Clique para remover' : 'Clique para adicionar'}
-                                                >
-                                                    {service.name}
-                                                </button>
-                                            )
-                                        })}
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm text-muted" style={{ margin: 0 }}>
+                                            {(employee.services || []).length === 0
+                                                ? 'Nenhum serviço atribuído'
+                                                : `${(employee.services || []).length} serviço${(employee.services || []).length > 1 ? 's' : ''} atribuído${(employee.services || []).length > 1 ? 's' : ''}`}
+                                        </p>
+                                        <button
+                                            onClick={() => setServicesModalFor(employee.id)}
+                                            className="btn btn-outline btn-sm"
+                                        >
+                                            Atribuir serviços
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -301,12 +290,70 @@ export default function AdminEmployees() {
                     <div>
                         <p className="font-medium" style={{ color: 'var(--primary-600)' }}>Dica</p>
                         <p className="text-sm text-muted">
-                            Clique nos serviços para marcar quais cada funcionário pode executar.
-                            Os serviços selecionados ficam em <strong>rosa</strong>.
+                            Clique em "Atribuir serviços" no funcionário pra marcar quais ele pode executar.
                         </p>
                     </div>
                 </div>
             </div>
+
+            {/* Modal de seleção de serviços */}
+            {servicesModalFor && (() => {
+                const employee = employees.find(e => e.id === servicesModalFor)
+                if (!employee) return null
+                const assignedIds = employee.services || []
+                return (
+                    <div
+                        className="modal-backdrop"
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
+                        onClick={() => setServicesModalFor(null)}
+                    >
+                        <div
+                            className="card"
+                            style={{ width: '100%', maxWidth: '28rem', maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: '1.5rem' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-lg font-bold">Serviços de {employee.name}</h2>
+                                <button
+                                    onClick={() => setServicesModalFor(null)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem' }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div style={{ overflowY: 'auto', flex: 1 }}>
+                                {services.map(service => {
+                                    const isSelected = assignedIds.includes(service.id)
+                                    return (
+                                        <div
+                                            key={service.id}
+                                            onClick={() => toggleService(employee.id, service.id)}
+                                            className="flex items-center justify-between"
+                                            style={{
+                                                padding: '0.75rem 0.5rem',
+                                                borderBottom: '1px solid var(--border-color)',
+                                                cursor: 'pointer',
+                                                background: isSelected ? 'rgba(236, 72, 153, 0.08)' : 'transparent'
+                                            }}
+                                        >
+                                            <span style={{ fontWeight: isSelected ? 600 : 400 }}>{service.name}</span>
+                                            {isSelected && <span style={{ color: 'var(--primary-500)' }}>✓</span>}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            <button
+                                onClick={() => setServicesModalFor(null)}
+                                className="btn btn-primary w-full mt-4"
+                            >
+                                Concluído
+                            </button>
+                        </div>
+                    </div>
+                )
+            })()}
         </div>
     )
 }
