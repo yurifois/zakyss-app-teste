@@ -355,22 +355,23 @@ export default function Analytics() {
 
                     {/* Charts Row */}
                     <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                        {/* Monthly Chart */}
+                        {/* Daily Chart */}
                         <div className="card" style={{ padding: '1.25rem' }}>
-                            <h3 className="font-bold mb-4">📈 Faturamento por Mês</h3>
-                            {data.monthlyData?.length > 0 ? (
+                            <h3 className="font-bold mb-4">📈 Faturamento por Dia</h3>
+                            {data.dailyData?.length > 0 ? (
                                 <div className="flex flex-col gap-2">
-                                    {data.monthlyData.map(m => {
-                                        const max = Math.max(...data.monthlyData.map(x => x.revenue))
+                                    {data.dailyData.map(d => {
+                                        const max = Math.max(...data.dailyData.map(x => x.revenue))
+                                        const [dy, dm] = d.date.split('-').slice(1).reverse()
                                         return (
-                                            <div key={m.month} className="flex items-center gap-2">
+                                            <div key={d.date} className="flex items-center gap-2">
                                                 <span className="text-xs text-muted" style={{ width: '60px' }}>
-                                                    {m.month}
+                                                    {dy}/{dm}
                                                 </span>
                                                 <div style={{ flex: 1, background: 'var(--gray-100)', borderRadius: '4px', height: '24px', position: 'relative' }}>
                                                     <div
                                                         style={{
-                                                            width: `${getBarWidth(m.revenue, max)}%`,
+                                                            width: `${getBarWidth(d.revenue, max)}%`,
                                                             background: 'linear-gradient(90deg, var(--primary-400), var(--primary-600))',
                                                             height: '100%',
                                                             borderRadius: '4px',
@@ -379,7 +380,7 @@ export default function Analytics() {
                                                     />
                                                 </div>
                                                 <span className="text-xs font-medium" style={{ width: '80px', textAlign: 'right' }}>
-                                                    R$ {m.revenue.toFixed(0)}
+                                                    R$ {d.revenue.toFixed(0)}
                                                 </span>
                                             </div>
                                         )
