@@ -158,7 +158,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
             if (isManual) {
                 totalManual += (apt.totalPrice || 0);
                 totalRevenue += (apt.totalPrice || 0);
-                
+
                 try {
                     const parsed = JSON.parse(apt.notes);
                     manualEntries.push({
@@ -179,88 +179,94 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 return;
             }
 
-            // Verificar status completed para métricas financeiras
-            const isCompleted = apt.status === 'completed'
-
-            if (isCompleted) {
-                totalAppointments++
-
-                // Stats por dia da semana
-                const [year, month, day] = apt.date.split('-').map(Number)
-                const date = new Date(year, month - 1, day)
-                const weekday = date.getDay()
-                weekdayStats[weekday].appointments++
-                weekdayStats[weekday].revenue += apt.totalPrice || 0
-
-                // Stats por mês
-                const monthKey = `${year}-${String(month).padStart(2, '0')}`
-                if (!monthlyStats[monthKey]) {
-                    monthlyStats[monthKey] = { month: monthKey, appointments: 0, revenue: 0, commission: 0 }
-                }
-                monthlyStats[monthKey].appointments++
-                monthlyStats[monthKey].revenue += apt.totalPrice || 0
-            }
+            if (apt.status !== 'completed') return
 
             const assignments = apt.assignments || []
+            const services = apt.services || []
 
-            // Processar assignments
-            assignments.forEach(assignment => {
-                const serviceId = assignment.serviceId
-                const employeeId = assignment.employeeId
+            // Filtro por funcionário só dá pra aplicar olhando quem foi atribuído
+            // (sem atribuição, não combina com nenhum funcionário específico).
+            // Filtro por serviço usa os serviços do próprio agendamento, que
+            // sempre existem — não depende de ter funcionário atribuído.
+            const matchesEmployeeFilter = !employeeFilterList || assignments.some(a => employeeFilterList.includes(a.employeeId))
+            const matchesServiceFilter = !serviceFilterList || services.some(id => serviceFilterList.includes(id))
+            if (!matchesEmployeeFilter || !matchesServiceFilter) return
 
-                // Aplicar filtros de funcionário e serviço
-                if (employeeFilterList && !employeeFilterList.includes(employeeId)) return
+            totalAppointments++
+
+            // Stats por dia da semana
+            const [year, month, day] = apt.date.split('-').map(Number)
+            const date = new Date(year, month - 1, day)
+            const weekday = date.getDay()
+            weekdayStats[weekday].appointments++
+            weekdayStats[weekday].revenue += apt.totalPrice || 0
+
+            // Stats por mês
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`
+            if (!monthlyStats[monthKey]) {
+                monthlyStats[monthKey] = { month: monthKey, appointments: 0, revenue: 0, commission: 0 }
+            }
+            monthlyStats[monthKey].appointments++
+            monthlyStats[monthKey].revenue += apt.totalPrice || 0
+
+            // Receita total: usa o valor real cobrado no agendamento — antes só
+            // era somado dentro do loop de assignments, então um agendamento
+            // concluído sem funcionário atribuído (estabelecimento sem
+            // funcionário cadastrado, ou atribuição perdida) sumia do
+            // faturamento do Analytics mesmo aparecendo como concluído na
+            // lista de agendamentos. Comissão/repasse usa os serviços do
+            // agendamento pelo mesmo motivo — não depende de atribuição.
+            totalRevenue += apt.totalPrice || 0
+
+            services.forEach(serviceId => {
                 if (serviceFilterList && !serviceFilterList.includes(serviceId)) return
 
-                if (isCompleted) {
-                    const price = getServicePrice(serviceId)
-                    const commissionPercent = getServiceCommission(serviceId)
-                    const commission = price * (commissionPercent / 100)
-                    const establishment = price - commission
+                const price = getServicePrice(serviceId)
+                const commissionPercent = getServiceCommission(serviceId)
+                const commission = price * (commissionPercent / 100)
 
-                    totalRevenue += price
-                    totalCommission += commission
-                    totalEstablishment += establishment
+                totalCommission += commission
+                totalEstablishment += (price - commission)
 
-                    // Stats por funcionário
-                    if (employeeStats[employeeId]) {
-                        employeeStats[employeeId].services++
-                        employeeStats[employeeId].revenue += price
-                        employeeStats[employeeId].commission += commission
-                    }
-
-                    // Stats por serviço
-                    if (!serviceStats[serviceId]) {
-                        serviceStats[serviceId] = {
-                            id: serviceId,
-                            name: getServiceName(serviceId),
-                            count: 0,
-                            revenue: 0,
-                            commission: 0
-                        }
-                    }
-                    serviceStats[serviceId].count++
-                    serviceStats[serviceId].revenue += price
-                    serviceStats[serviceId].commission += commission
-
-                    // Mês
-                    const [year, month] = apt.date.split('-').map(Number)
-                    const monthKey = `${year}-${String(month).padStart(2, '0')}`
-                    if (monthlyStats[monthKey]) {
-                        monthlyStats[monthKey].commission += commission
+                if (!serviceStats[serviceId]) {
+                    serviceStats[serviceId] = {
+                        id: serviceId,
+                        name: getServiceName(serviceId),
+                        count: 0,
+                        revenue: 0,
+                        commission: 0
                     }
                 }
+                serviceStats[serviceId].count++
+                serviceStats[serviceId].revenue += price
+                serviceStats[serviceId].commission += commission
+
+                monthlyStats[monthKey].commission += commission
             })
 
-            // Contar appointments únicos por funcionário
-            if (isCompleted) {
-                const uniqueEmployees = [...new Set(assignments.map(a => a.employeeId))]
-                uniqueEmployees.forEach(empId => {
-                    if (employeeStats[empId]) {
-                        employeeStats[empId].appointments++
-                    }
-                })
-            }
+            // Stats por funcionário: aqui sim depende de quem foi atribuído —
+            // não dá pra creditar um funcionário que não atendeu.
+            assignments.forEach(assignment => {
+                const { serviceId, employeeId } = assignment
+                if (employeeFilterList && !employeeFilterList.includes(employeeId)) return
+                if (serviceFilterList && !serviceFilterList.includes(serviceId)) return
+                if (!employeeStats[employeeId]) return
+
+                const price = getServicePrice(serviceId)
+                const commissionPercent = getServiceCommission(serviceId)
+                const commission = price * (commissionPercent / 100)
+
+                employeeStats[employeeId].services++
+                employeeStats[employeeId].revenue += price
+                employeeStats[employeeId].commission += commission
+            })
+
+            const uniqueEmployees = [...new Set(assignments.map(a => a.employeeId))]
+            uniqueEmployees.forEach(empId => {
+                if (employeeStats[empId]) {
+                    employeeStats[empId].appointments++
+                }
+            })
         })
 
         // Preparar resultados
