@@ -31,8 +31,10 @@ export default function AdminEmployees() {
 
             setEmployees(employeesData)
 
-            // Get services for this establishment
-            const allServices = await api.getServices()
+            // Get services for this establishment (precisa passar establishmentId,
+            // senão o backend só devolve o catálogo global e ignora os serviços
+            // personalizados cadastrados manualmente pelo estabelecimento)
+            const allServices = await api.getServices(admin.establishmentId)
             const estServices = allServices.filter(s => establishment.services?.includes(s.id))
             setServices(estServices)
         } catch (err) {
@@ -239,6 +241,24 @@ export default function AdminEmployees() {
                                         </>
                                     )}
                                 </div>
+
+                                {/* Aviso: funcionário sem nenhum serviço atribuído fica impossível de agendar */}
+                                {(employee.services || []).length === 0 && (
+                                    <div
+                                        className="flex items-center gap-2"
+                                        style={{
+                                            padding: '0.6rem 0.85rem',
+                                            borderRadius: '0.5rem',
+                                            background: 'rgba(239, 68, 68, 0.12)',
+                                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                                            color: 'var(--error-600, #dc2626)',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        ⚠️ Nenhum serviço atribuído — clientes não conseguem agendar horário com {employee.name} até você marcar pelo menos um serviço abaixo.
+                                    </div>
+                                )}
 
                                 {/* Services badges row */}
                                 {editingId !== employee.id && services.length > 0 && (
