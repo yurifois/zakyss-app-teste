@@ -138,11 +138,6 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         // Dados por mês
         const monthlyStats = {}
 
-        // Dados por dia (data exata, não dia da semana) — usado no gráfico
-        // "Faturamento por Dia", que mostra o período filtrado no grão certo
-        // em vez de agrupar tudo debaixo de um único mês.
-        const dailyStats = {}
-
         // Dados por dia da semana
         const weekdayStats = {
             0: { day: 'Domingo', appointments: 0, revenue: 0 },
@@ -181,11 +176,6 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 }
                 monthlyStats[monthKey].revenue += (apt.totalPrice || 0);
                 monthlyStats[monthKey].manual = (monthlyStats[monthKey].manual || 0) + (apt.totalPrice || 0);
-
-                if (!dailyStats[apt.date]) {
-                    dailyStats[apt.date] = { date: apt.date, appointments: 0, revenue: 0 };
-                }
-                dailyStats[apt.date].revenue += (apt.totalPrice || 0);
                 return;
             }
 
@@ -218,13 +208,6 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
             }
             monthlyStats[monthKey].appointments++
             monthlyStats[monthKey].revenue += apt.totalPrice || 0
-
-            // Stats por dia exato (usado no gráfico "Faturamento por Dia")
-            if (!dailyStats[apt.date]) {
-                dailyStats[apt.date] = { date: apt.date, appointments: 0, revenue: 0 }
-            }
-            dailyStats[apt.date].appointments++
-            dailyStats[apt.date].revenue += apt.totalPrice || 0
 
             // Receita total: usa o valor real cobrado no agendamento — antes só
             // era somado dentro do loop de assignments, então um agendamento
@@ -299,9 +282,6 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         const monthlyData = Object.values(monthlyStats)
             .sort((a, b) => a.month.localeCompare(b.month))
 
-        const dailyData = Object.values(dailyStats)
-            .sort((a, b) => a.date.localeCompare(b.date))
-
         const weekdayData = Object.values(weekdayStats)
 
         // Serviço mais executado
@@ -326,7 +306,6 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 employeeRanking,
                 serviceRanking,
                 monthlyData,
-                dailyData,
                 weekdayData,
                 manualEntries: manualEntries.sort((a, b) => new Date(b.date) - new Date(a.date)),
                 employees: employees.map(e => ({ id: e.id, name: e.name })),

@@ -355,40 +355,13 @@ export default function Analytics() {
 
                     {/* Charts Row */}
                     <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                        {/* Daily Chart */}
-                        <div className="card" style={{ padding: '1.25rem' }}>
-                            <h3 className="font-bold mb-4">📈 Faturamento por Dia</h3>
-                            {data.dailyData?.length > 0 ? (
-                                <div className="flex flex-col gap-2">
-                                    {data.dailyData.map(d => {
-                                        const max = Math.max(...data.dailyData.map(x => x.revenue))
-                                        const [dy, dm] = d.date.split('-').slice(1).reverse()
-                                        return (
-                                            <div key={d.date} className="flex items-center gap-2">
-                                                <span className="text-xs text-muted" style={{ width: '60px' }}>
-                                                    {dy}/{dm}
-                                                </span>
-                                                <div style={{ flex: 1, background: 'var(--gray-100)', borderRadius: '4px', height: '24px', position: 'relative' }}>
-                                                    <div
-                                                        style={{
-                                                            width: `${getBarWidth(d.revenue, max)}%`,
-                                                            background: 'linear-gradient(90deg, var(--primary-400), var(--primary-600))',
-                                                            height: '100%',
-                                                            borderRadius: '4px',
-                                                            transition: 'width 0.3s'
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span className="text-xs font-medium" style={{ width: '80px', textAlign: 'right' }}>
-                                                    R$ {d.revenue.toFixed(0)}
-                                                </span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="text-center text-muted py-4">Sem dados</div>
-                            )}
+                        {/* Faturamento do período filtrado: um valor só, sem gráfico —
+                            o filtro de Período já decide se é "do dia" ou de um intervalo maior. */}
+                        <div className="card flex flex-col items-center justify-center" style={{ padding: '1.25rem' }}>
+                            <h3 className="font-bold mb-4">💰 Faturamento do Período</h3>
+                            <div className="text-3xl font-bold" style={{ color: 'var(--primary-500)' }}>
+                                R$ {(data.summary?.totalRevenue || 0).toFixed(2)}
+                            </div>
                         </div>
 
                         {/* Weekday Chart */}
