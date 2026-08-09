@@ -118,6 +118,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         let totalCommission = 0
         let totalEstablishment = 0
         let totalManual = 0
+        let totalProductSales = 0
 
         // Dados por funcionário
         const employeeStats = {}
@@ -150,10 +151,12 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         }
 
         const manualEntries = []
+        const productSaleEntries = []
 
         // Processar agendamentos
         appointments.forEach(apt => {
             const isManual = apt.notes && typeof apt.notes === 'string' && apt.notes.includes('"type":"MANUAL_FINANCE"');
+            const isProductSale = apt.notes && typeof apt.notes === 'string' && apt.notes.includes('"type":"PRODUCT_SALE"');
 
             if (isManual) {
                 totalManual += (apt.totalPrice || 0);
@@ -176,6 +179,31 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 }
                 monthlyStats[monthKey].revenue += (apt.totalPrice || 0);
                 monthlyStats[monthKey].manual = (monthlyStats[monthKey].manual || 0) + (apt.totalPrice || 0);
+                return;
+            }
+
+            if (isProductSale) {
+                totalProductSales += (apt.totalPrice || 0);
+                totalRevenue += (apt.totalPrice || 0);
+
+                try {
+                    const parsed = JSON.parse(apt.notes);
+                    productSaleEntries.push({
+                        id: apt.id,
+                        date: apt.date,
+                        value: apt.totalPrice,
+                        productName: parsed.productName,
+                        quantity: parsed.quantity
+                    });
+                } catch (e) {}
+
+                const [year, month] = apt.date.split('-').map(Number);
+                const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                if (!monthlyStats[monthKey]) {
+                    monthlyStats[monthKey] = { month: monthKey, appointments: 0, revenue: 0, commission: 0 };
+                }
+                monthlyStats[monthKey].revenue += (apt.totalPrice || 0);
+                monthlyStats[monthKey].products = (monthlyStats[monthKey].products || 0) + (apt.totalPrice || 0);
                 return;
             }
 
@@ -299,6 +327,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                     totalCommission,
                     totalEstablishment,
                     totalManual,
+                    totalProductSales,
                     ticketMedio,
                     topService: topService ? topService.name : null,
                     topEmployee: topEmployee ? topEmployee.name : null
@@ -308,6 +337,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 monthlyData,
                 weekdayData,
                 manualEntries: manualEntries.sort((a, b) => new Date(b.date) - new Date(a.date)),
+                productSaleEntries: productSaleEntries.sort((a, b) => new Date(b.date) - new Date(a.date)),
                 employees: employees.map(e => ({ id: e.id, name: e.name })),
                 services: allServices.filter(s =>
                     establishment?.services?.includes(s.id)

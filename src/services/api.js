@@ -612,5 +612,40 @@ export async function addManualFinance(establishmentId, data) {
     })
 }
 
+export async function getProducts() {
+    return request('/products')
+}
+
+export async function getProductSalesHistory() {
+    return request('/products/sales/history')
+}
+
+export async function createProduct(data) {
+    return request('/products', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function updateProduct(id, data) {
+    return request(`/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function deleteProduct(id) {
+    return request(`/products/${id}`, {
+        method: 'DELETE'
+    })
+}
+
+export async function sellProduct(id, quantity) {
+    return request(`/products/${id}/sell`, {
+        method: 'POST',
+        body: JSON.stringify({ quantity })
+    })
+}
+
 
 

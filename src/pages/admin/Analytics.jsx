@@ -324,6 +324,12 @@ export default function Analytics() {
                             </div>
                         </div>
                         <div className="card" style={{ padding: '1.25rem' }}>
+                            <div className="text-sm text-muted mb-1">Venda de Produtos</div>
+                            <div className="text-2xl font-bold" style={{ color: 'var(--success-600)' }}>
+                                R$ {(data.summary?.totalProductSales || 0).toFixed(2)}
+                            </div>
+                        </div>
+                        <div className="card" style={{ padding: '1.25rem' }}>
                             <div className="text-sm text-muted mb-1">Ticket Médio</div>
                             <div className="text-2xl font-bold" style={{ color: 'var(--primary-500)' }}>
                                 R$ {(data.summary?.ticketMedio || 0).toFixed(2)}

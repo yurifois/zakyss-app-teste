@@ -37,6 +37,7 @@ import AdminAnalytics from './pages/admin/Analytics'
 import AdminProfile from './pages/admin/AdminProfile'
 import AdminImages from './pages/admin/Images'
 import AdminLinks from './pages/admin/Links'
+import AdminProducts from './pages/admin/Products'
 
 function App() {
     return (
@@ -79,6 +80,7 @@ function App() {
                 <Route path="dados" element={<AdminProfile />} />
                 <Route path="imagens" element={<AdminImages />} />
                 <Route path="links" element={<AdminLinks />} />
+                <Route path="produtos" element={<AdminProducts />} />
             </Route>
         </Routes>
     )
