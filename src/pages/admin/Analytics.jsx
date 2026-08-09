@@ -405,6 +405,45 @@ export default function Analytics() {
                         </div>
                     </div>
 
+                    {/* O que foi feito no período: serviços realizados + produtos vendidos
+                        + lançamentos manuais, tudo numa lista só, mais recente primeiro. */}
+                    <div className="card mb-6" style={{ padding: '1.25rem' }}>
+                        <h3 className="font-bold mb-4">📋 O que foi feito no período</h3>
+                        {data.activityLog?.length > 0 ? (
+                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left text-muted" style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary, #fff)' }}>
+                                            <th className="pb-2">Data</th>
+                                            <th className="pb-2">O que foi</th>
+                                            <th className="pb-2">Detalhe</th>
+                                            <th className="pb-2 text-right">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.activityLog.map((item, idx) => (
+                                            <tr key={idx} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                                <td className="py-2">{new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                                <td className="py-2">
+                                                    {item.type === 'service' ? '✂️ Serviço' : item.type === 'product' ? '🛍️ Produto' : '📝 Manual'}
+                                                    {' '}{item.description}
+                                                </td>
+                                                <td className="py-2 text-muted">
+                                                    {item.type === 'service'
+                                                        ? [item.customerName, item.employeeName].filter(Boolean).join(' · ')
+                                                        : ''}
+                                                </td>
+                                                <td className="py-2 text-right font-medium">R$ {item.value.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center text-muted py-4">Nada foi feito no período selecionado.</div>
+                        )}
+                    </div>
+
                     {/* Rankings */}
                     <div className="grid lg:grid-cols-2 gap-6">
                         {/* Employee Ranking */}

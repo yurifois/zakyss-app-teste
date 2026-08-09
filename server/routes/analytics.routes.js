@@ -153,6 +153,11 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
         const manualEntries = []
         const productSaleEntries = []
 
+        // Lista única de tudo que aconteceu no período filtrado (serviços
+        // realizados, produtos vendidos, lançamentos manuais), pra dar uma
+        // visão "o que foi feito no dia X" sem precisar cruzar várias tabelas.
+        const activityLog = []
+
         // Processar agendamentos
         appointments.forEach(apt => {
             const isManual = apt.notes && typeof apt.notes === 'string' && apt.notes.includes('"type":"MANUAL_FINANCE"');
@@ -169,6 +174,12 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                         date: apt.date,
                         value: apt.totalPrice,
                         description: parsed.description
+                    });
+                    activityLog.push({
+                        date: apt.date,
+                        type: 'manual',
+                        description: parsed.description || 'Lançamento manual',
+                        value: apt.totalPrice
                     });
                 } catch (e) {}
 
@@ -194,6 +205,12 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                         value: apt.totalPrice,
                         productName: parsed.productName,
                         quantity: parsed.quantity
+                    });
+                    activityLog.push({
+                        date: apt.date,
+                        type: 'product',
+                        description: `${parsed.productName} (${parsed.quantity}x)`,
+                        value: apt.totalPrice
                     });
                 } catch (e) {}
 
@@ -270,6 +287,16 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 serviceStats[serviceId].commission += commission
 
                 monthlyStats[monthKey].commission += commission
+
+                const assignment = assignments.find(a => a.serviceId === serviceId)
+                activityLog.push({
+                    date: apt.date,
+                    type: 'service',
+                    description: getServiceName(serviceId),
+                    value: price,
+                    customerName: apt.customerName || null,
+                    employeeName: assignment ? getEmployeeName(assignment.employeeId) : null
+                })
             })
 
             // Stats por funcionário: aqui sim depende de quem foi atribuído —
@@ -338,6 +365,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
                 weekdayData,
                 manualEntries: manualEntries.sort((a, b) => new Date(b.date) - new Date(a.date)),
                 productSaleEntries: productSaleEntries.sort((a, b) => new Date(b.date) - new Date(a.date)),
+                activityLog: activityLog.sort((a, b) => new Date(b.date) - new Date(a.date)),
                 employees: employees.map(e => ({ id: e.id, name: e.name })),
                 services: allServices.filter(s =>
                     establishment?.services?.includes(s.id)
