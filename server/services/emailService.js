@@ -178,7 +178,7 @@ const generateConfirmationTemplate = (customerName, date, time, establishmentNam
                                 </h2>
                                 
                                 <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">
-                                    Ótima notícia! Seu agendamento foi confirmado pelo estabelecimento.
+                                    Passando para confirmar seu agendamento com a gente! 🎉
                                 </p>
                                 
                                 <div style="background-color: #fdf2f8; border-left: 4px solid #ec4899; border-radius: 8px; padding: 25px; margin-bottom: 30px;">

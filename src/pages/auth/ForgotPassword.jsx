@@ -41,9 +41,29 @@ export default function ForgotPassword() {
                                 <i className="fi fi-rr-envelope"></i>
                             </div>
                             <h2 className="text-xl font-bold mb-4">Verifique seu e-mail</h2>
-                            <p className="text-secondary mb-6">
-                                Enviamos as instruções de recuperação para <strong>{email}</strong>
+                            <p className="text-secondary mb-4">
+                                Se <strong>{email}</strong> estiver cadastrado, enviamos as instruções de recuperação para ele.
                             </p>
+                            {/* Não dá pra confirmar se o email existe (protege contra enumeração de contas),
+                                então em vez disso a gente orienta o próximo passo caso nada chegue —
+                                o caso mais comum na prática é a pessoa digitar um email diferente do
+                                que usou no cadastro. */}
+                            <div
+                                className="text-sm text-secondary mb-6"
+                                style={{ background: 'var(--secondary-500)', borderRadius: '0.75rem', padding: '0.875rem 1rem', textAlign: 'left' }}
+                            >
+                                Não chegou em alguns minutos?
+                                <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+                                    <li>Confira se esse é o mesmo e-mail usado no cadastro</li>
+                                    <li>Dá uma olhada na caixa de spam/lixo eletrônico</li>
+                                </ul>
+                            </div>
+                            <button
+                                onClick={() => setSubmitted(false)}
+                                className="btn btn-outline w-full mb-3"
+                            >
+                                Tentar com outro e-mail
+                            </button>
                             <Link to="/entrar" className="btn btn-primary w-full">Voltar para o Login</Link>
                         </div>
                     ) : (

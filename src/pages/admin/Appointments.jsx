@@ -638,7 +638,7 @@ export default function AdminAppointments() {
                                     <div className="flex gap-2">
                                         {apt.customerPhone && (
                                             <a
-                                                href={`https://wa.me/${apt.customerPhone.replace(/\D/g, '').replace(/^(?!55)/, '55')}?text=${encodeURIComponent(`Olá ${apt.customerName}! Passando para falar sobre seu agendamento no dia ${fullDate} às ${apt.time}.`)}`}
+                                                href={`https://wa.me/${apt.customerPhone.replace(/\D/g, '').replace(/^(?!55)/, '55')}?text=${encodeURIComponent(`Olá ${apt.customerName}! Passando para confirmar seu agendamento no dia ${fullDate} às ${apt.time}.`)}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="btn btn-outline btn-sm"
