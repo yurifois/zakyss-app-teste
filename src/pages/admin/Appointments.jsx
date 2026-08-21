@@ -14,6 +14,7 @@ export default function AdminAppointments() {
     const [statusFilter, setStatusFilter] = useState('active')
     const [dateFilter, setDateFilter] = useState('')
     const [expandedAptId, setExpandedAptId] = useState(null)
+    const [anamnesisByApt, setAnamnesisByApt] = useState({}) // cache: { [appointmentId]: respostas[] }
 
     // Modal de edição
     const [editingAppointment, setEditingAppointment] = useState(null)
@@ -58,7 +59,8 @@ export default function AdminAppointments() {
     const [savingSchedule, setSavingSchedule] = useState(false)
     const [exceptionForm, setExceptionForm] = useState({
         isClosed: false,
-        blockedRanges: []
+        blockedRanges: [],
+        homeVisit: { active: false, startTime: '', endTime: '', area: '', fee: '', message: '' }
     })
 
     useEffect(() => {
@@ -176,6 +178,8 @@ export default function AdminAppointments() {
     const toDateStr = (date) =>
         `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
+    const emptyHomeVisit = { active: false, startTime: '', endTime: '', area: '', fee: '', message: '' }
+
     const handleScheduleDateChange = (date) => {
         setScheduleDate(date)
         const dateStr = toDateStr(date)
@@ -183,12 +187,14 @@ export default function AdminAppointments() {
         if (exception) {
             setExceptionForm({
                 isClosed: exception.isClosed || false,
-                blockedRanges: exception.blockedRanges || []
+                blockedRanges: exception.blockedRanges || [],
+                homeVisit: exception.homeVisit || emptyHomeVisit
             })
         } else {
             setExceptionForm({
                 isClosed: false,
-                blockedRanges: []
+                blockedRanges: [],
+                homeVisit: emptyHomeVisit
             })
         }
     }
@@ -199,11 +205,20 @@ export default function AdminAppointments() {
         try {
             const dateStr = toDateStr(scheduleDate)
             const newExceptions = { ...scheduleExceptions }
-            
-            if (exceptionForm.isClosed || exceptionForm.blockedRanges.length > 0) {
+            const hasHomeVisit = exceptionForm.homeVisit?.active
+
+            if (exceptionForm.isClosed || exceptionForm.blockedRanges.length > 0 || hasHomeVisit) {
                 newExceptions[dateStr] = {
                     isClosed: exceptionForm.isClosed,
-                    blockedRanges: exceptionForm.isClosed ? [] : exceptionForm.blockedRanges
+                    blockedRanges: exceptionForm.isClosed ? [] : exceptionForm.blockedRanges,
+                    homeVisit: hasHomeVisit ? {
+                        active: true,
+                        startTime: exceptionForm.homeVisit.startTime || '',
+                        endTime: exceptionForm.homeVisit.endTime || '',
+                        area: exceptionForm.homeVisit.area || '',
+                        fee: exceptionForm.homeVisit.fee ? parseFloat(exceptionForm.homeVisit.fee) : null,
+                        message: exceptionForm.homeVisit.message || ''
+                    } : { active: false }
                 }
             } else {
                 delete newExceptions[dateStr]
@@ -224,6 +239,19 @@ export default function AdminAppointments() {
     const openScheduleModal = () => {
         handleScheduleDateChange(new Date())
         setShowScheduleModal(true)
+    }
+
+    const toggleExpandAppointment = async (apt) => {
+        const opening = expandedAptId !== apt.id
+        setExpandedAptId(opening ? apt.id : null)
+        if (opening && !anamnesisByApt[apt.id]) {
+            try {
+                const responses = await api.getAnamnesisResponses(apt.id)
+                setAnamnesisByApt(prev => ({ ...prev, [apt.id]: responses }))
+            } catch (err) {
+                console.error('Erro ao carregar ficha de anamnese:', err)
+            }
+        }
     }
 
     const handleFilterByScheduleDate = () => {
@@ -606,7 +634,7 @@ export default function AdminAppointments() {
                             key={apt.id}
                             className="card"
                             style={{ padding: '1rem', cursor: 'pointer', transition: 'all 0.3s' }}
-                            onClick={() => setExpandedAptId(isExpanded ? null : apt.id)}
+                            onClick={() => toggleExpandAppointment(apt)}
                         >
                             {/* Compact View */}
                             <div className="flex justify-between items-center">
@@ -616,7 +644,10 @@ export default function AdminAppointments() {
                                         <div className="text-lg font-bold" style={{ color: 'var(--primary-400)' }}>{apt.time}</div>
                                     </div>
                                     <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
-                                        <h3 className="text-base font-semibold truncate" style={{ maxWidth: '150px' }}>{apt.customerName}</h3>
+                                        <h3 className="text-base font-semibold truncate" style={{ maxWidth: '150px' }}>
+                                            {apt.customerName}
+                                            {apt.serviceLocation === 'home_visit' && <span title="Atendimento em domicílio"> 🏠</span>}
+                                        </h3>
                                         <p className="text-xs text-secondary truncate" style={{ maxWidth: '150px' }}>
                                             {apt.servicesList?.map(s => s.name).join(', ')}
                                         </p>
@@ -660,6 +691,22 @@ export default function AdminAppointments() {
                                 {apt.notes && (
                                     <div className="mb-3 p-2 rounded text-sm text-secondary bg-black/20 border border-purple-500/10">
                                         <span className="font-semibold text-primary/80">📝 Obs:</span> <span className="italic">{apt.notes}</span>
+                                    </div>
+                                )}
+
+                                {/* Ficha de anamnese respondida pelo cliente, se o serviço exigir */}
+                                {anamnesisByApt[apt.id]?.length > 0 && (
+                                    <div className="mb-3">
+                                        {anamnesisByApt[apt.id].map(resp => (
+                                            <div key={resp.id} className="p-2 rounded text-sm mb-2" style={{ background: 'var(--secondary-500)' }}>
+                                                <p className="font-semibold mb-1">📋 {resp.formName}</p>
+                                                {resp.answers.map((a, i) => (
+                                                    <p key={i} className="text-xs text-secondary">
+                                                        <strong>{a.label}:</strong> {a.answer || '—'}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
 
@@ -1264,6 +1311,68 @@ export default function AdminAppointments() {
                                 <p className="text-xs text-secondary mb-4">
                                     A configuração de Pausas permite bloquear horas específicas dentro do horário padrão de funcionamento do dia.
                                 </p>
+
+                                {/* Atendimento em domicílio: avisa o cliente antes de confirmar e
+                                    fica registrado no agendamento, sem depender de gateway nenhum. */}
+                                <div className="form-group mb-2 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="form-checkbox"
+                                            checked={exceptionForm.homeVisit?.active || false}
+                                            onChange={(e) => setExceptionForm(prev => ({
+                                                ...prev,
+                                                homeVisit: { ...(prev.homeVisit || emptyHomeVisit), active: e.target.checked }
+                                            }))}
+                                        />
+                                        <span>🏠 Atendimento em domicílio neste dia</span>
+                                    </label>
+                                </div>
+
+                                {exceptionForm.homeVisit?.active && (
+                                    <div className="flex flex-col gap-2 mb-2" style={{ paddingLeft: '1.5rem' }}>
+                                        <div className="flex gap-2 items-center">
+                                            <input
+                                                type="time"
+                                                className="form-input flex-1"
+                                                placeholder="Início (opcional)"
+                                                value={exceptionForm.homeVisit.startTime}
+                                                onChange={(e) => setExceptionForm(prev => ({ ...prev, homeVisit: { ...prev.homeVisit, startTime: e.target.value } }))}
+                                            />
+                                            <span className="text-secondary text-sm">até</span>
+                                            <input
+                                                type="time"
+                                                className="form-input flex-1"
+                                                placeholder="Fim (opcional)"
+                                                value={exceptionForm.homeVisit.endTime}
+                                                onChange={(e) => setExceptionForm(prev => ({ ...prev, homeVisit: { ...prev.homeVisit, endTime: e.target.value } }))}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-secondary">Deixe em branco pra valer o dia inteiro.</p>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Área atendida / endereço a combinar"
+                                            value={exceptionForm.homeVisit.area}
+                                            onChange={(e) => setExceptionForm(prev => ({ ...prev, homeVisit: { ...prev.homeVisit, area: e.target.value } }))}
+                                        />
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="form-input"
+                                            placeholder="Taxa de deslocamento (R$, opcional)"
+                                            value={exceptionForm.homeVisit.fee}
+                                            onChange={(e) => setExceptionForm(prev => ({ ...prev, homeVisit: { ...prev.homeVisit, fee: e.target.value } }))}
+                                        />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Mensagem pro cliente (opcional)"
+                                            value={exceptionForm.homeVisit.message}
+                                            onChange={(e) => setExceptionForm(prev => ({ ...prev, homeVisit: { ...prev.homeVisit, message: e.target.value } }))}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-4 mt-auto">

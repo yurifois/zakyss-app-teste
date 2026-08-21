@@ -11,6 +11,7 @@ import Search from './pages/Search'
 import Establishment from './pages/Establishment'
 import Booking from './pages/Booking'
 import BookingConfirmation from './pages/BookingConfirmation'
+import Terms from './pages/Terms'
 
 // Auth Pages
 import Login from './pages/auth/Login'
@@ -39,6 +40,8 @@ import AdminImages from './pages/admin/Images'
 import AdminLinks from './pages/admin/Links'
 import AdminProducts from './pages/admin/Products'
 import AdminCashFlow from './pages/admin/CashFlow'
+import AdminPackages from './pages/admin/Packages'
+import AdminAnamnesis from './pages/admin/Anamnesis'
 
 function App() {
     return (
@@ -50,6 +53,7 @@ function App() {
                 <Route path="estabelecimento/:id" element={<Establishment />} />
                 <Route path="agendar/:id" element={<Booking />} />
                 <Route path="confirmacao/:id" element={<BookingConfirmation />} />
+                <Route path="termos" element={<Terms />} />
 
                 {/* Auth Routes */}
                 <Route path="entrar" element={<Login />} />
@@ -83,6 +87,8 @@ function App() {
                 <Route path="links" element={<AdminLinks />} />
                 <Route path="produtos" element={<AdminProducts />} />
                 <Route path="fluxo-caixa" element={<AdminCashFlow />} />
+                <Route path="pacotes" element={<AdminPackages />} />
+                <Route path="anamnese" element={<AdminAnamnesis />} />
             </Route>
         </Routes>
     )

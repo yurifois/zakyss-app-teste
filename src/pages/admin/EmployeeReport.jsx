@@ -25,6 +25,27 @@ export default function EmployeeReport() {
         loadReport()
     }, [admin, month, year])
 
+    const [togglingId, setTogglingId] = useState(null)
+
+    const handleTogglePayment = async (row) => {
+        if (!admin || !row.employeeId) return
+        setTogglingId(row.employeeId)
+        try {
+            if (row.paymentStatus === 'pago') {
+                await api.markCommissionPending(admin.establishmentId, { employeeId: row.employeeId, month, year })
+            } else {
+                await api.markCommissionPaid(admin.establishmentId, {
+                    employeeId: row.employeeId, month, year, amount: row.employeeRevenue
+                })
+            }
+            loadReport()
+        } catch (err) {
+            console.error('Erro ao atualizar status de pagamento:', err)
+        } finally {
+            setTogglingId(null)
+        }
+    }
+
     const loadReport = async () => {
         if (!admin) return
         setLoading(true)
@@ -196,6 +217,7 @@ export default function EmployeeReport() {
                                     <th style={{ textAlign: 'right' }}>Faturamento</th>
                                     <th style={{ textAlign: 'right' }}>💼 Comissão</th>
                                     <th style={{ textAlign: 'right' }}>🏢 Estabelecimento</th>
+                                    <th style={{ textAlign: 'center' }}>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -247,6 +269,19 @@ export default function EmployeeReport() {
                                             <span className="font-semibold" style={{ color: 'var(--success-600)' }}>
                                                 R$ {row.establishmentRevenue?.toFixed(2) || '0.00'}
                                             </span>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {row.employeeId && (
+                                                <button
+                                                    onClick={() => handleTogglePayment(row)}
+                                                    disabled={togglingId === row.employeeId}
+                                                    className={`badge ${row.paymentStatus === 'pago' ? 'badge-success' : 'badge-warning'}`}
+                                                    style={{ cursor: 'pointer', border: 'none' }}
+                                                    title={row.paymentStatus === 'pago' ? 'Clique para marcar como pendente' : 'Clique para marcar como pago'}
+                                                >
+                                                    {togglingId === row.employeeId ? '...' : row.paymentStatus === 'pago' ? '✅ Pago' : '⏳ Pendente'}
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

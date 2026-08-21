@@ -15,6 +15,9 @@ export default function AdminEmployees() {
     const [editingId, setEditingId] = useState(null)
     const [editingName, setEditingName] = useState('')
     const [servicesModalFor, setServicesModalFor] = useState(null) // employee sendo editado no modal de serviços
+    const [showAuditLog, setShowAuditLog] = useState(false)
+    const [auditLog, setAuditLog] = useState([])
+    const [loadingAuditLog, setLoadingAuditLog] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -43,6 +46,28 @@ export default function AdminEmployees() {
         } finally {
             setLoading(false)
         }
+    }
+
+    const toggleAuditLog = async () => {
+        const opening = !showAuditLog
+        setShowAuditLog(opening)
+        if (opening && auditLog.length === 0) {
+            setLoadingAuditLog(true)
+            try {
+                const data = await api.getEmployeeAuditLog(admin.establishmentId)
+                setAuditLog(data)
+            } catch (err) {
+                console.error('Erro ao carregar histórico:', err)
+            } finally {
+                setLoadingAuditLog(false)
+            }
+        }
+    }
+
+    const auditActionLabels = {
+        funcionario_criado: '➕ Cadastrado',
+        funcionario_editado: '✏️ Editado',
+        funcionario_removido: '🗑️ Removido'
     }
 
     const handleAdd = async () => {
@@ -294,6 +319,37 @@ export default function AdminEmployees() {
                         </p>
                     </div>
                 </div>
+            </div>
+
+            {/* Histórico de alterações (quem criou/editou/removeu funcionários) */}
+            <div className="card mt-6" style={{ padding: '1rem' }}>
+                <button
+                    onClick={toggleAuditLog}
+                    className="flex items-center justify-between w-full"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                    <span className="font-medium">📜 Histórico de Alterações</span>
+                    <span className="text-secondary">{showAuditLog ? '▲' : '▼'}</span>
+                </button>
+                {showAuditLog && (
+                    <div className="mt-3">
+                        {loadingAuditLog ? (
+                            <p className="text-sm text-muted">Carregando...</p>
+                        ) : auditLog.length === 0 ? (
+                            <p className="text-sm text-muted">Nenhuma alteração registrada ainda.</p>
+                        ) : (
+                            <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                                {auditLog.map(entry => (
+                                    <div key={entry.id} className="text-sm py-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+                                        <span>{auditActionLabels[entry.action] || entry.action}</span>
+                                        {' '}<strong>{entry.entityName}</strong>
+                                        {' '}<span className="text-muted">por {entry.adminName} em {new Date(entry.createdAt).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Modal de seleção de serviços */}

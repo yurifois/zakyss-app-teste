@@ -331,6 +331,21 @@ export async function getEstablishmentClients(establishmentId) {
     return request(`/establishments/${establishmentId}/clients`)
 }
 
+export async function getClientNotes(clientKey) {
+    return request(`/client-notes?clientKey=${encodeURIComponent(clientKey)}`)
+}
+
+export async function addClientNote(data) {
+    return request('/client-notes', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function deleteClientNote(id) {
+    return request(`/client-notes/${id}`, { method: 'DELETE' })
+}
+
 export async function getAppointmentsByUser(userId) {
     return request(`/users/${userId}/appointments`)
 }
@@ -577,6 +592,10 @@ export async function updateAppointmentAssignments(appointmentId, assignments) {
     })
 }
 
+export async function getEmployeeAuditLog(establishmentId) {
+    return request(`/employees/${establishmentId}/audit-log`)
+}
+
 export async function getEmployeeReport(establishmentId, month, year) {
     const params = new URLSearchParams()
     if (month) params.append('month', month)
@@ -588,6 +607,20 @@ export async function getEmployeeReport(establishmentId, month, year) {
 
 export async function getEmployeeDetailReport(establishmentId, months, year) {
     return request(`/employees/${establishmentId}/detail-report?months=${months.join(',')}&year=${year}`)
+}
+
+export async function markCommissionPaid(establishmentId, data) {
+    return request(`/employees/${establishmentId}/report/mark-paid`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function markCommissionPending(establishmentId, data) {
+    return request(`/employees/${establishmentId}/report/mark-pending`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
 }
 
 export async function getAnalytics(establishmentId, filters = {}) {
@@ -645,6 +678,73 @@ export async function sellProduct(id, quantity) {
         method: 'POST',
         body: JSON.stringify({ quantity })
     })
+}
+
+// ========== PACOTES DE SERVIÇO ==========
+
+export async function getPackages() {
+    return request('/packages')
+}
+
+export async function createPackage(data) {
+    return request('/packages', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updatePackage(id, data) {
+    return request(`/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deletePackage(id) {
+    return request(`/packages/${id}`, { method: 'DELETE' })
+}
+
+export async function getSoldPackages() {
+    return request('/packages/sold')
+}
+
+export async function sellPackage(data) {
+    return request('/packages/sell', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function useCustomerPackage(customerPackageId, data) {
+    return request(`/packages/${customerPackageId}/use`, { method: 'POST', body: JSON.stringify(data) })
+}
+
+// ========== ANAMNESE/TRIAGEM ==========
+
+export async function getAnamnesisForms() {
+    return request('/anamnesis')
+}
+
+export async function createAnamnesisForm(data) {
+    return request('/anamnesis', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateAnamnesisForm(id, data) {
+    return request(`/anamnesis/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteAnamnesisForm(id) {
+    return request(`/anamnesis/${id}`, { method: 'DELETE' })
+}
+
+export async function getAnamnesisFormPublic(id) {
+    return request(`/anamnesis/public/${id}`)
+}
+
+export async function getAnamnesisResponses(appointmentId) {
+    return request(`/anamnesis/responses/${appointmentId}`)
+}
+
+export async function registerStockMovement(id, data) {
+    return request(`/products/${id}/movement`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function getStockMovements() {
+    return request('/products/movements/history')
 }
 
 // ========== FLUXO DE CAIXA (saídas/despesas) ==========

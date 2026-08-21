@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
 import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken } from '../utils/auth.js'
 import { sendPasswordResetEmail } from '../utils/email.js'
+import { recordTermsAcceptance } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 
@@ -53,10 +54,13 @@ router.post('/login', async (req, res, next) => {
 // Registro de usuário
 router.post('/register', async (req, res, next) => {
     try {
-        const { name, email, password, phone } = req.body
+        const { name, email, password, phone, termsAccepted } = req.body
 
         if (!name || !email || !password) {
             throw new AppError('Nome, email e senha são obrigatórios', 400)
+        }
+        if (!termsAccepted) {
+            throw new AppError('Você precisa aceitar os Termos de Uso e a Política de Privacidade', 400)
         }
 
         const normalizedEmail = email.toLowerCase().trim()
@@ -74,6 +78,8 @@ router.post('/register', async (req, res, next) => {
             avatar: null,
             favorites: []
         })
+
+        await recordTermsAcceptance({ userId: user.id, userType: 'customer' })
 
         const { password: _, ...userWithoutPassword } = user
         const token = generateToken({
@@ -138,10 +144,13 @@ router.post('/admin/login', async (req, res, next) => {
 // Registro de admin (para cadastro de estabelecimentos)
 router.post('/admin/register', async (req, res, next) => {
     try {
-        const { name, email, password, establishmentId } = req.body
+        const { name, email, password, establishmentId, termsAccepted } = req.body
 
         if (!name || !email || !password || !establishmentId) {
             throw new AppError('Dados incompletos', 400)
+        }
+        if (!termsAccepted) {
+            throw new AppError('Você precisa aceitar os Termos de Uso e a Política de Privacidade', 400)
         }
 
         const normalizedEmail = email.toLowerCase().trim()
@@ -157,6 +166,8 @@ router.post('/admin/register', async (req, res, next) => {
             password: hashedPassword,
             establishmentId
         })
+
+        await recordTermsAcceptance({ userId: admin.id, userType: 'admin' })
 
         const { password: _, ...adminWithoutPassword } = admin
         const token = generateToken({

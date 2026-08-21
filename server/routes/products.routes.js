@@ -6,6 +6,9 @@ import { AppError } from '../middleware/error.middleware.js'
 const router = Router()
 const productsRepo = getRepository('products.json')
 const appointmentsRepo = getRepository('appointments.json')
+const stockMovementsRepo = getRepository('stock_movements.json')
+
+const MOVEMENT_TYPES = ['entrada', 'perda', 'uso_interno', 'ajuste']
 
 // Listar produtos do estabelecimento logado
 router.get('/', authMiddleware, async (req, res, next) => {
@@ -53,7 +56,7 @@ router.get('/sales/history', authMiddleware, async (req, res, next) => {
 // Cadastrar novo produto
 router.post('/', authMiddleware, async (req, res, next) => {
     try {
-        const { name, price, quantity } = req.body
+        const { name, price, quantity, cost, unit, minStock, supplier } = req.body
         if (!name?.trim() || price === undefined || quantity === undefined) {
             throw new AppError('Nome, preço e quantidade são obrigatórios', 400)
         }
@@ -62,7 +65,11 @@ router.post('/', authMiddleware, async (req, res, next) => {
             establishmentId: parseInt(req.user.establishmentId),
             name: name.trim(),
             price: parseFloat(price),
-            quantity: parseInt(quantity)
+            quantity: parseInt(quantity),
+            cost: cost !== undefined && cost !== '' ? parseFloat(cost) : 0,
+            unit: unit?.trim() || 'un',
+            minStock: minStock !== undefined && minStock !== '' ? parseInt(minStock) : 0,
+            supplier: supplier?.trim() || ''
         })
 
         res.status(201).json({ success: true, data: product })
@@ -71,7 +78,9 @@ router.post('/', authMiddleware, async (req, res, next) => {
     }
 })
 
-// Editar produto (nome, preço, ou reabastecer estoque manualmente)
+// Editar produto (nome, preço, custo, unidade, estoque mínimo, fornecedor).
+// Não mexe em quantidade diretamente — isso passa a ser só via /movement,
+// pra sempre deixar rastro de por que o estoque mudou.
 router.put('/:id', authMiddleware, async (req, res, next) => {
     try {
         const product = await productsRepo.findById(req.params.id)
@@ -80,14 +89,81 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             throw new AppError('Não autorizado', 403)
         }
 
-        const { name, price, quantity } = req.body
+        const { name, price, cost, unit, minStock, supplier } = req.body
         const updateData = {}
         if (name !== undefined) updateData.name = name.trim()
         if (price !== undefined) updateData.price = parseFloat(price)
-        if (quantity !== undefined) updateData.quantity = parseInt(quantity)
+        if (cost !== undefined) updateData.cost = parseFloat(cost) || 0
+        if (unit !== undefined) updateData.unit = unit.trim() || 'un'
+        if (minStock !== undefined) updateData.minStock = parseInt(minStock) || 0
+        if (supplier !== undefined) updateData.supplier = supplier.trim()
 
         const updated = await productsRepo.update(req.params.id, updateData)
         res.json({ success: true, data: updated })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Registrar movimentação de estoque: entrada (reposição), perda, uso
+// interno ou ajuste de contagem. Mantém um histórico imutável em
+// stock_movements e atualiza o saldo em products.quantity.
+router.post('/:id/movement', authMiddleware, async (req, res, next) => {
+    try {
+        const product = await productsRepo.findById(req.params.id)
+        if (!product) throw new AppError('Produto não encontrado', 404)
+        if (parseInt(product.establishmentId) !== parseInt(req.user.establishmentId)) {
+            throw new AppError('Não autorizado', 403)
+        }
+
+        const { type, quantity, note, direction } = req.body
+        if (!MOVEMENT_TYPES.includes(type)) {
+            throw new AppError('Tipo de movimentação inválido', 400)
+        }
+
+        const qty = parseInt(quantity)
+        if (!qty || qty < 1) {
+            throw new AppError('Quantidade inválida', 400)
+        }
+
+        let delta
+        if (type === 'entrada') delta = qty
+        else if (type === 'perda' || type === 'uso_interno') delta = -qty
+        else delta = direction === 'decrease' ? -qty : qty // ajuste: sinal escolhido pelo admin
+
+        const newQuantity = (product.quantity || 0) + delta
+        if (newQuantity < 0) {
+            throw new AppError(`Isso deixaria o estoque negativo (atual: ${product.quantity})`, 400)
+        }
+
+        const updatedProduct = await productsRepo.update(product.id, { quantity: newQuantity })
+
+        const movement = await stockMovementsRepo.create({
+            establishmentId: product.establishmentId,
+            productId: product.id,
+            productName: product.name,
+            type,
+            quantity: delta,
+            note: note?.trim() || '',
+            date: new Date().toISOString().split('T')[0]
+        })
+
+        res.json({ success: true, data: { product: updatedProduct, movement } })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Histórico de movimentações de estoque do estabelecimento (todas, de
+// todos os produtos, incluindo as vendas registradas em /:id/sell).
+router.get('/movements/history', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.user.establishmentId)
+        const movements = await stockMovementsRepo.findAll({ establishmentId })
+        res.json({
+            success: true,
+            data: movements.sort((a, b) => new Date(b.date) - new Date(a.date))
+        })
     } catch (error) {
         next(error)
     }
@@ -157,6 +233,18 @@ router.post('/:id/sell', authMiddleware, async (req, res, next) => {
                 quantity: quantitySold,
                 unitPrice: product.price
             })
+        })
+
+        // Também loga em stock_movements pra a venda aparecer junto no
+        // histórico consolidado de movimentações, não só no de vendas.
+        await stockMovementsRepo.create({
+            establishmentId: product.establishmentId,
+            productId: product.id,
+            productName: product.name,
+            type: 'venda',
+            quantity: -quantitySold,
+            note: `Venda (${quantitySold}x)`,
+            date: today
         })
 
         res.json({ success: true, data: { product: updatedProduct, sale: saleEntry } })

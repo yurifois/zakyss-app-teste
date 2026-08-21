@@ -10,6 +10,9 @@ import employeesRoutes from './employees.routes.js'
 import analyticsRoutes from './analytics.routes.js'
 import productsRoutes from './products.routes.js'
 import cashflowRoutes from './cashflow.routes.js'
+import clientNotesRoutes from './clientNotes.routes.js'
+import packagesRoutes from './packages.routes.js'
+import anamnesisRoutes from './anamnesis.routes.js'
 
 const router = Router()
 
@@ -24,5 +27,8 @@ router.use('/employees', employeesRoutes)
 router.use('/analytics', analyticsRoutes)
 router.use('/products', productsRoutes)
 router.use('/cashflow', cashflowRoutes)
+router.use('/client-notes', clientNotesRoutes)
+router.use('/packages', packagesRoutes)
+router.use('/anamnesis', anamnesisRoutes)
 
 export default router

@@ -233,6 +233,12 @@ export default function AdminLayout() {
                     <NavLink to="/admin/fluxo-caixa" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         💵 Fluxo de Caixa
                     </NavLink>
+                    <NavLink to="/admin/pacotes" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+                        🎟️ Pacotes
+                    </NavLink>
+                    <NavLink to="/admin/anamnese" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+                        📋 Anamnese
+                    </NavLink>
                     <NavLink to="/admin/imagens" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         🖼️ Imagens
                     </NavLink>

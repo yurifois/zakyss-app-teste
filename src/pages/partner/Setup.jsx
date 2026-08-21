@@ -20,6 +20,7 @@ export default function PartnerSetup() {
     const [partnerData, setPartnerData] = useState(null)
     const [servicesData, setServicesData] = useState(null)
     const [loading, setLoading] = useState(false)
+    const [termsAccepted, setTermsAccepted] = useState(false)
 
     const [workingHours, setWorkingHours] = useState({
         monday: { enabled: true, open: '09:00', close: '18:00' },
@@ -80,6 +81,10 @@ export default function PartnerSetup() {
     }
 
     const handleSubmit = async () => {
+        if (!termsAccepted) {
+            error('Você precisa aceitar os Termos de Uso e a Política de Privacidade')
+            return
+        }
         setLoading(true)
 
         try {
@@ -152,6 +157,7 @@ export default function PartnerSetup() {
                 email: partnerData.email,
                 password: partnerData.password,
                 establishmentId: establishment.id,
+                termsAccepted,
             })
 
             // Clear session storage
@@ -259,6 +265,20 @@ export default function PartnerSetup() {
                             </div>
                         )
                     })}
+                </div>
+
+                <div className="form-group">
+                    <label className="form-checkbox">
+                        <input
+                            type="checkbox"
+                            checked={termsAccepted}
+                            onChange={(e) => setTermsAccepted(e.target.checked)}
+                        />
+                        <span className="text-sm">
+                            Li e aceito os <a href="/termos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-400)' }}>termos de uso</a> e{' '}
+                            <a href="/termos#politica-de-privacidade" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-400)' }}>política de privacidade</a>
+                        </span>
+                    </label>
                 </div>
 
                 <div className="flex gap-4">

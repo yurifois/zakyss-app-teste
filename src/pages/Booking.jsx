@@ -25,6 +25,8 @@ export default function Booking() {
     const [allEstablishmentServices, setAllEstablishmentServices] = useState([])
     const [showReviewModal, setShowReviewModal] = useState(false)
     const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+    const [anamnesisForms, setAnamnesisForms] = useState([]) // fichas exigidas pelos serviços selecionados
+    const [anamnesisAnswers, setAnamnesisAnswers] = useState({}) // { [formId]: { [questionId]: valor } }
 
     const calendarRef = useRef(null)
 
@@ -200,6 +202,78 @@ export default function Booking() {
         return closedDates
     }
 
+    // Se o dia selecionado tem atendimento em domicílio configurado pelo
+    // estabelecimento, devolve os detalhes (área, taxa, mensagem) pra avisar
+    // o cliente antes de confirmar. Filtra por faixa de horário quando o
+    // estabelecimento configurou uma; sem faixa, vale o dia inteiro.
+    const getHomeVisitInfo = () => {
+        if (!selectedDate || !establishment?.scheduleExceptions) return null
+        let dateStr = selectedDate
+        if (selectedDate instanceof Date) {
+            dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+        }
+        const hv = establishment.scheduleExceptions[dateStr]?.homeVisit
+        if (!hv?.active) return null
+        if (selectedTime && hv.startTime && hv.endTime && !(selectedTime >= hv.startTime && selectedTime < hv.endTime)) {
+            return null
+        }
+        return hv
+    }
+
+    // Busca as fichas de anamnese anexadas aos serviços selecionados (se
+    // houver) toda vez que a seleção mudar, pra já mostrar antes de o
+    // cliente confirmar — sem precisar mandar nada depois.
+    useEffect(() => {
+        const loadAnamnesisForms = async () => {
+            if (!establishment || services.length === 0) {
+                setAnamnesisForms([])
+                return
+            }
+            const formIds = [...new Set(
+                services.map(s => establishment?.servicePreferences?.[s.id]?.anamnesisFormId).filter(Boolean)
+            )]
+            if (formIds.length === 0) {
+                setAnamnesisForms([])
+                return
+            }
+            try {
+                const forms = await Promise.all(formIds.map(id => api.getAnamnesisFormPublic(id)))
+                setAnamnesisForms(forms)
+            } catch (err) {
+                console.error('Erro ao carregar ficha de anamnese:', err)
+            }
+        }
+        loadAnamnesisForms()
+    }, [establishment, services])
+
+    const setAnamnesisAnswer = (formId, questionId, value) => {
+        setAnamnesisAnswers(prev => ({
+            ...prev,
+            [formId]: { ...(prev[formId] || {}), [questionId]: value }
+        }))
+    }
+
+    const isAnamnesisComplete = () => {
+        return anamnesisForms.every(form =>
+            (form.questions || []).every(q => {
+                if (!q.required) return true
+                const value = anamnesisAnswers[form.id]?.[q.id]
+                return value !== undefined && value !== null && value !== ''
+            })
+        )
+    }
+
+    const buildAnamnesisPayload = () => {
+        return anamnesisForms.map(form => ({
+            formId: form.id,
+            answers: (form.questions || []).map(q => ({
+                questionId: q.id,
+                label: q.label,
+                answer: anamnesisAnswers[form.id]?.[q.id] ?? ''
+            }))
+        }))
+    }
+
     const getTotalPrice = () => services.reduce((sum, s) => sum + s.price, 0)
     const getTotalDuration = () => services.reduce((sum, s) => sum + s.duration, 0)
 
@@ -218,6 +292,11 @@ export default function Booking() {
 
         if (!formData.name || !formData.phone) {
             error('Preencha nome e telefone')
+            return
+        }
+
+        if (!isAnamnesisComplete()) {
+            error('Preencha os campos obrigatórios da ficha de triagem antes de continuar')
             return
         }
 
@@ -254,7 +333,8 @@ export default function Booking() {
                 customerPhone: formData.phone,
                 customerEmail: formData.email,
                 notes: formData.notes,
-                assignments: assignments
+                assignments: assignments,
+                anamnesisAnswers: buildAnamnesisPayload()
             })
 
             sessionStorage.removeItem('booking_services')
@@ -369,6 +449,108 @@ export default function Booking() {
                                 </div>
                             )}
 
+                            {/* Ficha de anamnese/triagem, quando o serviço escolhido exige */}
+                            {anamnesisForms.map(form => (
+                                <div key={form.id} className="card mb-6 p-4 sm:p-6">
+                                    <h2 className="text-lg font-semibold mb-1">📋 {form.name}</h2>
+                                    <p className="text-sm text-muted mb-4">Preencha antes de confirmar o agendamento.</p>
+                                    <div className="flex flex-col gap-4">
+                                        {form.questions.map(q => (
+                                            <div key={q.id} className="form-group">
+                                                <label className="form-label">
+                                                    {q.label}{q.required && <span style={{ color: 'var(--error-500)' }}> *</span>}
+                                                </label>
+
+                                                {q.type === 'texto_curto' && (
+                                                    <input
+                                                        type="text" className="form-input"
+                                                        value={anamnesisAnswers[form.id]?.[q.id] || ''}
+                                                        onChange={(e) => setAnamnesisAnswer(form.id, q.id, e.target.value)}
+                                                    />
+                                                )}
+
+                                                {q.type === 'data' && (
+                                                    <input
+                                                        type="date" className="form-input"
+                                                        value={anamnesisAnswers[form.id]?.[q.id] || ''}
+                                                        onChange={(e) => setAnamnesisAnswer(form.id, q.id, e.target.value)}
+                                                    />
+                                                )}
+
+                                                {q.type === 'sim_nao' && (
+                                                    <div className="flex gap-2">
+                                                        {['Sim', 'Não'].map(opt => (
+                                                            <button
+                                                                key={opt} type="button"
+                                                                onClick={() => setAnamnesisAnswer(form.id, q.id, opt)}
+                                                                className="btn btn-sm"
+                                                                style={{
+                                                                    background: anamnesisAnswers[form.id]?.[q.id] === opt ? 'var(--primary-500)' : 'transparent',
+                                                                    color: anamnesisAnswers[form.id]?.[q.id] === opt ? 'white' : 'inherit',
+                                                                    border: '1px solid var(--border-color)'
+                                                                }}
+                                                            >
+                                                                {opt}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {q.type === 'multipla_escolha' && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(q.options || []).map(opt => (
+                                                            <button
+                                                                key={opt} type="button"
+                                                                onClick={() => setAnamnesisAnswer(form.id, q.id, opt)}
+                                                                className="btn btn-sm"
+                                                                style={{
+                                                                    background: anamnesisAnswers[form.id]?.[q.id] === opt ? 'var(--primary-500)' : 'transparent',
+                                                                    color: anamnesisAnswers[form.id]?.[q.id] === opt ? 'white' : 'inherit',
+                                                                    border: '1px solid var(--border-color)'
+                                                                }}
+                                                            >
+                                                                {opt}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {q.type === 'escala' && (
+                                                    <div className="flex gap-2">
+                                                        {[1, 2, 3, 4, 5].map(n => (
+                                                            <button
+                                                                key={n} type="button"
+                                                                onClick={() => setAnamnesisAnswer(form.id, q.id, n)}
+                                                                className="btn btn-sm"
+                                                                style={{
+                                                                    width: '2.5rem',
+                                                                    background: anamnesisAnswers[form.id]?.[q.id] === n ? 'var(--primary-500)' : 'transparent',
+                                                                    color: anamnesisAnswers[form.id]?.[q.id] === n ? 'white' : 'inherit',
+                                                                    border: '1px solid var(--border-color)'
+                                                                }}
+                                                            >
+                                                                {n}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {q.type === 'aceite' && (
+                                                    <label className="form-checkbox">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!anamnesisAnswers[form.id]?.[q.id]}
+                                                            onChange={(e) => setAnamnesisAnswer(form.id, q.id, e.target.checked ? 'Aceito' : '')}
+                                                        />
+                                                        <span className="text-sm">Confirmo que li e estou de acordo</span>
+                                                    </label>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+
                             {/* Step 1: Date */}
                             <div ref={calendarRef} className={`card mb-6 p-3 sm:p-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
                                 <h2 className="text-lg font-semibold mb-4">📅 Escolha a data</h2>
@@ -380,6 +562,16 @@ export default function Booking() {
                                     disabledDates={getClosedDates()}
                                 />
                             </div>
+
+                            {/* Aviso de atendimento em domicílio nesse dia */}
+                            {selectedDate && getHomeVisitInfo() && (
+                                <div className="card mb-6 p-4" style={{ background: 'rgba(236, 72, 153, 0.08)', border: '1px solid var(--primary-500)' }}>
+                                    <p className="font-semibold mb-1">🏠 Atendimento em domicílio neste dia</p>
+                                    {getHomeVisitInfo().area && <p className="text-sm">Área atendida: {getHomeVisitInfo().area}</p>}
+                                    {getHomeVisitInfo().fee > 0 && <p className="text-sm">Taxa de deslocamento: R$ {getHomeVisitInfo().fee.toFixed(2)}</p>}
+                                    {getHomeVisitInfo().message && <p className="text-sm mt-1">{getHomeVisitInfo().message}</p>}
+                                </div>
+                            )}
 
                             {/* Step 2: Time */}
                             {selectedDate && (

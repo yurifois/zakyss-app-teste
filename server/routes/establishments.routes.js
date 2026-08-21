@@ -379,10 +379,11 @@ router.get('/:id/clients', authMiddleware, async (req, res, next) => {
             clientsByKey[key].push(apt)
         }
 
-        const clients = Object.values(clientsByKey).map(apts => {
+        const clients = Object.entries(clientsByKey).map(([key, apts]) => {
             const sorted = [...apts].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))
             const latest = sorted[0]
             return {
+                key,
                 name: latest.customerName,
                 phone: latest.customerPhone,
                 email: latest.customerEmail,

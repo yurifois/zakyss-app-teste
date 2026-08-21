@@ -48,6 +48,7 @@ export default function Register() {
                 email: formData.email,
                 phone: formData.phone,
                 password: formData.password,
+                termsAccepted: formData.terms,
             })
             success('Conta criada com sucesso!')
 
@@ -186,8 +187,8 @@ export default function Register() {
                                         onChange={handleChange}
                                     />
                                     <span className="text-sm">
-                                        Li e aceito os <a href="#" style={{ color: 'var(--accent-400)' }}>termos de uso</a> e{' '}
-                                        <a href="#" style={{ color: 'var(--accent-400)' }}>política de privacidade</a>
+                                        Li e aceito os <a href="/termos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-400)' }}>termos de uso</a> e{' '}
+                                        <a href="/termos#politica-de-privacidade" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-400)' }}>política de privacidade</a>
                                     </span>
                                 </label>
                             </div>

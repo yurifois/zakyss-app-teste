@@ -25,7 +25,8 @@ export default function AdminServices() {
     const [isPremium, setIsPremium] = useState(false)
 
     const [editingService, setEditingService] = useState(null)
-    const [editForm, setEditForm] = useState({ name: '', price: '', duration: '', commission: 50 })
+    const [editForm, setEditForm] = useState({ name: '', price: '', duration: '', commission: 50, anamnesisFormId: '' })
+    const [anamnesisForms, setAnamnesisForms] = useState([])
     const [isCreatingCustom, setIsCreatingCustom] = useState(false)
     const [customForm, setCustomForm] = useState({ name: '', categoryId: '', price: '', duration: '', commission: 50 })
 
@@ -38,11 +39,13 @@ export default function AdminServices() {
     const loadData = async () => {
         setLoading(true)
         try {
-            const [est, allServs, cats] = await Promise.all([
+            const [est, allServs, cats, forms] = await Promise.all([
                 api.getEstablishmentById(admin.establishmentId),
                 api.getServices(admin.establishmentId),
-                api.getCategories()
+                api.getCategories(),
+                api.getAnamnesisForms()
             ])
+            setAnamnesisForms(forms)
 
             setEstablishment(est)
             setAllServices(allServs)
@@ -77,7 +80,8 @@ export default function AdminServices() {
         return {
             price: prefs?.price ?? service.price,
             duration: prefs?.duration ?? service.duration,
-            commission: prefs?.commission ?? 50
+            commission: prefs?.commission ?? 50,
+            anamnesisFormId: prefs?.anamnesisFormId ?? ''
         }
     }
 
@@ -185,7 +189,7 @@ export default function AdminServices() {
     const startEditing = (service) => {
         const details = getServiceDetails(service)
         setEditingService(service)
-        setEditForm({ name: service.name, price: details.price, duration: details.duration, commission: details.commission })
+        setEditForm({ name: service.name, price: details.price, duration: details.duration, commission: details.commission, anamnesisFormId: details.anamnesisFormId })
     }
 
     const handleUpdateService = async (e) => {
@@ -221,7 +225,8 @@ export default function AdminServices() {
                 [editingService.id]: {
                     price: newPrice,
                     duration: newDuration,
-                    commission: newCommission
+                    commission: newCommission,
+                    anamnesisFormId: editForm.anamnesisFormId || null
                 }
             }
 
@@ -534,6 +539,20 @@ export default function AdminServices() {
                                     />
                                     <p className="text-sm text-muted mt-1">
                                         Funcionário: {editForm.commission}% • Estabelecimento: {100 - (editForm.commission || 0)}%
+                                    </p>
+                                </div>
+                                <div className="form-group mt-4">
+                                    <label className="form-label">Ficha de Anamnese (opcional)</label>
+                                    <select
+                                        className="form-select"
+                                        value={editForm.anamnesisFormId}
+                                        onChange={e => setEditForm({ ...editForm, anamnesisFormId: e.target.value })}
+                                    >
+                                        <option value="">Nenhuma</option>
+                                        {anamnesisForms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                    </select>
+                                    <p className="text-sm text-muted mt-1">
+                                        Quando anexada, o cliente preenche essa ficha antes de confirmar o agendamento desse serviço.
                                     </p>
                                 </div>
                             </div>

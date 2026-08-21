@@ -2,10 +2,13 @@ import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
+import { logAudit } from '../utils/auditLog.js'
 
 const router = Router()
 const employeesRepo = getRepository('employees.json')
 const appointmentsRepo = getRepository('appointments.json')
+const commissionPaymentsRepo = getRepository('commission_payments.json')
+const auditLogRepo = getRepository('audit_log.json')
 
 // Listar funcionários de um estabelecimento (PÚBLICO - para usuários verem ao agendar)
 router.get('/:establishmentId/public', async (req, res, next) => {
@@ -60,6 +63,11 @@ router.post('/', authMiddleware, async (req, res, next) => {
             name: name.trim()
         })
 
+        await logAudit({
+            establishmentId, admin: req.user, action: 'funcionario_criado',
+            entityType: 'employee', entityId: employee.id, entityName: employee.name
+        })
+
         res.status(201).json({
             success: true,
             data: employee
@@ -102,6 +110,12 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             throw new AppError('Funcionário não encontrado', 404)
         }
 
+        await logAudit({
+            establishmentId: employee.establishmentId, admin: req.user, action: 'funcionario_editado',
+            entityType: 'employee', entityId: employee.id, entityName: employee.name,
+            details: Object.keys(updateData).join(', ')
+        })
+
         res.json({
             success: true,
             data: employee
@@ -114,6 +128,8 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
 // Remover funcionário
 router.delete('/:id', authMiddleware, async (req, res, next) => {
     try {
+        const existing = await employeesRepo.findById(req.params.id)
+
         const deleted = await employeesRepo.delete(req.params.id)
 
         if (!deleted) {
@@ -128,9 +144,30 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
             await appointmentsRepo.update(apt.id, { employeeId: null })
         }
 
+        if (existing) {
+            await logAudit({
+                establishmentId: existing.establishmentId, admin: req.user, action: 'funcionario_removido',
+                entityType: 'employee', entityId: existing.id, entityName: existing.name
+            })
+        }
+
         res.json({
             success: true,
             data: { message: 'Funcionário removido com sucesso' }
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Histórico de auditoria (quem criou/editou/removeu funcionários) do estabelecimento
+router.get('/:establishmentId/audit-log', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.params.establishmentId)
+        const entries = await auditLogRepo.findAll({ establishmentId })
+        res.json({
+            success: true,
+            data: entries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 100)
         })
     } catch (error) {
         next(error)
@@ -288,6 +325,27 @@ router.get('/:establishmentId/report', authMiddleware, async (req, res, next) =>
         const totalEmployeeRevenue = report.reduce((sum, r) => sum + (r.employeeRevenue || 0), 0)
         const totalEstablishmentRevenue = report.reduce((sum, r) => sum + (r.establishmentRevenue || 0), 0)
 
+        // Status de pagamento da comissão: a comissão em si é sempre calculada
+        // na hora (não é salva em lugar nenhum), então quem diz se já foi pago
+        // é a existência de um registro em commission_payments pra esse
+        // funcionário+mês+ano. "Sem funcionário atribuído" não entra aqui —
+        // não tem quem pagar.
+        if (month && year) {
+            const targetMonth = parseInt(month)
+            const targetYear = parseInt(year)
+            const payments = await commissionPaymentsRepo.findAll({ establishmentId, month: targetMonth, year: targetYear })
+            const paymentByEmployee = {}
+            payments.forEach(p => { paymentByEmployee[p.employeeId] = p })
+
+            report.forEach(r => {
+                if (r.employeeId === null) return
+                const payment = paymentByEmployee[r.employeeId]
+                r.paymentStatus = payment ? 'pago' : 'pendente'
+                r.paidAt = payment?.paidAt || null
+                r.paymentMethod = payment?.paymentMethod || null
+            })
+        }
+
         res.json({
             success: true,
             data: {
@@ -301,6 +359,65 @@ router.get('/:establishmentId/report', authMiddleware, async (req, res, next) =>
                 }
             }
         })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Marcar a comissão de um funcionário num mês/ano como paga.
+router.post('/:establishmentId/report/mark-paid', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.params.establishmentId)
+        const { employeeId, month, year, amount, paymentMethod, note } = req.body
+
+        if (!employeeId || !month || !year) {
+            throw new AppError('employeeId, month e year são obrigatórios', 400)
+        }
+
+        const existing = await commissionPaymentsRepo.findOne({
+            establishmentId, employeeId: parseInt(employeeId), month: parseInt(month), year: parseInt(year)
+        })
+
+        const paymentData = {
+            establishmentId,
+            employeeId: parseInt(employeeId),
+            month: parseInt(month),
+            year: parseInt(year),
+            amount: amount !== undefined ? parseFloat(amount) : 0,
+            paymentMethod: paymentMethod || '',
+            note: note || '',
+            paidAt: new Date().toISOString()
+        }
+
+        const saved = existing
+            ? await commissionPaymentsRepo.update(existing.id, paymentData)
+            : await commissionPaymentsRepo.create(paymentData)
+
+        res.json({ success: true, data: saved })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Desfazer a marcação de pago (volta pra pendente).
+router.post('/:establishmentId/report/mark-pending', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.params.establishmentId)
+        const { employeeId, month, year } = req.body
+
+        if (!employeeId || !month || !year) {
+            throw new AppError('employeeId, month e year são obrigatórios', 400)
+        }
+
+        const existing = await commissionPaymentsRepo.findOne({
+            establishmentId, employeeId: parseInt(employeeId), month: parseInt(month), year: parseInt(year)
+        })
+
+        if (existing) {
+            await commissionPaymentsRepo.delete(existing.id)
+        }
+
+        res.json({ success: true })
     } catch (error) {
         next(error)
     }

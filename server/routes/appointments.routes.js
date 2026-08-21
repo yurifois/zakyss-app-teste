@@ -9,6 +9,8 @@ import nodemailer from 'nodemailer'
 const router = Router()
 const appointmentsRepo = getRepository('appointments.json')
 const servicesRepo = getRepository('services.json')
+const anamnesisFormsRepo = getRepository('anamnesis_forms.json')
+const anamnesisResponsesRepo = getRepository('anamnesis_responses.json')
 
 // Política de remarcação: cliente que falta a um agendamento (no_show) fica
 // impedido de criar novos agendamentos pelo site/app por alguns dias.
@@ -157,7 +159,8 @@ router.post('/', async (req, res, next) => {
             customerPhone,
             customerEmail,
             notes,
-            assignments
+            assignments,
+            anamnesisAnswers
         } = req.body
 
         // Validar dados obrigatórios
@@ -193,6 +196,35 @@ router.post('/', async (req, res, next) => {
 
         if (isWithinLunchBreak(establishment, date, time)) {
             throw new AppError('Este horário cai na pausa para almoço do estabelecimento. Por favor, escolha outro horário.', 409)
+        }
+
+        // Anamnese/triagem (2.13): se algum serviço selecionado tem ficha anexada,
+        // exige as respostas aqui no backend — não basta o front-end mostrar o
+        // formulário, senão dá pra burlar só pulando a etapa. Agendamento feito
+        // pelo próprio admin (encaixe presencial) não passa por essa exigência,
+        // porque o papel é resolvido na hora, presencialmente.
+        if (!isAuthenticatedAdminRequest(req)) {
+            const requiredFormIds = new Set()
+            services.forEach(sId => {
+                const formId = establishment?.servicePreferences?.[sId]?.anamnesisFormId
+                if (formId) requiredFormIds.add(formId)
+            })
+
+            for (const formId of requiredFormIds) {
+                const form = await anamnesisFormsRepo.findById(formId)
+                if (!form) continue // ficha foi removida nesse meio tempo, não bloqueia
+
+                const submitted = (anamnesisAnswers || []).find(a => parseInt(a.formId) === parseInt(formId))
+                const requiredQuestions = (form.questions || []).filter(q => q.required)
+                const missing = requiredQuestions.some(q => {
+                    const answer = submitted?.answers?.find(a => a.questionId === q.id)
+                    return answer === undefined || answer.answer === '' || answer.answer === undefined || answer.answer === null
+                })
+
+                if (!submitted || missing) {
+                    throw new AppError(`Preencha a ficha "${form.name}" antes de confirmar o agendamento.`, 400)
+                }
+            }
         }
 
         // Calcular preço e duração total
@@ -273,6 +305,26 @@ router.post('/', async (req, res, next) => {
             }
         }
 
+        // Atendimento em domicílio (2.16): quem decide não é o cliente, é a
+        // exceção de agenda já configurada pelo estabelecimento pra essa data —
+        // evita o cliente burlar simplesmente não vendo o aviso no front-end.
+        // Se tiver faixa de horário definida, só vale pra quem cair dentro dela;
+        // sem faixa, vale o dia inteiro.
+        let serviceLocation = 'establishment'
+        let homeVisitArea = null
+        let homeVisitFee = null
+        let homeVisitMessage = null
+        const homeVisit = scheduleException?.homeVisit
+        if (homeVisit?.active) {
+            const withinRange = !homeVisit.startTime || !homeVisit.endTime || (time >= homeVisit.startTime && time < homeVisit.endTime)
+            if (withinRange) {
+                serviceLocation = 'home_visit'
+                homeVisitArea = homeVisit.area || null
+                homeVisitFee = homeVisit.fee ?? null
+                homeVisitMessage = homeVisit.message || null
+            }
+        }
+
         const appointment = await appointmentsRepo.create({
             establishmentId: parseInt(establishmentId),
             userId: userId || null,
@@ -286,9 +338,31 @@ router.post('/', async (req, res, next) => {
             customerPhone,
             customerEmail: customerEmail || null,
             notes: notes || null,
-            assignments: finalAssignments
+            assignments: finalAssignments,
+            serviceLocation,
+            homeVisitArea,
+            homeVisitFee,
+            homeVisitMessage
 
         })
+
+        // Salva as respostas da ficha de anamnese vinculadas a esse agendamento.
+        // Acesso é restrito ao próprio estabelecimento — não tem rota pública
+        // de leitura, só a de admin autenticado.
+        if (Array.isArray(anamnesisAnswers)) {
+            for (const entry of anamnesisAnswers) {
+                const form = await anamnesisFormsRepo.findById(entry.formId)
+                if (!form) continue
+                await anamnesisResponsesRepo.create({
+                    establishmentId: parseInt(establishmentId),
+                    appointmentId: appointment.id,
+                    formId: form.id,
+                    formName: form.name,
+                    customerName,
+                    answers: entry.answers || []
+                })
+            }
+        }
 
         // Enviar email ao estabelecimento (await garante envio antes da resposta)
         try {

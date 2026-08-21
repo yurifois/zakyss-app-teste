@@ -43,6 +43,11 @@ export default function Footer() {
 
                 <div className="footer-bottom">
                     <p>© {new Date().getFullYear()} Zakys. Todos os direitos reservados.</p>
+                    <p style={{ marginTop: '0.5rem' }}>
+                        <Link to="/termos">Termos de Uso</Link>
+                        {' · '}
+                        <Link to="/termos#politica-de-privacidade">Política de Privacidade</Link>
+                    </p>
                 </div>
             </div>
         </footer>
