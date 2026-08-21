@@ -9,6 +9,7 @@ import uploadRoutes from './upload.routes.js'
 import employeesRoutes from './employees.routes.js'
 import analyticsRoutes from './analytics.routes.js'
 import productsRoutes from './products.routes.js'
+import cashflowRoutes from './cashflow.routes.js'
 
 const router = Router()
 
@@ -22,5 +23,6 @@ router.use('/upload', uploadRoutes)
 router.use('/employees', employeesRoutes)
 router.use('/analytics', analyticsRoutes)
 router.use('/products', productsRoutes)
+router.use('/cashflow', cashflowRoutes)
 
 export default router

@@ -647,5 +647,30 @@ export async function sellProduct(id, quantity) {
     })
 }
 
+// ========== FLUXO DE CAIXA (saídas/despesas) ==========
+
+export async function getCashflowEntries() {
+    return request('/cashflow')
+}
+
+export async function createCashflowEntry(data) {
+    return request('/cashflow', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function updateCashflowEntry(id, data) {
+    return request(`/cashflow/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function deleteCashflowEntry(id) {
+    return request(`/cashflow/${id}`, {
+        method: 'DELETE'
+    })
+}
 
 
