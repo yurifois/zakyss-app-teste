@@ -598,7 +598,50 @@ router.post('/', async (req, res, next) => {
 // Atualizar estabelecimento
 router.put('/:id', authMiddleware, async (req, res, next) => {
     try {
-        const establishment = await establishmentsRepo.update(req.params.id, req.body)
+        const id = req.params.id
+
+        // Bloqueio de fechamento de dia com cliente agendado: se esta atualização
+        // está fechando um dia inteiro ou bloqueando um horário que antes estava
+        // livre, e já existe agendamento pendente/confirmado bem ali, recusa e avisa
+        // — em vez de deixar o admin fechar o dia e sumir com o cliente sem perceber.
+        // Nunca cancela ninguém automaticamente, só impede o fechamento silencioso.
+        if (req.body.scheduleExceptions) {
+            const current = await establishmentsRepo.findById(id)
+            const oldExceptions = current?.scheduleExceptions || {}
+            const newExceptions = req.body.scheduleExceptions
+
+            for (const [date, newVal] of Object.entries(newExceptions)) {
+                const oldVal = oldExceptions[date] || { isClosed: false, blockedRanges: [] }
+                const newlyClosingWholeDay = !!newVal.isClosed && !oldVal.isClosed
+                const newRanges = newVal.isClosed
+                    ? []
+                    : (newVal.blockedRanges || []).filter(nr =>
+                        !(oldVal.blockedRanges || []).some(or => or.start === nr.start && or.end === nr.end)
+                      )
+
+                if (!newlyClosingWholeDay && newRanges.length === 0) continue
+
+                const dayAppointments = (await appointmentsRepo.findAll({ establishmentId: parseInt(id), date }))
+                    .filter(a => ['pending', 'confirmed'].includes(a.status))
+
+                const conflicts = newlyClosingWholeDay
+                    ? dayAppointments
+                    : dayAppointments.filter(a => newRanges.some(r => a.time >= r.start && a.time < r.end))
+
+                if (conflicts.length > 0) {
+                    const [, month, day] = date.split('-')
+                    const preview = conflicts.slice(0, 5).map(a => `${a.time} - ${a.customerName}`).join('; ')
+                    throw new AppError(
+                        `Não é possível fechar ${day}/${month}: ${conflicts.length} agendamento(s) já marcado(s) nesse horário (${preview}${conflicts.length > 5 ? '...' : ''}). Cancele ou remarque esses agendamentos antes de fechar.`,
+                        409
+                    )
+                }
+            }
+
+            console.log(`[Establishments] Admin ${req.user?.id} alterou horários/exceções do estabelecimento ${id}`)
+        }
+
+        const establishment = await establishmentsRepo.update(id, req.body)
 
         if (!establishment) {
             throw new AppError('Estabelecimento não encontrado', 404)
