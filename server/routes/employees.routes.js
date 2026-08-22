@@ -52,7 +52,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
 // Criar novo funcionário
 router.post('/', authMiddleware, async (req, res, next) => {
     try {
-        const { establishmentId, name } = req.body
+        const { establishmentId, name, email } = req.body
 
         if (!establishmentId || !name?.trim()) {
             throw new AppError('establishmentId e name são obrigatórios', 400)
@@ -60,7 +60,8 @@ router.post('/', authMiddleware, async (req, res, next) => {
 
         const employee = await employeesRepo.create({
             establishmentId: parseInt(establishmentId),
-            name: name.trim()
+            name: name.trim(),
+            email: email?.trim() || null
         })
 
         await logAudit({
@@ -80,7 +81,7 @@ router.post('/', authMiddleware, async (req, res, next) => {
 // Atualizar funcionário
 router.put('/:id', authMiddleware, async (req, res, next) => {
     try {
-        const { name, services } = req.body
+        const { name, services, email } = req.body
 
         // Build update data - only include provided fields
         const updateData = {}
@@ -90,6 +91,10 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
                 throw new AppError('name não pode estar vazio', 400)
             }
             updateData.name = name.trim()
+        }
+
+        if (email !== undefined) {
+            updateData.email = email?.trim() || null
         }
 
         if (services !== undefined) {

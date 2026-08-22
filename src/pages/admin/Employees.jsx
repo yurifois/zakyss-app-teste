@@ -11,9 +11,11 @@ export default function AdminEmployees() {
     const [services, setServices] = useState([]) // Services offered by establishment
     const [loading, setLoading] = useState(true)
     const [newName, setNewName] = useState('')
+    const [newEmail, setNewEmail] = useState('')
     const [adding, setAdding] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [editingName, setEditingName] = useState('')
+    const [editingEmail, setEditingEmail] = useState('')
     const [servicesModalFor, setServicesModalFor] = useState(null) // employee sendo editado no modal de serviços
     const [showAuditLog, setShowAuditLog] = useState(false)
     const [auditLog, setAuditLog] = useState([])
@@ -80,10 +82,12 @@ export default function AdminEmployees() {
         try {
             await api.createEmployee({
                 establishmentId: admin.establishmentId,
-                name: newName.trim()
+                name: newName.trim(),
+                email: newEmail.trim()
             })
             success('Funcionário adicionado!')
             setNewName('')
+            setNewEmail('')
             loadData()
         } catch (err) {
             error(err.message || 'Erro ao adicionar funcionário')
@@ -95,6 +99,7 @@ export default function AdminEmployees() {
     const startEdit = (employee) => {
         setEditingId(employee.id)
         setEditingName(employee.name)
+        setEditingEmail(employee.email || '')
     }
 
     const handleSaveEdit = async () => {
@@ -104,10 +109,11 @@ export default function AdminEmployees() {
         }
 
         try {
-            await api.updateEmployee(editingId, { name: editingName.trim() })
+            await api.updateEmployee(editingId, { name: editingName.trim(), email: editingEmail.trim() })
             success('Funcionário atualizado!')
             setEditingId(null)
             setEditingName('')
+            setEditingEmail('')
             loadData()
         } catch (err) {
             error(err.message || 'Erro ao atualizar funcionário')
@@ -158,13 +164,23 @@ export default function AdminEmployees() {
             {/* Adicionar Funcionário */}
             <div className="card mb-6" style={{ padding: '1.5rem' }}>
                 <h3 className="font-semibold mb-4">Adicionar Funcionário</h3>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                     <input
                         type="text"
                         className="form-input flex-1"
+                        style={{ minWidth: '160px' }}
                         placeholder="Nome do funcionário"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                    />
+                    <input
+                        type="email"
+                        className="form-input flex-1"
+                        style={{ minWidth: '200px' }}
+                        placeholder="E-mail (opcional — recebe aviso de agendamento)"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                     />
                     <button
@@ -204,14 +220,24 @@ export default function AdminEmployees() {
                                 {/* Header row with name and actions */}
                                 <div className="flex items-center justify-between mb-3">
                                     {editingId === employee.id ? (
-                                        <div className="flex gap-2 flex-1 mr-4">
+                                        <div className="flex flex-wrap gap-2 flex-1 mr-4">
                                             <input
                                                 type="text"
                                                 className="form-input flex-1"
+                                                style={{ minWidth: '140px' }}
                                                 value={editingName}
                                                 onChange={(e) => setEditingName(e.target.value)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
                                                 autoFocus
+                                            />
+                                            <input
+                                                type="email"
+                                                className="form-input flex-1"
+                                                style={{ minWidth: '180px' }}
+                                                placeholder="E-mail (opcional)"
+                                                value={editingEmail}
+                                                onChange={(e) => setEditingEmail(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
                                             />
                                             <button
                                                 onClick={handleSaveEdit}
@@ -245,7 +271,10 @@ export default function AdminEmployees() {
                                                 >
                                                     {employee.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="font-medium" style={{ color: 'var(--primary-500)' }}>{employee.name}</span>
+                                                <div>
+                                                    <span className="font-medium" style={{ color: 'var(--primary-500)' }}>{employee.name}</span>
+                                                    {employee.email && <div className="text-xs text-muted">✉️ {employee.email}</div>}
+                                                </div>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button

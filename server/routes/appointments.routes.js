@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
-import { sendConfirmationEmail, sendNewAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
+import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
 import nodemailer from 'nodemailer'
 
 const router = Router()
@@ -183,6 +183,26 @@ router.post('/', async (req, res, next) => {
         const establishment = await establishmentsRepo.findById(establishmentId)
         if (!establishment) throw new AppError('Estabelecimento não encontrado', 404)
 
+        // Se o agendamento não veio com userId (ex: encaixe criado pelo admin,
+        // sem login), tenta achar a conta do cliente pelo telefone/e-mail e
+        // vincula automaticamente. Sem isso, o agendamento nunca aparece em
+        // "Meus Agendamentos" do cliente, mesmo que ele tenha conta — e ele
+        // nunca consegue avaliar/comentar (era exatamente esse o sintoma).
+        let resolvedUserId = userId || null
+        if (!resolvedUserId && (customerPhone || customerEmail)) {
+            const usersRepo = getRepository('users.json')
+            const normalizedTargetPhone = normalizePhone(customerPhone)
+            let matchedUser = null
+            if (normalizedTargetPhone) {
+                const allUsers = await usersRepo.findAll()
+                matchedUser = allUsers.find(u => normalizePhone(u.phone) === normalizedTargetPhone)
+            }
+            if (!matchedUser && customerEmail) {
+                matchedUser = await usersRepo.findOne({ email: customerEmail.toLowerCase().trim() })
+            }
+            if (matchedUser) resolvedUserId = matchedUser.id
+        }
+
         // Verificar se a data/horário foi bloqueada pelo estabelecimento (exceção de calendário)
         const scheduleException = establishment.scheduleExceptions?.[date]
         if (scheduleException) {
@@ -327,7 +347,7 @@ router.post('/', async (req, res, next) => {
 
         const appointment = await appointmentsRepo.create({
             establishmentId: parseInt(establishmentId),
-            userId: userId || null,
+            userId: resolvedUserId,
             services,
             date,
             time,
@@ -388,6 +408,24 @@ router.post('/', async (req, res, next) => {
             }
         } catch (emailErr) {
             console.error('[Appointments] Erro ao enviar email ao estabelecimento:', emailErr.message)
+        }
+
+        // Avisa cada funcionário responsável, no e-mail cadastrado dele, sobre
+        // o novo agendamento — evita o estabelecimento ter que avisar na mão.
+        try {
+            const employeeIds = [...new Set((finalAssignments || []).map(a => a.employeeId).filter(Boolean))]
+            if (employeeIds.length > 0) {
+                const employeesRepo = getRepository('employees.json')
+                const servicesListStr = selectedServices.map(s => s.name).join(', ')
+                for (const empId of employeeIds) {
+                    const employee = await employeesRepo.findById(empId)
+                    if (employee?.email) {
+                        await sendEmployeeAppointmentEmail(employee.email, employee.name, customerName, date, time, servicesListStr)
+                    }
+                }
+            }
+        } catch (empEmailErr) {
+            console.error('[Appointments] Erro ao enviar email ao(s) funcionário(s):', empEmailErr.message)
         }
 
         res.status(201).json({

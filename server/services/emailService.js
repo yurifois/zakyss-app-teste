@@ -349,6 +349,102 @@ export const sendNewAppointmentEmail = async (establishmentEmail, establishmentN
 }
 
 /**
+ * Gera template HTML pra avisar o funcionário responsável que ele tem um
+ * atendimento novo — segue o mesmo padrão visual dos outros e-mails.
+ */
+const generateEmployeeAppointmentTemplate = (employeeName, customerName, date, time, servicesListStr) => {
+    const formattedDate = formatDate(date)
+
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; background-color: #fdf2f8;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fdf2f8; padding: 40px 20px;">
+            <tr>
+                <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <!-- Header -->
+                        <tr>
+                            <td style="background: linear-gradient(135deg, #db2777 0%, #9d174d 100%); padding: 30px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 28px;">📅 Você tem um agendamento!</h1>
+                            </td>
+                        </tr>
+
+                        <!-- Content -->
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h2 style="color: #171615; font-size: 24px; margin: 0 0 20px 0;">
+                                    Olá, <strong style="color: #db2777;">${employeeName}</strong>! 👋
+                                </h2>
+
+                                <p style="color: #5c5752; font-size: 16px; margin: 0 0 30px 0;">
+                                    Informamos que você tem um agendamento para o cliente <strong>${customerName}</strong>, dia <strong>${formattedDate}</strong> às <strong>${time}</strong>.
+                                </p>
+
+                                <div style="background-color: #fdf2f8; border-left: 4px solid #db2777; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                                    <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">
+                                        👤 <strong>Cliente:</strong> ${customerName}
+                                    </p>
+                                    <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">
+                                        📅 <strong>Data:</strong> ${formattedDate}
+                                    </p>
+                                    <p style="color: #171615; font-size: 18px; margin: 0 0 10px 0;">
+                                        🕐 <strong>Horário:</strong> ${time}
+                                    </p>
+                                    <p style="color: #171615; font-size: 16px; margin: 0; line-height: 1.6;">
+                                        💅 <strong>Serviço(s):</strong> ${servicesListStr}
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color: #f5f0e8; padding: 20px 30px; text-align: center;">
+                                <p style="color: #5c5752; font-size: 12px; margin: 0;">
+                                    Este é um email automático do Zakys.<br>
+                                    Por favor, não responda a esta mensagem.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `
+}
+
+/**
+ * Avisa o funcionário responsável (no e-mail cadastrado dele) que tem um
+ * atendimento novo — item pedido pra reduzir aviso manual.
+ */
+export const sendEmployeeAppointmentEmail = async (employeeEmail, employeeName, customerName, date, time, servicesListStr) => {
+    if (!employeeEmail) {
+        console.log(`[EmailService] Sem email cadastrado para o funcionário ${employeeName}`)
+        return false
+    }
+
+    try {
+        await sendEmail(
+            employeeEmail,
+            `📅 Novo Agendamento - ${customerName}`,
+            generateEmployeeAppointmentTemplate(employeeName, customerName, date, time, servicesListStr)
+        )
+        console.log(`[EmailService] ✅ Email de agendamento enviado para o funcionário: ${employeeEmail}`)
+        return true
+    } catch (error) {
+        console.error(`[EmailService] ❌ Erro ao enviar email para o funcionário ${employeeEmail}:`, error.message)
+        return false
+    }
+}
+
+/**
  * Gera template HTML para lembrete de retorno (incentivo à recorrência)
  */
 const generateReturnReminderTemplate = (customerName, establishmentName, serviceNames) => {
@@ -607,6 +703,7 @@ export default {
     sendAppointmentReminder,
     sendConfirmationEmail,
     sendNewAppointmentEmail,
+    sendEmployeeAppointmentEmail,
     sendReturnReminder,
     sendReactivationEmailToCustomer,
     sendReactivationEmailToEstablishment,
