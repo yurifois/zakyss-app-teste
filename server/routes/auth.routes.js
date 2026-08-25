@@ -281,7 +281,12 @@ router.post('/reset-password', async (req, res, next) => {
         try {
             verifyResetToken(token, user) // Verifica expiração e assinatura com a senha antiga
         } catch (err) {
-            throw new AppError('Link de recuperação inválido ou expirado', 400)
+            // Distingue "expirou" de "inválido" pra dar um retorno acionável
+            // (o usuário lê "expirou" e sabe que é só pedir de novo).
+            if (err.name === 'TokenExpiredError') {
+                throw new AppError('Esse link de recuperação expirou. Solicite um novo.', 400)
+            }
+            throw new AppError('Link de recuperação inválido. Solicite um novo.', 400)
         }
 
         const hashedPassword = await hashPassword(newPassword)

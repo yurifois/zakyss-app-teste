@@ -20,7 +20,7 @@ export async function sendPasswordResetEmail(to, token) {
             <p style="word-break: break-all; color: #666; font-size: 14px;">${resetUrl}</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
             <p style="color: #999; font-size: 12px;">Se você não solicitou a redefinição de senha, por favor ignore este e-mail.</p>
-            <p style="color: #999; font-size: 12px;">Este link expira em 1 hora.</p>
+            <p style="color: #999; font-size: 12px;">Este link expira em 24 horas.</p>
         </div>
     `
 

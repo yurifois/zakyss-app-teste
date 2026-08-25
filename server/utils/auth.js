@@ -22,7 +22,9 @@ export async function comparePassword(password, hash) {
 export function generateResetToken(user, type) {
     const secret = process.env.JWT_SECRET + user.password
     const payload = { id: user.id, type }
-    return jwt.sign(payload, secret, { expiresIn: '1h' })
+    // 1h era curto demais na prática: se a pessoa não abre o email na hora,
+    // o link já morre e ela só vê "inválido ou expirado" sem entender por quê.
+    return jwt.sign(payload, secret, { expiresIn: '24h' })
 }
 
 export function verifyResetToken(token, user) {

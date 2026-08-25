@@ -92,6 +92,15 @@ export default function ResetPassword() {
                             {loading ? 'Salvando...' : 'Salvar Nova Senha'}
                         </button>
                     </form>
+
+                    <div className="text-center mt-6">
+                        <p className="text-sm text-secondary">
+                            Link expirado ou não funcionou?{' '}
+                            <Link to="/recuperar-senha" className="font-semibold" style={{ color: 'var(--accent-400)' }}>
+                                Pedir um novo
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
