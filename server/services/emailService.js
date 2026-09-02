@@ -1,4 +1,4 @@
-import { sendEmail, verifySmtpConfig } from '../utils/sendEmail.js'
+import { sendEmail } from '../utils/sendEmail.js'
 
 /**
  * Formata data para exibição em português
@@ -116,31 +116,6 @@ export const sendAppointmentReminder = async (email, customerName, date, time, r
         return true
     } catch (error) {
         console.error(`[EmailService] ❌ Erro ao enviar email para ${email}:`, error.message)
-        return false
-    }
-}
-
-/**
- * Função de teste para verificar configuração de email
- */
-export const testEmail = async () => {
-    console.log('[EmailService] Testando configuração de email...')
-    console.log('[EmailService] SMTP_HOST:', process.env.SMTP_HOST || 'smtp.gmail.com')
-    console.log('[EmailService] SMTP_PORT:', process.env.SMTP_PORT || '587')
-    console.log('[EmailService] SMTP_USER:', process.env.SMTP_USER ? '✓ configurado' : '✗ não configurado')
-    console.log('[EmailService] SMTP_PASS:', process.env.SMTP_PASS ? '✓ configurado' : '✗ não configurado')
-
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-        console.log('[EmailService] ⚠️  Credenciais SMTP não configuradas no .env')
-        return false
-    }
-
-    try {
-        await verifySmtpConfig()
-        console.log('[EmailService] ✅ Conexão SMTP verificada com sucesso!')
-        return true
-    } catch (error) {
-        console.error('[EmailService] ❌ Falha na verificação SMTP:', error.message)
         return false
     }
 }
@@ -708,6 +683,5 @@ export default {
     sendReactivationEmailToCustomer,
     sendReactivationEmailToEstablishment,
     sendCancellationEmailToCustomer,
-    sendCancellationEmailToEstablishment,
-    testEmail
+    sendCancellationEmailToEstablishment
 }

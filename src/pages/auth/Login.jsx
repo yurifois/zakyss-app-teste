@@ -119,10 +119,6 @@ export default function Login() {
                         </p>
                     </div>
                 </div>
-
-                <p className="text-center text-muted text-sm mt-6">
-                    Teste: maria@email.com / 123456
-                </p>
             </div>
         </div>
     )

@@ -1,26 +1,28 @@
 # Instruções de projeto — Zakys
 
-## ⚠️ Envio de email — NÃO trocar para SMTP direto em produção
+## ⚠️ Envio de email — Resend, NÃO SMTP/Gmail
 
-O backend de produção roda no **Render**, que **bloqueia conexões SMTP de saída**.
-Enviar email direto por `nodemailer.createTransport(...).sendMail(...)` a partir do
-Render trava ou falha silenciosamente — não é bug de código, é bloqueio de rede do
-provedor.
+Todo envio de email do backend passa por **um único ponto**:
+`server/utils/sendEmail.js`, função `sendEmail(to, subject, html)` — que chama a
+API HTTPS do **Resend** (`https://api.resend.com/emails`), usando `RESEND_API_KEY`
+e `RESEND_FROM_EMAIL` (variáveis de ambiente no Render).
 
-Por isso, todo envio de email do backend passa por **um único ponto**:
-`server/utils/sendEmail.js`, função `sendEmail(to, subject, html)`. Ela já decide
-sozinha o caminho certo:
-- em produção (`NODE_ENV=production`), envia via gateway serverless da **Vercel**
-  (`api/send-email.js`), que não tem esse bloqueio, com fallback pra SMTP direto
-  se o gateway estiver fora do ar;
-- em desenvolvimento local, envia direto por SMTP (funciona normalmente, o
-  bloqueio é específico do Render).
+**Nunca** volte a usar `nodemailer`/SMTP/Gmail pra enviar email neste projeto, nem
+crie um gateway serverless na Vercel pra contornar bloqueio de rede. Dois motivos,
+os dois já causaram outage real em produção:
+1. O Render bloqueia conexão SMTP de saída — enviar direto por SMTP a partir do
+   Render trava ou falha silenciosamente.
+2. Contas Gmail comuns têm teto de **500 envios/dia**. A Zakys estourou esse
+   teto em produção assim que o uso cresceu, o que derrubou **todo** email do
+   sistema (confirmação, lembrete, recuperação de senha) até o limite resetar
+   no dia seguinte — não é hipotético, já aconteceu (ago/2026).
 
-**Nunca** crie um novo `nodemailer.createTransport` em outro arquivo do backend
-nem troque uma chamada a `sendEmail(...)` por envio direto "pra simplificar".
-Isso já quebrou os emails de confirmação, lembrete, novo agendamento e
-reativação — recurso essencial do app — mais de uma vez pelo mesmo motivo.
-Se precisar mexer no envio de email, edite `server/utils/sendEmail.js`.
+Resend fala HTTPS puro, não tem esse bloqueio nem esse teto (no plano free já são
+3.000 emails/mês), e funciona igual em produção e em desenvolvimento — não tem
+mais bifurcação de ambiente nem gateway pra manter.
+
+Se precisar mexer no envio de email, edite só `server/utils/sendEmail.js`. Nunca
+crie um `nodemailer.createTransport` novo em outro arquivo do backend.
 
 ## Efeitos colaterais do servidor local
 
