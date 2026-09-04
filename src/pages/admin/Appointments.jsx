@@ -662,8 +662,8 @@ export default function AdminAppointments() {
                             {/* Expanded View */}
                             {isExpanded && (
                             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)', cursor: 'default' }} onClick={e => e.stopPropagation()}>
-                                <div className="flex justify-between items-start mb-3">
-                                    <div>
+                                <div className="flex justify-between items-start gap-3 mb-3">
+                                    <div style={{ minWidth: 0, wordBreak: 'break-word' }}>
                                         <div className="text-sm text-muted">📱 {apt.customerPhone}</div>
                                         {apt.customerEmail && <div className="text-sm text-muted">✉️ {apt.customerEmail}</div>}
                                         <div className="text-sm text-muted">📅 Atendimento: {fullDate} às {apt.time}</div>

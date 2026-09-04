@@ -198,7 +198,9 @@ export default function AdminCalendarView() {
                                     return (
                                         <div key={apt.id} style={{ padding: '0.85rem', background: 'var(--secondary-500)', borderRadius: '0.75rem' }}>
                                             <div className="flex justify-between items-start gap-3">
-                                                <div>
+                                                {/* minWidth 0 deixa o bloco encolher no celular em vez de
+                                                    estourar a largura com e-mail longo */}
+                                                <div style={{ minWidth: 0, wordBreak: 'break-word' }}>
                                                     <div className="font-semibold">
                                                         {apt.time} · {apt.customerName}
                                                         {apt.serviceLocation === 'home_visit' && <span title="Atendimento em domicílio"> 🏠</span>}
@@ -265,11 +267,11 @@ export default function AdminCalendarView() {
                                 )}
 
                                 {exceptionForm.blockedRanges.map((range, index) => (
-                                    <div key={index} className="flex gap-2 mb-2 items-center">
-                                        <input type="time" className="form-input flex-1" value={range.start}
+                                    <div key={index} className="flex flex-wrap gap-2 mb-2 items-center">
+                                        <input type="time" className="form-input flex-1" style={{ minWidth: '110px' }} value={range.start}
                                             onChange={(e) => updateRange(index, 'start', e.target.value)} />
                                         <span className="text-secondary">até</span>
-                                        <input type="time" className="form-input flex-1" value={range.end}
+                                        <input type="time" className="form-input flex-1" style={{ minWidth: '110px' }} value={range.end}
                                             onChange={(e) => updateRange(index, 'end', e.target.value)} />
                                         <button onClick={() => removeRange(index)} className="btn btn-ghost btn-sm" style={{ color: 'var(--error-500)' }}>🗑️</button>
                                     </div>

@@ -2119,3 +2119,15 @@ img {
 input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
 }
+
+/* Modais no celular: o padding de 24px + título grande espremia o botão de
+   fechar contra o texto em telas estreitas (ex: título com a data por extenso). */
+@media (max-width: 768px) {
+    .modal-header {
+        padding: var(--space-4);
+        gap: var(--space-3);
+    }
+    .modal-title { font-size: var(--font-size-base); }
+    .modal-body { padding: var(--space-4); }
+    .modal-footer { padding: var(--space-4); }
+}
