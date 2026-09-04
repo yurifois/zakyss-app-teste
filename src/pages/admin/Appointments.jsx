@@ -665,6 +665,13 @@ export default function AdminAppointments() {
                                 <div className="flex justify-between items-start mb-3">
                                     <div>
                                         <div className="text-sm text-muted">📱 {apt.customerPhone}</div>
+                                        {apt.customerEmail && <div className="text-sm text-muted">✉️ {apt.customerEmail}</div>}
+                                        <div className="text-sm text-muted">📅 Atendimento: {fullDate} às {apt.time}</div>
+                                        {apt.createdAt && (
+                                            <div className="text-sm text-muted">
+                                                🗓️ Agendado em: {new Date(apt.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex gap-2">
                                         {apt.customerPhone && (

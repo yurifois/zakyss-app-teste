@@ -609,6 +609,7 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
         if (req.body.scheduleExceptions) {
             const current = await establishmentsRepo.findById(id)
             const oldExceptions = current?.scheduleExceptions || {}
+
             const newExceptions = req.body.scheduleExceptions
 
             for (const [date, newVal] of Object.entries(newExceptions)) {
@@ -640,6 +641,41 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             }
 
             console.log(`[Establishments] Admin ${req.user?.id} alterou horários/exceções do estabelecimento ${id}`)
+        }
+
+        // Mesma proteção, mas para o expediente semanal (tela de Horários):
+        // fechar um dia da semana ou encurtar o expediente também não pode
+        // deixar agendamento futuro já marcado fora do horário de atendimento.
+        if (req.body.workingHours) {
+            const current = await establishmentsRepo.findById(id)
+            const oldHours = current?.workingHours || {}
+            const newHours = req.body.workingHours
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+            const today = new Date().toISOString().split('T')[0]
+
+            const future = (await appointmentsRepo.findAll({ establishmentId: parseInt(id) }))
+                .filter(a => ['pending', 'confirmed'].includes(a.status) && a.date >= today)
+
+            const conflicts = future.filter(a => {
+                const day = dayNames[new Date(a.date + 'T12:00:00').getDay()]
+                const oldDay = oldHours[day]
+                const newDay = newHours[day]
+                // Se já estava fora do expediente antigo, não foi esta mudança que criou o problema
+                const wasInside = oldDay?.open && a.time >= oldDay.open && a.time < oldDay.close
+                if (!wasInside) return false
+                if (!newDay?.open || !newDay?.close) return true // dia fechado agora
+                return a.time < newDay.open || a.time >= newDay.close
+            })
+
+            if (conflicts.length > 0) {
+                const preview = conflicts.slice(0, 5)
+                    .map(a => `${a.date.split('-').reverse().slice(0, 2).join('/')} ${a.time} - ${a.customerName}`)
+                    .join('; ')
+                throw new AppError(
+                    `Não é possível alterar o expediente: ${conflicts.length} agendamento(s) futuro(s) ficariam fora do horário de atendimento (${preview}${conflicts.length > 5 ? '...' : ''}). Cancele ou remarque antes de mudar o horário.`,
+                    409
+                )
+            }
         }
 
         const establishment = await establishmentsRepo.update(id, req.body)

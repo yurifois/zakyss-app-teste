@@ -54,6 +54,17 @@ function isWithinLunchBreak(establishment, date, time) {
     return time >= lunchBreak.start && time < lunchBreak.end
 }
 
+// Verifica se o horário cai fora do expediente semanal do estabelecimento.
+// A lista de horários disponíveis já filtra isso, mas só no front — sem checar
+// aqui, uma tela desatualizada (ou o expediente mudando depois que o cliente
+// abriu a página) deixava passar agendamento em dia/horário fechado.
+function isOutsideWorkingHours(establishment, date, time) {
+    const dayOfWeek = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+    const hours = establishment.workingHours?.[dayOfWeek]
+    if (!hours?.open || !hours?.close) return true // dia fechado no expediente semanal
+    return time < hours.open || time >= hours.close
+}
+
 // Um admin autenticado (dashboard) pode criar agendamentos "de encaixe" mesmo
 // para um cliente restrito — a restrição vale apenas para autoagendamento público.
 function isAuthenticatedAdminRequest(req) {
@@ -169,6 +180,12 @@ router.post('/', async (req, res, next) => {
             if (scheduleException.blockedRanges?.some(range => time >= range.start && time < range.end)) {
                 throw new AppError('Este horário foi bloqueado pelo estabelecimento. Por favor, escolha outro horário.', 409)
             }
+        }
+
+        // Encaixe feito pelo próprio admin pode ser fora do expediente (é o
+        // propósito do encaixe); autoagendamento do cliente, não.
+        if (!isAuthenticatedAdminRequest(req) && isOutsideWorkingHours(establishment, date, time)) {
+            throw new AppError('Este horário está fora do expediente do estabelecimento nesta data. Por favor, escolha outro horário.', 409)
         }
 
         if (isWithinLunchBreak(establishment, date, time)) {
