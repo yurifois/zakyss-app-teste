@@ -218,6 +218,9 @@ export default function AdminLayout() {
                     <NavLink to="/admin/agendamentos" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         📅 Agendamentos
                     </NavLink>
+                    <NavLink to="/admin/calendario" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
+                        🗓️ Calendário
+                    </NavLink>
                     <NavLink to="/admin/clientes" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
                         🗂️ Clientes
                     </NavLink>

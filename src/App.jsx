@@ -42,6 +42,7 @@ import AdminProducts from './pages/admin/Products'
 import AdminCashFlow from './pages/admin/CashFlow'
 import AdminPackages from './pages/admin/Packages'
 import AdminAnamnesis from './pages/admin/Anamnesis'
+import AdminCalendarView from './pages/admin/CalendarView'
 
 function App() {
     return (
@@ -76,6 +77,7 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="agendamentos" element={<AdminAppointments />} />
+                <Route path="calendario" element={<AdminCalendarView />} />
                 <Route path="clientes" element={<AdminClients />} />
                 <Route path="horarios" element={<AdminSchedule />} />
                 <Route path="servicos" element={<AdminServices />} />
