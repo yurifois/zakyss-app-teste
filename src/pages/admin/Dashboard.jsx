@@ -37,10 +37,7 @@ export default function AdminDashboard() {
             const apts = await api.getAppointmentsByEstablishment(admin.establishmentId)
 
             // Enrich with services
-            const enriched = await Promise.all(apts.map(async (apt) => {
-                const servicesList = await api.getServicesByIds(apt.services).catch(() => [])
-                return { ...apt, servicesList }
-            }))
+            const enriched = await api.attachServicesToAppointments(apts)
 
             setAppointments(enriched)
 

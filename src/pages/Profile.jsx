@@ -110,15 +110,20 @@ export default function Profile() {
         try {
             const apts = await api.getAppointmentsByUser(user.id)
 
-            // Enrich with establishment data
-            const enriched = await Promise.all(apts.map(async (apt) => {
-                try {
-                    const establishment = await api.getEstablishmentById(apt.establishmentId).catch(() => ({ name: 'Estabelecimento Indisponível' }))
-                    const servicesList = await api.getServicesByIds(apt.services).catch(() => [])
-                    return { ...apt, establishment, servicesList }
-                } catch (e) {
-                    return { ...apt, establishment: { name: 'Erro' }, servicesList: [] }
-                }
+            // Uma requisição de serviços pra lista toda + uma por estabelecimento
+            // único (antes era uma de cada por agendamento, o que deixava a tela lenta)
+            const withServices = await api.attachServicesToAppointments(apts)
+            const estEntries = await Promise.all(
+                [...new Set(apts.map(a => a.establishmentId))].map(async (id) => [
+                    id,
+                    await api.getEstablishmentById(id).catch(() => ({ name: 'Estabelecimento Indisponível' }))
+                ])
+            )
+            const estById = new Map(estEntries)
+
+            const enriched = withServices.map(apt => ({
+                ...apt,
+                establishment: estById.get(apt.establishmentId) || { name: 'Estabelecimento Indisponível' }
             }))
 
             setAppointments(enriched.sort((a, b) => {

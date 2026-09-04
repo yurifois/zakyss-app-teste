@@ -102,10 +102,7 @@ export default function AdminAppointments() {
         try {
             const apts = await api.getAppointmentsByEstablishment(admin.establishmentId)
 
-            const enriched = await Promise.all(apts.map(async (apt) => {
-                const servicesList = await api.getServicesByIds(apt.services).catch(() => [])
-                return { ...apt, servicesList }
-            }))
+            const enriched = await api.attachServicesToAppointments(apts)
 
             setAppointments(enriched.sort((a, b) => {
                 const dateA = new Date(`${a.date}T${a.time || '00:00'}`)

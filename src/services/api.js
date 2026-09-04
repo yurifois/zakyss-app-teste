@@ -244,6 +244,24 @@ export async function getServicesByIds(ids) {
     })
 }
 
+// Preenche servicesList em uma lista de agendamentos com UMA requisição só.
+// Cada tela fazia uma requisição por agendamento (60 agendamentos = 60
+// requisições), o que deixava a abertura lenta e inundava o log do backend.
+export async function attachServicesToAppointments(appointments) {
+    const ids = [...new Set(appointments.flatMap(a => a.services || []))]
+    if (ids.length === 0) {
+        return appointments.map(a => ({ ...a, servicesList: [] }))
+    }
+
+    const services = await getServicesByIds(ids).catch(() => [])
+    const byId = new Map(services.map(s => [s.id, s]))
+
+    return appointments.map(a => ({
+        ...a,
+        servicesList: (a.services || []).map(id => byId.get(id)).filter(Boolean)
+    }))
+}
+
 export async function getServicesByCategory(categoryId) {
     return request(`/categories/${categoryId}/services`)
 }

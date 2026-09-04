@@ -45,11 +45,7 @@ export default function AdminCalendarView() {
                 api.getAppointmentsByEstablishment(admin.establishmentId),
                 api.getEstablishmentById(admin.establishmentId)
             ])
-            const enriched = await Promise.all(apts.map(async (apt) => ({
-                ...apt,
-                servicesList: await api.getServicesByIds(apt.services).catch(() => [])
-            })))
-            setAppointments(enriched)
+            setAppointments(await api.attachServicesToAppointments(apts))
             setEstablishment(est)
             syncExceptionForm(est, selectedDate)
         } catch (err) {
