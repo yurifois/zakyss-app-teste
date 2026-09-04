@@ -29,6 +29,7 @@ export default function AdminCalendarView() {
     const [establishment, setEstablishment] = useState(null)
     const [loading, setLoading] = useState(true)
     const [selectedDate, setSelectedDate] = useState(new Date())
+    const [showDayModal, setShowDayModal] = useState(false)
     const [exceptionForm, setExceptionForm] = useState(emptyException)
     const [saving, setSaving] = useState(false)
 
@@ -68,6 +69,7 @@ export default function AdminCalendarView() {
     const handleSelectDate = (date) => {
         setSelectedDate(date)
         syncExceptionForm(establishment, date)
+        setShowDayModal(true)
     }
 
     // Dias da semana fechados no expediente + datas fechadas por exceção,
@@ -154,31 +156,38 @@ export default function AdminCalendarView() {
                 </p>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6 items-start">
-                {/* Calendário */}
-                <div className="card" style={{ padding: '1.25rem' }}>
-                    <Calendar
-                        selectedDate={selectedDate}
-                        onSelectDate={handleSelectDate}
-                        closedDays={closedWeekdays}
-                        closedDates={closedDates}
-                        allowPastDates
-                    />
-                    <div className="text-sm text-muted mt-4">
-                        Dias em cinza estão fechados (expediente semanal ou fechamento manual).
-                    </div>
+            {/* Calendário */}
+            <div className="card" style={{ padding: '1.25rem', maxWidth: '760px', margin: '0 auto' }}>
+                <Calendar
+                    selectedDate={selectedDate}
+                    onSelectDate={handleSelectDate}
+                    closedDays={closedWeekdays}
+                    closedDates={closedDates}
+                    allowPastDates
+                />
+                <div className="text-sm text-muted mt-4">
+                    Dias em cinza estão fechados (expediente semanal ou fechamento manual).
                 </div>
+            </div>
 
-                {/* Detalhe do dia */}
-                <div className="flex flex-col gap-6">
-                    <div className="card" style={{ padding: '1.25rem' }}>
-                        <h2 className="text-lg font-semibold mb-1">
-                            {selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-                        </h2>
-                        <p className="text-sm text-muted mb-4">
-                            {dayHours ? `Expediente: ${dayHours.open} às ${dayHours.close}` : 'Fechado no expediente semanal'}
-                            {' · '}{dayAppointments.length} agendamento(s)
-                        </p>
+            {/* Detalhe do dia — sobreposição, pra não empurrar o calendário pra fora da tela */}
+            {showDayModal && (
+                <div className="modal-backdrop" onClick={() => setShowDayModal(false)}>
+                    <div className="modal" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div>
+                                <h2 className="modal-title">
+                                    {selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                                </h2>
+                                <p className="text-sm text-muted">
+                                    {dayHours ? `Expediente: ${dayHours.open} às ${dayHours.close}` : 'Fechado no expediente semanal'}
+                                    {' · '}{dayAppointments.length} agendamento(s)
+                                </p>
+                            </div>
+                            <button onClick={() => setShowDayModal(false)} className="btn btn-ghost btn-icon">✕</button>
+                        </div>
+
+                        <div className="modal-body">
 
                         {dayAppointments.length === 0 ? (
                             <p className="text-center text-muted py-6">Nenhum agendamento neste dia.</p>
@@ -229,13 +238,12 @@ export default function AdminCalendarView() {
                                 })}
                             </div>
                         )}
-                    </div>
 
-                    {/* Abrir/fechar horários do dia */}
-                    <div className="card" style={{ padding: '1.25rem' }}>
-                        <h3 className="font-semibold mb-4">⚙️ Abrir / fechar horários deste dia</h3>
+                        {/* Abrir/fechar horários do dia */}
+                        <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
+                            <h3 className="font-semibold mb-4">⚙️ Abrir / fechar horários deste dia</h3>
 
-                        <label className="flex items-center gap-2 cursor-pointer mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer mb-4">
                             <input
                                 type="checkbox"
                                 className="form-checkbox"
@@ -276,12 +284,14 @@ export default function AdminCalendarView() {
                             </p>
                         )}
 
-                        <button onClick={handleSaveException} className="btn btn-primary w-full" disabled={saving}>
-                            {saving ? 'Salvando...' : 'Salvar horários do dia'}
-                        </button>
+                            <button onClick={handleSaveException} className="btn btn-primary w-full" disabled={saving}>
+                                {saving ? 'Salvando...' : 'Salvar horários do dia'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+            )}
         </div>
     )
 }
