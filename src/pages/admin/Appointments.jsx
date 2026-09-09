@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import Calendar from '../../components/Calendar'
+import { getClosedWeekdays } from '../../utils/schedule'
 
 export default function AdminAppointments() {
     const { admin } = useAuth()
@@ -158,10 +159,7 @@ export default function AdminAppointments() {
 
     // Dias da semana sem expediente (workingHours[dia] === null), pro calendário
     // marcar como fechado visualmente
-    const WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-    const closedWeekdays = WEEKDAY_KEYS
-        .map((key, index) => (workingHours[key] ? null : index))
-        .filter(index => index !== null)
+    const closedWeekdays = getClosedWeekdays(workingHours)
 
     // Datas com o dia inteiro fechado (exceção de calendário) - bloqueio parcial
     // (blockedRanges) não conta, o dia continua com atendimento normal

@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import Calendar from '../../components/Calendar'
+import { WEEKDAY_KEYS, getClosedWeekdays } from '../../utils/schedule'
 
 const STATUS_BADGE = {
     pending: { class: 'badge-warning', label: 'Pendente' },
@@ -11,8 +12,6 @@ const STATUS_BADGE = {
     cancelled: { class: 'badge-error', label: 'Cancelado' },
     no_show: { class: 'badge-error', label: 'Não compareceu' }
 }
-
-const WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
 // Monta YYYY-MM-DD a partir dos componentes locais (toISOString vira UTC e
 // pode virar o dia errado dependendo do fuso do aparelho).
@@ -28,6 +27,7 @@ export default function AdminCalendarView() {
     const [appointments, setAppointments] = useState([])
     const [establishment, setEstablishment] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState(false)
     const [selectedDate, setSelectedDate] = useState(new Date())
     const [showDayModal, setShowDayModal] = useState(false)
     const [exceptionForm, setExceptionForm] = useState(emptyException)
@@ -40,6 +40,7 @@ export default function AdminCalendarView() {
     const loadData = async () => {
         if (!admin) return
         setLoading(true)
+        setLoadError(false)
         try {
             const [apts, est] = await Promise.all([
                 api.getAppointmentsByEstablishment(admin.establishmentId),
@@ -49,7 +50,10 @@ export default function AdminCalendarView() {
             setEstablishment(est)
             syncExceptionForm(est, selectedDate)
         } catch (err) {
+            // Sem os horários do estabelecimento o calendário não pode ser
+            // desenhado: dado ausente não pode virar "tudo fechado" na tela.
             console.error('Erro ao carregar calendário:', err)
+            setLoadError(true)
         } finally {
             setLoading(false)
         }
@@ -70,9 +74,7 @@ export default function AdminCalendarView() {
 
     // Dias da semana fechados no expediente + datas fechadas por exceção,
     // pra o calendário pintar igual ao que o cliente enxerga.
-    const closedWeekdays = WEEKDAY_KEYS
-        .map((key, idx) => (establishment?.workingHours?.[key] ? null : idx))
-        .filter(idx => idx !== null)
+    const closedWeekdays = getClosedWeekdays(establishment?.workingHours)
 
     const closedDates = Object.entries(establishment?.scheduleExceptions || {})
         .filter(([, exc]) => exc?.isClosed)
@@ -139,6 +141,16 @@ export default function AdminCalendarView() {
     }))
 
     if (loading) return <div className="text-center py-16">⏳ Carregando...</div>
+
+    if (loadError || !establishment) {
+        return (
+            <div className="card text-center py-12" style={{ padding: '2rem' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⚠️</div>
+                <p className="mb-4">Não foi possível carregar os horários do estabelecimento.</p>
+                <button onClick={loadData} className="btn btn-primary">Tentar de novo</button>
+            </div>
+        )
+    }
 
     const weekdayKey = WEEKDAY_KEYS[selectedDate.getDay()]
     const dayHours = establishment?.workingHours?.[weekdayKey]
