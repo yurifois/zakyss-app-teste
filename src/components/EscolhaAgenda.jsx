@@ -36,7 +36,7 @@ const Opcao = ({ disponivel, escolhido, titulo, onClick, dica, children }) => (
         onClick={onClick}
         title={dica || ''}
         style={{
-            padding: '0.75rem 1rem',
+            padding: '0.6rem 0.75rem',
             borderRadius: '0.75rem',
             textAlign: 'left',
             width: '100%',
@@ -193,7 +193,7 @@ export default function EscolhaAgenda({
                 ) : resumoServicos.length === 0 ? (
                     <p className="text-muted text-center py-4">Nenhum serviço cadastrado neste estabelecimento.</p>
                 ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                         {resumoServicos.map(item => {
                             const escolhido = services.some(s => s.id === item.id)
                             return (
@@ -204,19 +204,15 @@ export default function EscolhaAgenda({
                                     onClick={() => alternarServico(item)}
                                     dica={item.reasonLong}
                                     titulo={
-                                        <div className="flex justify-between items-baseline gap-3">
-                                            <span className="font-medium" style={{ minWidth: 0, wordBreak: 'break-word' }}>
-                                                {escolhido ? '✓ ' : ''}{item.name}
-                                            </span>
-                                            <span className="font-semibold" style={{ flexShrink: 0 }}>
-                                                R$ {Number(item.price || 0).toFixed(2)}
-                                            </span>
+                                        <div className="text-sm font-medium" style={{ wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                            {escolhido ? '✓ ' : ''}{item.name}
                                         </div>
                                     }
                                 >
-                                    <div className="text-xs text-muted mt-1">
+                                    <div className="font-semibold mt-1">R$ {Number(item.price || 0).toFixed(2)}</div>
+                                    <div className="text-xs text-muted">
                                         {item.duration} min
-                                        {item.available && ` · ${item.slotsDisponiveis} horário(s) livre(s)`}
+                                        {item.available && ` · ${item.slotsDisponiveis} horário(s)`}
                                     </div>
                                     {!item.available && <Motivo texto={item.reason} />}
                                 </Opcao>
@@ -246,7 +242,7 @@ export default function EscolhaAgenda({
                                 Tente outro dia ou remova um serviço.
                             </p>
                         )}
-                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))' }}>
+                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
                             {slots.map(slot => {
                                 const livre = !!slot.combo?.available
                                 return (

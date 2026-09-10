@@ -203,57 +203,36 @@ export default function Establishment() {
                     onAviso={error}
                 />
 
-                {/* Resumo só existe depois que há escolha: a página não abre
-                    com uma caixa explicando o que o cliente tem que fazer. */}
-                {bookingDate && (
+                {/* Sem caixa de resumo: os chips lá em cima já dizem onde o
+                    cliente está. Aqui fica só o que falta para confirmar. */}
+                {selectedServices.length > 0 && (
                     <div className="card mb-8 p-3 sm:p-6">
-                        <h3 className="text-lg font-bold mb-3">Resumo</h3>
-                        <div className="text-sm mb-3">
-                            <div>📅 {new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR')}</div>
-                            {bookingTime && <div>🕐 {bookingTime}</div>}
+                        <div className="flex flex-wrap justify-between items-baseline gap-3 mb-3">
+                            <span className="font-bold">
+                                Total <span className="text-gradient">R$ {getTotalPrice().toFixed(2)}</span>
+                            </span>
+                            <span className="text-sm text-muted">{getTotalDuration()} min</span>
                         </div>
 
-                        {selectedServices.length > 0 && (
-                            <>
-                                <div className="mb-3">
-                                    {getSelectedServicesData().map(service => {
-                                        const qualifiedEmployees = getQualifiedEmployees(service.id)
-                                        return (
-                                            <div key={service.id} style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                                                <div className="flex justify-between gap-3">
-                                                    <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{service.name}</span>
-                                                    <span style={{ flexShrink: 0 }}>R$ {Number(service.price || 0).toFixed(2)}</span>
-                                                </div>
-                                                <div className="mt-2">
-                                                    <select
-                                                        className="form-select"
-                                                        style={{ fontSize: '0.875rem', padding: '0.4rem 0.75rem' }}
-                                                        value={employeePreferences[service.id] || ''}
-                                                        onChange={(e) => setEmployeeForService(service.id, e.target.value)}
-                                                    >
-                                                        <option value="">👤 Qualquer funcionário</option>
-                                                        {qualifiedEmployees.length > 0 ? (
-                                                            qualifiedEmployees.map(emp => (
-                                                                <option key={emp.id} value={emp.id}>{emp.name}</option>
-                                                            ))
-                                                        ) : (
-                                                            <option disabled>Sem funcionários qualificados</option>
-                                                        )}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-
-                                <div className="flex justify-between font-bold mb-1">
-                                    <span>Total</span>
-                                    <span className="text-gradient">R$ {getTotalPrice().toFixed(2)}</span>
-                                </div>
-                                <div className="text-sm text-muted mb-4">
-                                    Duração estimada: {getTotalDuration()} min
-                                </div>
-                            </>
+                        {employees.length > 0 && (
+                            <div className="grid gap-2 mb-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+                                {getSelectedServicesData().map(service => (
+                                    <label key={service.id} className="text-sm">
+                                        <span className="text-muted">{service.name}</span>
+                                        <select
+                                            className="form-select mt-1"
+                                            style={{ fontSize: '0.875rem', padding: '0.4rem 0.75rem' }}
+                                            value={employeePreferences[service.id] || ''}
+                                            onChange={(e) => setEmployeeForService(service.id, e.target.value)}
+                                        >
+                                            <option value="">👤 Qualquer profissional</option>
+                                            {getQualifiedEmployees(service.id).map(emp => (
+                                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ))}
+                            </div>
                         )}
 
                         {/* Só libera quando as três etapas foram cumpridas */}
@@ -262,9 +241,7 @@ export default function Establishment() {
                             disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
                             className="btn btn-primary btn-lg w-full"
                         >
-                            {selectedServices.length === 0 ? 'Escolha o serviço'
-                                : !bookingTime ? 'Escolha o horário'
-                                : 'Continuar agendamento'}
+                            {!bookingTime ? 'Escolha o horário' : 'Continuar agendamento'}
                         </button>
                     </div>
                 )}
