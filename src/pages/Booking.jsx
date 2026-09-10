@@ -498,30 +498,40 @@ export default function Booking() {
                                                     key={item.id}
                                                     type="button"
                                                     disabled={!item.available}
+                                                    title={item.reasonLong || ''}
                                                     onClick={() => setServices(prev => prev.some(s => s.id === item.id)
                                                         ? prev.filter(s => s.id !== item.id)
                                                         : [...prev, { id: item.id, name: item.name, price: item.price, duration: item.duration }])}
-                                                    className="flex justify-between items-center gap-3"
                                                     style={{
                                                         padding: '0.75rem 1rem',
                                                         borderRadius: '0.75rem',
                                                         textAlign: 'left',
+                                                        width: '100%',
                                                         cursor: item.available ? 'pointer' : 'not-allowed',
-                                                        opacity: item.available ? 1 : 0.5,
+                                                        opacity: item.available ? 1 : 0.6,
                                                         border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
                                                         background: escolhido ? 'rgba(236, 72, 153, 0.12)' : item.available ? 'transparent' : 'var(--secondary-500)'
                                                     }}
                                                 >
-                                                    <div style={{ minWidth: 0 }}>
-                                                        <div className="font-medium">{escolhido ? '✓ ' : ''}{item.name}</div>
-                                                        <div className="text-xs text-muted">
-                                                            {item.duration} min
-                                                            {!item.available && <> · <span style={{ color: 'var(--error-500)' }}>{item.reason}</span></>}
+                                                    {/* nome e preço na mesma linha; o motivo ganha linha própria
+                                                        pra caber inteiro sem espremer o preço */}
+                                                    <div className="flex justify-between items-baseline gap-3">
+                                                        <span className="font-medium" style={{ minWidth: 0, wordBreak: 'break-word' }}>
+                                                            {escolhido ? '✓ ' : ''}{item.name}
+                                                        </span>
+                                                        <span className="font-semibold" style={{ flexShrink: 0 }}>
+                                                            R$ {Number(item.price || 0).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-muted mt-1">{item.duration} min</div>
+                                                    {!item.available && (
+                                                        <div
+                                                            className="text-xs mt-1"
+                                                            style={{ color: 'var(--error-500)', lineHeight: 1.35, wordBreak: 'break-word' }}
+                                                        >
+                                                            ⛔ {item.reason}
                                                         </div>
-                                                    </div>
-                                                    <div className="font-semibold" style={{ flexShrink: 0 }}>
-                                                        R$ {Number(item.price || 0).toFixed(2)}
-                                                    </div>
+                                                    )}
                                                 </button>
                                             )
                                         })}

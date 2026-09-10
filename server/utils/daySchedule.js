@@ -32,14 +32,26 @@ const rangeOverlaps = (start, duration, range) => {
     return a < toMinutes(range.end) && b > toMinutes(range.start)
 }
 
+// Texto curto cabe na caixinha do serviço; o longo vai no tooltip (title).
 export const MOTIVOS = {
     fechado: 'Estabelecimento fechado neste horário',
     almoco: 'Pausa para almoço',
     reservado: 'Horário já reservado',
     semServico: 'Nenhum serviço cabe neste horário',
-    expediente: 'A duração ultrapassa o fim do expediente',
-    semProfissional: 'Nenhum profissional disponível para este serviço',
+    expediente: 'Ultrapassa o fim do expediente',
+    ultrapassa: 'Ultrapassa a agenda do estabelecimento',
+    semProfissional: 'Nenhum profissional disponível',
     disponivel: null
+}
+
+export const MOTIVOS_LONGOS = {
+    [MOTIVOS.fechado]: 'O estabelecimento bloqueou este horário na agenda.',
+    [MOTIVOS.almoco]: 'Este horário cai na pausa para almoço do estabelecimento.',
+    [MOTIVOS.reservado]: 'Este horário já está reservado por outro agendamento.',
+    [MOTIVOS.expediente]: 'A duração deste serviço passa do fim do expediente deste dia.',
+    [MOTIVOS.ultrapassa]: 'Não é possível agendar esse serviço nesse horário por ultrapassar a agenda do estabelecimento.',
+    [MOTIVOS.semProfissional]: 'Nenhum profissional habilitado neste serviço está livre neste horário.',
+    [MOTIVOS.semServico]: 'Nenhum serviço cadastrado cabe neste horário.'
 }
 
 export function buildDaySchedule({
@@ -83,12 +95,25 @@ export function buildDaySchedule({
             const deny = (reason) => ({ id: service.id, available: false, reason })
 
             if (m + duration > closeMin) return deny(MOTIVOS.expediente)
-            if (lunch && rangeOverlaps(time, duration, lunch)) return deny(MOTIVOS.almoco)
-            if (blockedRanges.some(r => rangeOverlaps(time, duration, r))) return deny(MOTIVOS.fechado)
+
+            // O horário em si está livre, mas a duração invade algo adiante?
+            // Esse caso merece mensagem própria: o cliente escolheu um horário
+            // que aparece livre e precisa entender por que o serviço não cabe.
+            const comecaEmLunch = lunch && time >= lunch.start && time < lunch.end
+            const comecaBloqueado = blockedRanges.some(r => time >= r.start && time < r.end)
+
+            if (lunch && rangeOverlaps(time, duration, lunch)) {
+                return deny(comecaEmLunch ? MOTIVOS.almoco : MOTIVOS.ultrapassa)
+            }
+            if (blockedRanges.some(r => rangeOverlaps(time, duration, r))) {
+                return deny(comecaBloqueado ? MOTIVOS.fechado : MOTIVOS.ultrapassa)
+            }
 
             if (isSolo) {
-                const busy = active.some(apt => overlaps(time, duration, apt.time, apt.totalDuration))
-                return busy ? deny(MOTIVOS.reservado) : { id: service.id, available: true, reason: null }
+                const comecaOcupado = active.some(apt => overlaps(time, slotStepMinutes, apt.time, apt.totalDuration))
+                const conflita = active.some(apt => overlaps(time, duration, apt.time, apt.totalDuration))
+                if (!conflita) return { id: service.id, available: true, reason: null }
+                return deny(comecaOcupado ? MOTIVOS.reservado : MOTIVOS.ultrapassa)
             }
 
             const freeEmployees = employees.filter(emp => !active.some(apt => {
@@ -101,9 +126,22 @@ export function buildDaySchedule({
             const canDo = freeEmployees.some(emp => (emp.services || []).includes(service.id))
             if (canDo) return { id: service.id, available: true, reason: null }
 
-            // Distingue "está ocupado" de "ninguém faz esse serviço"
+            // Ninguém habilitado no serviço é um motivo diferente de agenda cheia
             const anyoneQualified = employees.some(emp => (emp.services || []).includes(service.id))
-            return deny(anyoneQualified ? MOTIVOS.reservado : MOTIVOS.semProfissional)
+            if (!anyoneQualified) return deny(MOTIVOS.semProfissional)
+
+            // Havia profissional livre pra começar agora, mas a duração invade
+            // um compromisso adiante → é "ultrapassa", não "horário reservado"
+            const livreNoInicio = employees.some(emp => {
+                if (!(emp.services || []).includes(service.id)) return false
+                return !active.some(apt => {
+                    const unassigned = !apt.assignments || apt.assignments.length === 0
+                    const assignedToEmp = !unassigned && apt.assignments.some(a => a.employeeId === emp.id)
+                    if (!unassigned && !assignedToEmp) return false
+                    return overlaps(time, slotStepMinutes, apt.time, apt.totalDuration)
+                })
+            })
+            return deny(livreNoInicio ? MOTIVOS.ultrapassa : MOTIVOS.reservado)
         })
 
         const availableCount = serviceStatuses.filter(s => s.available).length

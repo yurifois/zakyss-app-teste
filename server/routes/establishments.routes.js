@@ -3,7 +3,7 @@ import { getRepository } from '../repositories/index.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware.js'
 import { premiumMiddleware } from '../middleware/plan.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
-import { buildDaySchedule } from '../utils/daySchedule.js'
+import { buildDaySchedule, MOTIVOS_LONGOS } from '../utils/daySchedule.js'
 
 const router = Router()
 const establishmentsRepo = getRepository('establishments.json')
@@ -465,7 +465,9 @@ router.get('/:id/day-schedule', async (req, res, next) => {
                     ...item,
                     name: svc?.name,
                     price: prefs?.price ?? svc?.price,
-                    duration: prefs?.duration ?? svc?.duration
+                    duration: prefs?.duration ?? svc?.duration,
+                    // reason cabe na caixinha; reasonLong explica no tooltip
+                    reasonLong: item.reason ? MOTIVOS_LONGOS[item.reason] || item.reason : null
                 }
             })
         }))

@@ -1,6 +1,6 @@
 // Check do motor de agenda do dia. Roda com: node server/utils/daySchedule.test.js
 import assert from 'node:assert/strict'
-import { buildDaySchedule, MOTIVOS } from './daySchedule.js'
+import { buildDaySchedule, MOTIVOS, MOTIVOS_LONGOS } from './daySchedule.js'
 
 // 2026-09-10 é uma quinta-feira
 const DATE = '2026-09-10'
@@ -23,7 +23,11 @@ assert.equal(at('12:00').reason, MOTIVOS.almoco)
 // serviço longo não cabe perto do fim do expediente
 assert.equal(at('09:00').services.find(x => x.id === 4).available, true, 'coloração 9h cabe (9-11)')
 assert.equal(at('11:00').services.find(x => x.id === 4).available, false, 'coloração 11h não cabe (invade almoço)')
-assert.equal(at('11:00').services.find(x => x.id === 4).reason, MOTIVOS.almoco, 'e o motivo é o almoço, não some da tela')
+assert.equal(
+    at('11:00').services.find(x => x.id === 4).reason, MOTIVOS.ultrapassa,
+    'começou em horário livre e a duração invadiu o almoço => "ultrapassa a agenda", não "pausa para almoço"'
+)
+assert.equal(at('12:00').services.find(x => x.id === 1).reason, MOTIVOS.almoco, 'começar DENTRO do almoço continua sendo "pausa para almoço"')
 assert.equal(at('11:00').services.find(x => x.id === 1).available, true, 'corte de 1h às 11h cabe')
 
 // --- com agendamento existente ---
@@ -35,7 +39,22 @@ assert.equal(at('10:00').status, 'reservado', 'horário ocupado aparece como res
 assert.equal(at('10:00').reason, MOTIVOS.reservado)
 assert.equal(at('09:00').services.find(x => x.id === 1).available, true, 'corte às 9h ainda cabe antes do agendamento')
 assert.equal(at('09:00').services.find(x => x.id === 4).available, false, 'coloração às 9h não cabe mais (bateria no das 10h)')
-assert.equal(at('09:00').services.find(x => x.id === 4).reason, MOTIVOS.reservado)
+assert.equal(
+    at('09:00').services.find(x => x.id === 4).reason, MOTIVOS.ultrapassa,
+    '9h está livre; é a duração que bate no agendamento das 10h => "ultrapassa a agenda"'
+)
+assert.equal(at('10:00').services.find(x => x.id === 1).reason, MOTIVOS.reservado, 'já começar em cima do agendamento continua "horário já reservado"')
+
+// mensagem longa (tooltip) precisa existir pra todo motivo curto usado
+for (const motivo of Object.values(MOTIVOS)) {
+    if (motivo) assert.ok(MOTIVOS_LONGOS[motivo], `falta texto longo para: ${motivo}`)
+}
+assert.match(MOTIVOS_LONGOS[MOTIVOS.ultrapassa], /ultrapassar a agenda do estabelecimento/)
+
+// caber na caixinha: motivo curto não pode ser um textão
+for (const motivo of Object.values(MOTIVOS)) {
+    if (motivo) assert.ok(motivo.length <= 40, `motivo curto demais longo (${motivo.length}): ${motivo}`)
+}
 
 // --- dia fechado por exceção ---
 s = buildDaySchedule({ date: DATE, workingHours, services, employees, scheduleException: { isClosed: true } })
@@ -49,6 +68,13 @@ s = buildDaySchedule({
 })
 assert.equal(at('10:00').status, 'fechado')
 assert.equal(at('10:00').reason, MOTIVOS.fechado)
+// corte de 1h às 9h termina 10:00 exatamente quando o bloqueio começa: não conflita
+assert.equal(at('09:00').services.find(x => x.id === 1).available, true, 'encostar no limite não é conflito')
+// coloração de 2h às 9h iria até 11:00, invadindo o bloqueio
+assert.equal(
+    at('09:00').services.find(x => x.id === 4).reason, MOTIVOS.ultrapassa,
+    'duração que invade bloqueio adiante => "ultrapassa a agenda"'
+)
 
 // --- funcionário não habilitado no serviço ---
 s = buildDaySchedule({
