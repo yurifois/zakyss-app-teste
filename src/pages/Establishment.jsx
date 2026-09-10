@@ -109,11 +109,10 @@ export default function Establishment() {
     }
 
     const handleBooking = () => {
-        if (selectedServices.length === 0) {
-            error('Selecione pelo menos um serviço')
-            return
-        }
-        // Store selected services and employee preferences
+        // Serviço agora é escolhido DENTRO do agendamento, depois de dia e
+        // horário — só ali dá pra saber o que cabe na agenda. Aqui a lista é
+        // vitrine (preços): a pré-seleção segue como sugestão e é revalidada
+        // contra o horário escolhido.
         sessionStorage.setItem('booking_services', JSON.stringify(selectedServices))
 
         // Build assignments array
@@ -259,7 +258,8 @@ export default function Establishment() {
 
                             {selectedServices.length === 0 ? (
                                 <p className="text-muted text-center py-8">
-                                    Selecione os serviços desejados
+                                    Escolha o dia e o horário primeiro — depois o app mostra
+                                    quais serviços cabem naquele horário.
                                 </p>
                             ) : (
                                 <>
@@ -308,9 +308,8 @@ export default function Establishment() {
                             <button
                                 onClick={handleBooking}
                                 className="btn btn-primary btn-lg w-full"
-                                disabled={selectedServices.length === 0}
                             >
-                                Continuar agendamento
+                                {selectedServices.length === 0 ? 'Ver horários e agendar' : 'Continuar agendamento'}
                             </button>
                         </div>
                     </div>

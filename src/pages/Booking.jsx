@@ -164,6 +164,18 @@ export default function Booking() {
     // Horário escolhido, com a lista de serviços e o motivo de cada bloqueio
     const currentSlot = daySchedule?.slots?.find(s => s.time === selectedTime) || null
 
+    // Serviço que veio pré-escolhido (vitrine do estabelecimento ou agendamento
+    // retomado) precisa ser revalidado contra o horário: sem isso, quem já
+    // chega com serviço definido escapa da restrição da agenda.
+    useEffect(() => {
+        if (!currentSlot || services.length === 0) return
+        const cabe = sv => currentSlot.services.some(x => x.id === sv.id && x.available)
+        if (services.every(cabe)) return
+        const removidos = services.filter(sv => !cabe(sv)).map(sv => sv.name).join(', ')
+        setServices(services.filter(cabe))
+        error(`${removidos} não cabe no horário ${currentSlot.time}. Escolha outro serviço ou horário.`)
+    }, [currentSlot, services])
+
     // Retorna os dias da semana em que o estabelecimento está fechado
     // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
     const getClosedDays = () => {
