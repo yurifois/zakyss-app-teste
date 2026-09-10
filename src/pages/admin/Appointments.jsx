@@ -318,7 +318,7 @@ export default function AdminAppointments() {
             assignments: apt.assignments || [],
             customPrice: apt.totalPrice != null ? String(apt.totalPrice) : ''
         })
-        await loadSlotsForDate(apt.date, apt.time)
+        await loadSlotsForDate(apt.date, apt)
     }
 
     // Um motor de agenda só (day-schedule) para cliente e dashboard. Antes o
@@ -348,8 +348,12 @@ export default function AdminAppointments() {
         }
     }
 
-    const loadSlotsForDate = async (date, currentTime = null) => {
-        setAvailableSlots(await carregarAgenda(date, currentTime))
+    // O horário do próprio agendamento só volta a ser oferecido na data dele.
+    // Mudou a data, ele concorre como qualquer outro: horário ocupado só vaga
+    // por cancelamento, senão dois agendamentos cairiam no mesmo horário.
+    const loadSlotsForDate = async (date, apt = null) => {
+        const horarioProprio = apt && apt.date === date ? apt.time : null
+        setAvailableSlots(await carregarAgenda(date, horarioProprio))
     }
 
     const handleEditFormChange = async (e) => {
@@ -357,7 +361,7 @@ export default function AdminAppointments() {
         setEditForm(prev => ({ ...prev, [name]: value }))
 
         if (name === 'date' && value) {
-            await loadSlotsForDate(value, editingAppointment?.time)
+            await loadSlotsForDate(value, editingAppointment)
             setEditForm(prev => ({ ...prev, time: '' }))
         }
     }

@@ -11,7 +11,12 @@
  * Função pura (recebe os dados prontos) pra poder ser testada sem banco.
  */
 
-const OCCUPYING_STATUSES = ['pending', 'confirmed']
+// Horário ocupado só vaga por cancelamento ou falta do cliente. Concluído
+// continua ocupando: o atendimento aconteceu ali. Esta é a mesma regra da
+// criação e da edição do agendamento — se a tela usasse uma regra mais
+// frouxa, ela ofereceria horário que o servidor recusa na hora de salvar.
+const FREEING_STATUSES = ['cancelled', 'no_show']
+const occupies = (status) => !FREEING_STATUSES.includes(status)
 
 export const toMinutes = (time) => {
     const [h, m] = time.split(':').map(Number)
@@ -78,7 +83,7 @@ export function buildDaySchedule({
     const lunch = (hours.lunchBreak?.start && hours.lunchBreak?.end) ? hours.lunchBreak : null
     const blockedRanges = scheduleException?.blockedRanges?.filter(r => r?.start && r?.end) || []
 
-    const active = appointments.filter(a => OCCUPYING_STATUSES.includes(a.status) && a.date === date)
+    const active = appointments.filter(a => occupies(a.status) && a.date === date)
     const isSolo = employees.length === 0
     const durationOf = (service) => servicePreferences?.[service.id]?.duration ?? service.duration ?? 30
 

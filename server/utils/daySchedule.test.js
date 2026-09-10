@@ -88,6 +88,21 @@ s = buildDaySchedule({ date: DATE, workingHours: { thursday: null }, services, e
 assert.equal(s.closed, true)
 assert.match(s.closedReason, /Sem expediente/)
 
+// --- o que libera um horário ocupado ---
+// Regra do negócio: só cancelamento ou falta liberam. Concluído continua
+// ocupando. A criação e a edição do agendamento usam exatamente essa regra;
+// se aqui fosse diferente, a tela ofereceria horário que o servidor recusa.
+const ocupaAs10 = (status) => buildDaySchedule({
+    date: DATE, workingHours, services, employees,
+    appointments: [{ date: DATE, time: '10:00', totalDuration: 60, status, assignments: [{ employeeId: 9 }] }]
+}).slots.find(x => x.time === '10:00').status === 'reservado'
+
+assert.equal(ocupaAs10('pending'), true, 'pendente ocupa')
+assert.equal(ocupaAs10('confirmed'), true, 'confirmado ocupa')
+assert.equal(ocupaAs10('completed'), true, 'concluído continua ocupando')
+assert.equal(ocupaAs10('cancelled'), false, 'cancelado libera')
+assert.equal(ocupaAs10('no_show'), false, 'falta libera')
+
 // --- abertura em hora quebrada ---
 // O motor antigo da dashboard pulava pra próxima hora redonda (09:30 => 10:00)
 // e o estabelecimento perdia a primeira meia hora do expediente. Aqui a grade
