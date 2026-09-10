@@ -46,6 +46,7 @@ export const MOTIVOS = {
     expediente: 'Ultrapassa o fim do expediente',
     ultrapassa: 'Ultrapassa a agenda do estabelecimento',
     semProfissional: 'Nenhum profissional disponível',
+    semHorario: 'Sem horário livre neste dia',
     disponivel: null
 }
 
@@ -56,7 +57,8 @@ export const MOTIVOS_LONGOS = {
     [MOTIVOS.expediente]: 'A duração deste serviço passa do fim do expediente deste dia.',
     [MOTIVOS.ultrapassa]: 'Não é possível agendar esse serviço nesse horário por ultrapassar a agenda do estabelecimento.',
     [MOTIVOS.semProfissional]: 'Nenhum profissional habilitado neste serviço está livre neste horário.',
-    [MOTIVOS.semServico]: 'Nenhum serviço cadastrado cabe neste horário.'
+    [MOTIVOS.semServico]: 'Nenhum serviço cadastrado cabe neste horário.',
+    [MOTIVOS.semHorario]: 'Não sobrou nenhum horário neste dia que comporte a duração deste serviço.'
 }
 
 export function buildDaySchedule({
@@ -67,6 +69,7 @@ export function buildDaySchedule({
     employees = [],
     services = [],
     servicePreferences = {},
+    comboServiceIds = [],
     slotStepMinutes = 60
 }) {
     const weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
@@ -74,10 +77,10 @@ export function buildDaySchedule({
     const hours = workingHours?.[weekday]
 
     if (scheduleException?.isClosed) {
-        return { date, closed: true, closedReason: 'Fechado pelo estabelecimento nesta data', slots: [] }
+        return { date, closed: true, closedReason: 'Fechado pelo estabelecimento nesta data', slots: [], resumoServicos: [] }
     }
     if (!hours?.open || !hours?.close) {
-        return { date, closed: true, closedReason: 'Sem expediente neste dia da semana', slots: [] }
+        return { date, closed: true, closedReason: 'Sem expediente neste dia da semana', slots: [], resumoServicos: [] }
     }
 
     const lunch = (hours.lunchBreak?.start && hours.lunchBreak?.end) ? hours.lunchBreak : null
@@ -91,63 +94,76 @@ export function buildDaySchedule({
     const closeMin = toMinutes(hours.close)
     const slots = []
 
+    const livresPara = (time, duracao) => employees.filter(emp => !active.some(apt => {
+        const semDono = !apt.assignments || apt.assignments.length === 0
+        const desteEmp = !semDono && apt.assignments.some(a => a.employeeId === emp.id)
+        if (!semDono && !desteEmp) return false
+        return overlaps(time, duracao, apt.time, apt.totalDuration)
+    }))
+
+    const habilitado = (lista, serviceId) => lista.some(emp => (emp.services || []).includes(serviceId))
+
+    /**
+     * Cabe começar `serviceIds` às `time`, ocupando `duration` minutos?
+     *
+     * Serve tanto para um serviço quanto para vários somados — é a mesma
+     * pergunta, e o cliente pode escolher mais de um. A regra dos profissionais
+     * é a mesma que a criação do agendamento aplica no servidor: alguém livre
+     * pelo período inteiro e habilitado em cada serviço pedido.
+     */
+    const avaliar = (m, time, duration, serviceIds) => {
+        const deny = (reason) => ({ available: false, reason })
+        const ok = { available: true, reason: null }
+
+        if (m + duration > closeMin) return deny(MOTIVOS.expediente)
+
+        // Começar EM cima do obstáculo e esbarrar nele mais adiante são coisas
+        // diferentes: a segunda precisa dizer que o serviço é que não coube.
+        const comecaEmLunch = lunch && time >= lunch.start && time < lunch.end
+        const comecaBloqueado = blockedRanges.some(r => time >= r.start && time < r.end)
+
+        if (lunch && rangeOverlaps(time, duration, lunch)) {
+            return deny(comecaEmLunch ? MOTIVOS.almoco : MOTIVOS.ultrapassa)
+        }
+        if (blockedRanges.some(r => rangeOverlaps(time, duration, r))) {
+            return deny(comecaBloqueado ? MOTIVOS.fechado : MOTIVOS.ultrapassa)
+        }
+
+        if (isSolo) {
+            if (!active.some(apt => overlaps(time, duration, apt.time, apt.totalDuration))) return ok
+            const comecaOcupado = active.some(apt => overlaps(time, slotStepMinutes, apt.time, apt.totalDuration))
+            return deny(comecaOcupado ? MOTIVOS.reservado : MOTIVOS.ultrapassa)
+        }
+
+        const livres = livresPara(time, duration)
+        if (serviceIds.every(id => habilitado(livres, id))) return ok
+
+        // Ninguém habilitado no serviço é um motivo diferente de agenda cheia
+        if (serviceIds.some(id => !habilitado(employees, id))) return deny(MOTIVOS.semProfissional)
+
+        // Havia gente livre pra começar agora, mas a duração invade um
+        // compromisso adiante → "ultrapassa", não "horário reservado"
+        const noInicio = livresPara(time, slotStepMinutes)
+        return deny(serviceIds.every(id => habilitado(noInicio, id)) ? MOTIVOS.ultrapassa : MOTIVOS.reservado)
+    }
+
+    const comboDuration = services
+        .filter(sv => comboServiceIds.includes(sv.id))
+        .reduce((soma, sv) => soma + durationOf(sv), 0)
+
     for (let m = openMin; m < closeMin; m += slotStepMinutes) {
         const time = toTime(m)
 
         // Serviço por serviço: o que cabe começando exatamente neste horário
-        const serviceStatuses = services.map(service => {
-            const duration = durationOf(service)
-            const deny = (reason) => ({ id: service.id, available: false, reason })
+        const serviceStatuses = services.map(service => ({
+            id: service.id,
+            ...avaliar(m, time, durationOf(service), [service.id])
+        }))
 
-            if (m + duration > closeMin) return deny(MOTIVOS.expediente)
-
-            // O horário em si está livre, mas a duração invade algo adiante?
-            // Esse caso merece mensagem própria: o cliente escolheu um horário
-            // que aparece livre e precisa entender por que o serviço não cabe.
-            const comecaEmLunch = lunch && time >= lunch.start && time < lunch.end
-            const comecaBloqueado = blockedRanges.some(r => time >= r.start && time < r.end)
-
-            if (lunch && rangeOverlaps(time, duration, lunch)) {
-                return deny(comecaEmLunch ? MOTIVOS.almoco : MOTIVOS.ultrapassa)
-            }
-            if (blockedRanges.some(r => rangeOverlaps(time, duration, r))) {
-                return deny(comecaBloqueado ? MOTIVOS.fechado : MOTIVOS.ultrapassa)
-            }
-
-            if (isSolo) {
-                const comecaOcupado = active.some(apt => overlaps(time, slotStepMinutes, apt.time, apt.totalDuration))
-                const conflita = active.some(apt => overlaps(time, duration, apt.time, apt.totalDuration))
-                if (!conflita) return { id: service.id, available: true, reason: null }
-                return deny(comecaOcupado ? MOTIVOS.reservado : MOTIVOS.ultrapassa)
-            }
-
-            const freeEmployees = employees.filter(emp => !active.some(apt => {
-                const unassigned = !apt.assignments || apt.assignments.length === 0
-                const assignedToEmp = !unassigned && apt.assignments.some(a => a.employeeId === emp.id)
-                if (!unassigned && !assignedToEmp) return false
-                return overlaps(time, duration, apt.time, apt.totalDuration)
-            }))
-
-            const canDo = freeEmployees.some(emp => (emp.services || []).includes(service.id))
-            if (canDo) return { id: service.id, available: true, reason: null }
-
-            // Ninguém habilitado no serviço é um motivo diferente de agenda cheia
-            const anyoneQualified = employees.some(emp => (emp.services || []).includes(service.id))
-            if (!anyoneQualified) return deny(MOTIVOS.semProfissional)
-
-            // Havia profissional livre pra começar agora, mas a duração invade
-            // um compromisso adiante → é "ultrapassa", não "horário reservado"
-            const livreNoInicio = employees.some(emp => {
-                if (!(emp.services || []).includes(service.id)) return false
-                return !active.some(apt => {
-                    const unassigned = !apt.assignments || apt.assignments.length === 0
-                    const assignedToEmp = !unassigned && apt.assignments.some(a => a.employeeId === emp.id)
-                    if (!unassigned && !assignedToEmp) return false
-                    return overlaps(time, slotStepMinutes, apt.time, apt.totalDuration)
-                })
-            })
-            return deny(livreNoInicio ? MOTIVOS.ultrapassa : MOTIVOS.reservado)
-        })
+        // E a combinação que o cliente escolheu, somando as durações
+        const combo = comboServiceIds.length > 0
+            ? avaliar(m, time, comboDuration, comboServiceIds)
+            : null
 
         const availableCount = serviceStatuses.filter(s => s.available).length
 
@@ -165,8 +181,28 @@ export function buildDaySchedule({
             else { status = 'indisponivel'; reason = MOTIVOS.semServico }
         }
 
-        slots.push({ time, status, reason, availableCount, services: serviceStatuses })
+        slots.push({ time, status, reason, availableCount, combo, services: serviceStatuses })
     }
 
-    return { date, closed: false, closedReason: null, open: hours.open, close: hours.close, slots }
+    // Para a etapa "escolha o serviço": só pode ser escolhido o serviço que
+    // tem pelo menos um horário no dia capaz de comportá-lo. Sem isso o
+    // cliente escolhe primeiro e descobre depois que não havia horário.
+    const resumoServicos = services.map(service => {
+        const disponiveis = slots.filter(s => s.services.find(x => x.id === service.id)?.available).length
+        if (disponiveis > 0) {
+            return { id: service.id, available: true, reason: null, slotsDisponiveis: disponiveis }
+        }
+        // Quando o dia inteiro dá o mesmo motivo (ninguém habilitado, por
+        // exemplo), ele explica melhor do que "sem horário livre".
+        const motivos = slots.map(s => s.services.find(x => x.id === service.id)?.reason).filter(Boolean)
+        const mesmoMotivo = motivos.length > 0 && motivos.every(r => r === motivos[0])
+        return {
+            id: service.id,
+            available: false,
+            reason: mesmoMotivo ? motivos[0] : MOTIVOS.semHorario,
+            slotsDisponiveis: 0
+        }
+    })
+
+    return { date, closed: false, closedReason: null, open: hours.open, close: hours.close, slots, resumoServicos }
 }

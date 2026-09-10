@@ -432,6 +432,13 @@ router.get('/:id/day-schedule', async (req, res, next) => {
         const { date } = req.query
         if (!date) throw new AppError('Data é obrigatória', 400)
 
+        // Serviços já escolhidos pelo cliente: os horários passam a ser
+        // avaliados pela soma das durações, não serviço a serviço.
+        const comboServiceIds = (req.query.services || '')
+            .split(',')
+            .map(Number)
+            .filter(n => Number.isInteger(n) && n > 0)
+
         const establishmentId = parseInt(req.params.id)
         const establishment = await establishmentsRepo.findById(establishmentId)
         if (!establishment) throw new AppError('Estabelecimento não encontrado', 404)
@@ -451,7 +458,8 @@ router.get('/:id/day-schedule', async (req, res, next) => {
             appointments,
             employees,
             services,
-            servicePreferences: establishment.servicePreferences || {}
+            servicePreferences: establishment.servicePreferences || {},
+            comboServiceIds
         })
 
         // Devolve os serviços com nome/preço junto, pra tela não precisar cruzar
@@ -471,6 +479,18 @@ router.get('/:id/day-schedule', async (req, res, next) => {
                 }
             })
         }))
+
+        schedule.resumoServicos = (schedule.resumoServicos || []).map(item => {
+            const svc = serviceById.get(item.id)
+            const prefs = establishment.servicePreferences?.[item.id]
+            return {
+                ...item,
+                name: svc?.name,
+                price: prefs?.price ?? svc?.price,
+                duration: prefs?.duration ?? svc?.duration,
+                reasonLong: item.reason ? MOTIVOS_LONGOS[item.reason] || item.reason : null
+            }
+        })
 
         res.json({ success: true, data: schedule })
     } catch (error) {

@@ -4,15 +4,18 @@ import * as api from '../services/api'
 import { getClosedWeekdays, toDateString } from '../utils/schedule'
 
 /**
- * As três escolhas do agendamento, na ordem que a agenda exige: dia, horário
- * e só então serviço. Só depois do horário dá pra saber o que cabe nele.
+ * As três escolhas do agendamento: dia, serviço e horário, nesta ordem.
  *
- * As três etapas ficam sempre visíveis — inclusive a tabela de preços, antes
- * de destravar — porque o cliente precisa ver o que o estabelecimento oferece
- * para decidir o dia. O que ainda não pode ser escolhido aparece em cinza,
- * com o motivo.
+ * O serviço vem antes do horário porque é ele que define a duração — sabendo
+ * o que o cliente quer, o app mostra só os horários que comportam aquele
+ * tempo, em vez de deixar o cliente caçar horário por horário. Os horários
+ * que não servem continuam visíveis, com o motivo.
  *
- * Vive num componente só porque a página do estabelecimento e a página de
+ * Nada aparece fora de ordem: a lista de serviços só existe depois do dia
+ * escolhido (é ele que diz quais têm horário), e a de horários só depois do
+ * serviço (é ele que diz quanto tempo precisa caber).
+ *
+ * Vive num componente só porque a página do estabelecimento e a de
  * agendamento fazem exatamente a mesma pergunta: duas cópias divergiriam.
  */
 
@@ -24,6 +27,43 @@ const Etapa = ({ titulo, subtitulo, travada, children }) => (
     </div>
 )
 
+// Caixa de escolha usada por serviços e horários: mesma aparência para
+// disponível, escolhido e bloqueado-com-motivo.
+const Opcao = ({ disponivel, escolhido, titulo, onClick, dica, children }) => (
+    <button
+        type="button"
+        disabled={!disponivel}
+        onClick={onClick}
+        title={dica || ''}
+        style={{
+            padding: '0.75rem 1rem',
+            borderRadius: '0.75rem',
+            textAlign: 'left',
+            width: '100%',
+            cursor: disponivel ? 'pointer' : 'not-allowed',
+            opacity: disponivel ? 1 : 0.6,
+            border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
+            background: escolhido ? 'rgba(236, 72, 153, 0.12)' : disponivel ? 'transparent' : 'var(--secondary-500)'
+        }}
+    >
+        {titulo}
+        {children}
+    </button>
+)
+
+const Motivo = ({ texto }) => (
+    <div className="text-xs mt-1" style={{ color: 'var(--error-500)', lineHeight: 1.35, wordBreak: 'break-word' }}>
+        ⛔ {texto}
+    </div>
+)
+
+// Fim previsto do atendimento, pra o cliente ver quanto tempo vai ocupar
+const somarMinutos = (hora, minutos) => {
+    const [h, m] = hora.split(':').map(Number)
+    const total = h * 60 + m + minutos
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
 export default function EscolhaAgenda({
     establishmentId,
     establishment,
@@ -33,12 +73,16 @@ export default function EscolhaAgenda({
     onTimeChange,
     services = [],
     onServicesChange,
-    onServicoRemovido,
+    onAviso,
     recarregarToken = 0
 }) {
     const [daySchedule, setDaySchedule] = useState(null)
     const [carregando, setCarregando] = useState(false)
     const dateStr = toDateString(date)
+
+    // Ordenado pra virar chave estável: a mesma seleção não pode refazer a
+    // requisição só porque o cliente clicou numa ordem diferente.
+    const idsEscolhidos = services.map(s => s.id).sort((a, b) => a - b).join(',')
 
     // Trocar de dia derruba o horário: ele era daquele outro dia. Guardamos o
     // dia anterior porque na primeira renderização não há troca nenhuma — e aí
@@ -72,25 +116,40 @@ export default function EscolhaAgenda({
         }
         let atual = true
         setCarregando(true)
-        api.getDaySchedule(establishmentId, dateStr)
-            .then(res => { if (atual) setDaySchedule(res) })
-            .catch(err => { console.error('Erro ao carregar a agenda do dia:', err); if (atual) setDaySchedule(null) })
-            .finally(() => { if (atual) setCarregando(false) })
-        return () => { atual = false }
-    }, [dateStr, establishmentId, versao, recarregarToken])
+        // Pequena espera: marcar três serviços seguidos dispararia três
+        // requisições, e só a última interessa.
+        const ids = idsEscolhidos ? idsEscolhidos.split(',').map(Number) : []
+        const agendado = setTimeout(() => {
+            api.getDaySchedule(establishmentId, dateStr, ids)
+                .then(res => { if (atual) setDaySchedule(res) })
+                .catch(err => { console.error('Erro ao carregar a agenda do dia:', err); if (atual) setDaySchedule(null) })
+                .finally(() => { if (atual) setCarregando(false) })
+        }, 200)
+        return () => { atual = false; clearTimeout(agendado) }
+    }, [dateStr, establishmentId, idsEscolhidos, versao, recarregarToken])
 
-    const currentSlot = daySchedule?.slots?.find(s => s.time === time) || null
+    const resumoServicos = daySchedule?.resumoServicos || []
+    const slots = daySchedule?.slots || []
+    const slotEscolhido = slots.find(s => s.time === time) || null
 
-    // Serviço pré-escolhido (retomada de agendamento, link direto) é revalidado
-    // contra o horário: sem isso ele escaparia da restrição da agenda.
+    // Serviço escolhido que não tem horário nenhum neste dia sai da seleção —
+    // senão o cliente segue com uma escolha impossível de agendar.
     useEffect(() => {
-        if (!currentSlot || services.length === 0) return
-        const cabe = sv => currentSlot.services.some(x => x.id === sv.id && x.available)
+        if (!daySchedule || daySchedule.closed || services.length === 0 || resumoServicos.length === 0) return
+        const cabe = sv => resumoServicos.some(x => x.id === sv.id && x.available)
         if (services.every(cabe)) return
-        const removidos = services.filter(sv => !cabe(sv))
+        const fora = services.filter(sv => !cabe(sv)).map(sv => sv.name).join(', ')
         onServicesChange?.(services.filter(cabe))
-        onServicoRemovido?.(removidos.map(sv => sv.name).join(', '), currentSlot.time)
-    }, [currentSlot, services])
+        onAviso?.(`${fora} não tem horário disponível neste dia. Escolha outro dia ou outro serviço.`)
+    }, [daySchedule])
+
+    // Mudou o serviço, mudou a duração: o horário marcado pode não comportar
+    // mais o que foi escolhido.
+    useEffect(() => {
+        if (!time || !slotEscolhido?.combo || slotEscolhido.combo.available) return
+        onTimeChange?.(null)
+        onAviso?.(`O horário ${time} não comporta mais os serviços escolhidos: ${slotEscolhido.combo.reason.toLowerCase()}.`)
+    }, [slotEscolhido])
 
     const alternarServico = (item) => {
         const jaEscolhido = services.some(s => s.id === item.id)
@@ -104,6 +163,8 @@ export default function EscolhaAgenda({
         .filter(([, exc]) => exc?.isClosed)
         .map(([dia]) => dia)
 
+    const duracaoTotal = services.reduce((soma, s) => soma + (s.duration || 0), 0)
+    const algumHorarioServe = slots.some(s => s.combo?.available)
 
     return (
         <>
@@ -117,110 +178,95 @@ export default function EscolhaAgenda({
                 />
             </Etapa>
 
+            {/* Etapa 2: o dia escolhido já diz quais serviços têm horário nele */}
             <Etapa
-                titulo="🕐 2. Escolha o horário"
-                subtitulo={dateStr ? undefined : 'Escolha a data primeiro'}
+                titulo="✨ 2. Escolha o serviço"
+                subtitulo={dateStr ? 'Serviços em cinza não têm horário livre neste dia' : 'Escolha a data primeiro'}
                 travada={!dateStr}
             >
                 {!dateStr ? (
-                    <p className="text-muted text-center py-4">🔒 Selecione um dia no calendário para ver os horários.</p>
-                ) : carregando ? (
-                    <p className="text-muted text-center py-4">Carregando horários...</p>
+                    <p className="text-muted text-center py-4">🔒 Selecione um dia no calendário para ver os serviços.</p>
                 ) : daySchedule?.closed ? (
                     <p className="text-muted text-center py-4">🚫 {daySchedule.closedReason}</p>
-                ) : !daySchedule ? (
-                    <p className="text-muted text-center py-4">Não foi possível carregar os horários deste dia.</p>
+                ) : carregando && resumoServicos.length === 0 ? (
+                    <p className="text-muted text-center py-4">Carregando serviços...</p>
+                ) : resumoServicos.length === 0 ? (
+                    <p className="text-muted text-center py-4">Nenhum serviço cadastrado neste estabelecimento.</p>
                 ) : (
-                    <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-                        {daySchedule.slots.map(slot => {
-                            const livre = slot.status === 'disponivel'
-                            const escolhido = time === slot.time
+                    <div className="flex flex-col gap-2">
+                        {resumoServicos.map(item => {
+                            const escolhido = services.some(s => s.id === item.id)
                             return (
-                                <button
-                                    key={slot.time}
-                                    type="button"
-                                    disabled={!livre}
-                                    onClick={() => onTimeChange?.(slot.time)}
-                                    title={slot.reason || ''}
-                                    style={{
-                                        padding: '0.6rem',
-                                        borderRadius: '0.6rem',
-                                        textAlign: 'left',
-                                        cursor: livre ? 'pointer' : 'not-allowed',
-                                        opacity: livre ? 1 : 0.55,
-                                        border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
-                                        background: escolhido ? 'var(--primary-500)' : livre ? 'transparent' : 'var(--secondary-500)',
-                                        color: escolhido ? 'white' : 'inherit'
-                                    }}
+                                <Opcao
+                                    key={item.id}
+                                    disponivel={item.available}
+                                    escolhido={escolhido}
+                                    onClick={() => alternarServico(item)}
+                                    dica={item.reasonLong}
+                                    titulo={
+                                        <div className="flex justify-between items-baseline gap-3">
+                                            <span className="font-medium" style={{ minWidth: 0, wordBreak: 'break-word' }}>
+                                                {escolhido ? '✓ ' : ''}{item.name}
+                                            </span>
+                                            <span className="font-semibold" style={{ flexShrink: 0 }}>
+                                                R$ {Number(item.price || 0).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    }
                                 >
-                                    <div className="font-semibold">{slot.time}</div>
-                                    <div className="text-xs" style={{ opacity: 0.85 }}>
-                                        {livre ? `${slot.availableCount} serviço(s)` : slot.reason}
+                                    <div className="text-xs text-muted mt-1">
+                                        {item.duration} min
+                                        {item.available && ` · ${item.slotsDisponiveis} horário(s) livre(s)`}
                                     </div>
-                                </button>
+                                    {!item.available && <Motivo texto={item.reason} />}
+                                </Opcao>
                             )
                         })}
                     </div>
                 )}
             </Etapa>
 
+            {/* Etapa 3: horários avaliados pela SOMA das durações escolhidas */}
             <Etapa
-                titulo="✨ 3. Escolha o serviço"
-                subtitulo={currentSlot
-                    ? `Disponibilidade para ${currentSlot.time}. Serviços em cinza não cabem neste horário.`
-                    : 'Escolha o horário primeiro — estes são os preços do estabelecimento'}
-                travada={!currentSlot}
+                titulo="🕐 3. Escolha o horário"
+                subtitulo={services.length > 0
+                    ? `Horários que comportam os ${duracaoTotal} min escolhidos`
+                    : 'Escolha o serviço primeiro'}
+                travada={services.length === 0}
             >
-                {/* Nenhum serviço na tela antes do horário: ver a lista cedo
-                    faz o cliente escolher o que talvez não caiba, que é
-                    exatamente a confusão que este fluxo desfaz. */}
-                {!currentSlot && (
-                    <p className="text-muted text-sm">🔒 Escolha um horário acima para ver os serviços disponíveis.</p>
-                )}
-                <div className="flex flex-col gap-2" hidden={!currentSlot}>
-                    {(currentSlot?.services || []).map(item => {
-                        const escolhido = services.some(s => s.id === item.id)
-                        return (
-                            <button
-                                key={item.id}
-                                type="button"
-                                disabled={!item.available}
-                                title={item.reasonLong || ''}
-                                onClick={() => alternarServico(item)}
-                                style={{
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: '0.75rem',
-                                    textAlign: 'left',
-                                    width: '100%',
-                                    cursor: item.available ? 'pointer' : 'not-allowed',
-                                    opacity: item.available ? 1 : 0.6,
-                                    border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
-                                    background: escolhido ? 'rgba(236, 72, 153, 0.12)' : item.available ? 'transparent' : 'var(--secondary-500)'
-                                }}
-                            >
-                                {/* nome e preço na mesma linha; o motivo ganha linha própria
-                                    pra caber inteiro sem espremer o preço */}
-                                <div className="flex justify-between items-baseline gap-3">
-                                    <span className="font-medium" style={{ minWidth: 0, wordBreak: 'break-word' }}>
-                                        {escolhido ? '✓ ' : ''}{item.name}
-                                    </span>
-                                    <span className="font-semibold" style={{ flexShrink: 0 }}>
-                                        R$ {Number(item.price || 0).toFixed(2)}
-                                    </span>
-                                </div>
-                                <div className="text-xs text-muted mt-1">{item.duration} min</div>
-                                {currentSlot && !item.available && (
-                                    <div
-                                        className="text-xs mt-1"
-                                        style={{ color: 'var(--error-500)', lineHeight: 1.35, wordBreak: 'break-word' }}
+                {services.length === 0 ? (
+                    <p className="text-muted text-center py-4">🔒 Escolha um serviço acima para ver os horários.</p>
+                ) : carregando ? (
+                    <p className="text-muted text-center py-4">Carregando horários...</p>
+                ) : (
+                    <>
+                        {!algumHorarioServe && (
+                            <p className="text-sm mb-3" style={{ color: 'var(--error-500)', lineHeight: 1.35 }}>
+                                ⛔ Nenhum horário deste dia comporta os {duracaoTotal} min escolhidos.
+                                Tente outro dia ou remova um serviço.
+                            </p>
+                        )}
+                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))' }}>
+                            {slots.map(slot => {
+                                const livre = !!slot.combo?.available
+                                return (
+                                    <Opcao
+                                        key={slot.time}
+                                        disponivel={livre}
+                                        escolhido={time === slot.time}
+                                        onClick={() => onTimeChange?.(slot.time)}
+                                        dica={slot.combo?.reason}
+                                        titulo={<div className="font-semibold">{slot.time}</div>}
                                     >
-                                        ⛔ {item.reason}
-                                    </div>
-                                )}
-                            </button>
-                        )
-                    })}
-                </div>
+                                        {livre
+                                            ? <div className="text-xs text-muted mt-1">até {somarMinutos(slot.time, duracaoTotal)}</div>
+                                            : <Motivo texto={slot.combo?.reason} />}
+                                    </Opcao>
+                                )
+                            })}
+                        </div>
+                    </>
+                )}
             </Etapa>
         </>
     )

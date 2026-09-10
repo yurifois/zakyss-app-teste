@@ -296,8 +296,9 @@ export async function getEstablishmentServices(id) {
 
 // Retrato completo do dia: todos os horários com motivo de indisponibilidade
 // e quais serviços cabem em cada um.
-export async function getDaySchedule(establishmentId, date) {
-    return request(`/establishments/${establishmentId}/day-schedule?date=${date}`)
+export async function getDaySchedule(establishmentId, date, serviceIds = []) {
+    const combo = serviceIds.length > 0 ? `&services=${serviceIds.join(',')}` : ''
+    return request(`/establishments/${establishmentId}/day-schedule?date=${date}${combo}`)
 }
 
 export async function createEstablishment(data) {

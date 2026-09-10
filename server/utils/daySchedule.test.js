@@ -114,4 +114,49 @@ s = buildDaySchedule({
 })
 assert.deepEqual(s.slots.map(x => x.time), ['09:30', '10:30', '11:30'], 'grade começa na abertura real, não na hora redonda seguinte')
 
+// --- nova ordem: dia → serviço → horário ---
+// A pergunta muda: não é mais "o que cabe às 9h", é "quais horários comportam
+// os serviços que o cliente escolheu, somados".
+
+// resumo do dia por serviço: quantos horários comportam cada um
+s = buildDaySchedule({ date: DATE, workingHours, services, employees })
+const resumo = (id) => s.resumoServicos.find(x => x.id === id)
+assert.equal(resumo(1).available, true, 'corte de 1h tem horário no dia')
+assert.equal(resumo(1).slotsDisponiveis, 3, 'corte cabe às 9h, 10h e 11h (12h é almoço)')
+// 10h também serve: 10h+2h termina 12:00, exatamente quando o almoço começa
+assert.equal(resumo(4).slotsDisponiveis, 2, 'coloração de 2h cabe às 9h e às 10h; 11h invadiria o almoço')
+
+// serviço sem nenhum horário no dia não pode ser escolhido
+const longo = [{ id: 7, name: 'Mechas', duration: 300 }]
+s = buildDaySchedule({ date: DATE, workingHours, services: longo, employees: [{ id: 9, services: [7] }] })
+assert.equal(s.resumoServicos[0].available, false, 'serviço de 5h não cabe num expediente de 4h')
+assert.equal(s.resumoServicos[0].reason, MOTIVOS.expediente, 'e o motivo é o expediente, não "sem horário"')
+
+// combinação: dois serviços somam a duração
+s = buildDaySchedule({
+    date: DATE, workingHours, services, employees,
+    comboServiceIds: [1, 4] // corte 60 + coloração 120 = 3h
+})
+const combo = (t) => s.slots.find(x => x.time === t).combo
+assert.equal(combo('09:00').available, true, '3h a partir das 9h termina 12h, encosta no almoço sem invadir')
+// 10h+3h termina 13:00, dentro do expediente — o que barra é o almoço no meio
+assert.equal(combo('10:00').available, false, '3h a partir das 10h atravessa o almoço')
+assert.equal(combo('10:00').reason, MOTIVOS.ultrapassa, 'não começou no almoço: a duração é que invadiu')
+
+// sem combinação escolhida, nenhum slot carrega combo
+s = buildDaySchedule({ date: DATE, workingHours, services, employees })
+assert.equal(s.slots[0].combo, null, 'combo só existe quando o cliente escolheu serviço')
+
+// combinação que esbarra num agendamento existente
+s = buildDaySchedule({
+    date: DATE, workingHours, services, employees,
+    appointments: [{ date: DATE, time: '11:00', totalDuration: 60, status: 'confirmed', assignments: [{ employeeId: 9 }] }],
+    comboServiceIds: [1] // corte de 1h
+})
+assert.equal(s.slots.find(x => x.time === '09:00').combo.available, true)
+assert.equal(s.slots.find(x => x.time === '11:00').combo.reason, MOTIVOS.reservado, 'começar em cima do agendamento é "reservado"')
+
+// mensagem longa precisa existir também para o motivo novo
+assert.ok(MOTIVOS_LONGOS[MOTIVOS.semHorario], 'todo motivo curto precisa da versão longa')
+
 console.log('✅ daySchedule: todos os casos passaram')

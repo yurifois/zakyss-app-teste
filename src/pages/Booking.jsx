@@ -4,6 +4,7 @@ import * as api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import EscolhaAgenda from '../components/EscolhaAgenda'
+import { toDateString } from '../utils/schedule'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import SpamNotice from '../components/SpamNotice'
 import { ArrowLeft, Clock, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react'
@@ -130,11 +131,7 @@ export default function Booking() {
     // estabelecimento configurou uma; sem faixa, vale o dia inteiro.
     const getHomeVisitInfo = () => {
         if (!selectedDate || !establishment?.scheduleExceptions) return null
-        let dateStr = selectedDate
-        if (selectedDate instanceof Date) {
-            dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-        }
-        const hv = establishment.scheduleExceptions[dateStr]?.homeVisit
+        const hv = establishment.scheduleExceptions[toDateString(selectedDate)]?.homeVisit
         if (!hv?.active) return null
         if (selectedTime && hv.startTime && hv.endTime && !(selectedTime >= hv.startTime && selectedTime < hv.endTime)) {
             return null
@@ -207,6 +204,11 @@ export default function Booking() {
     const handleReview = (e) => {
         e.preventDefault()
 
+        if (services.length === 0) {
+            error('Escolha ao menos um serviço')
+            return
+        }
+
         if (!selectedDate || !selectedTime) {
             error('Selecione data e horário')
             return
@@ -234,13 +236,7 @@ export default function Booking() {
         setSubmitting(true)
 
         try {
-            // Convert Date object to YYYY-MM-DD string if needed
-            let dateStr = selectedDate
-            if (selectedDate instanceof Date) {
-                // Monta a partir dos componentes locais em vez de toISOString() (UTC),
-                // que pode virar o dia errado dependendo do fuso horário do dispositivo.
-                dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-            }
+            const dateStr = toDateString(selectedDate)
 
             // Get assignments from session
             const assignments = JSON.parse(sessionStorage.getItem('booking_assignments') || '[]')
@@ -342,7 +338,7 @@ export default function Booking() {
                     {/* Main Form */}
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit}>
-                            {/* As três etapas (dia, horário, serviço) vivem num
+                            {/* As três etapas (dia, serviço, horário) vivem num
                                 componente só, compartilhado com a página do
                                 estabelecimento — duas cópias divergiriam. */}
                             <div ref={calendarRef}>
@@ -356,8 +352,7 @@ export default function Booking() {
                                     services={services}
                                     onServicesChange={setServices}
                                     recarregarToken={recarregarAgenda}
-                                    onServicoRemovido={(nomes, horario) =>
-                                        error(`${nomes} não cabe no horário ${horario}. Escolha outro serviço ou horário.`)}
+                                    onAviso={error}
                                 />
                             </div>
 

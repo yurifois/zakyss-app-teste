@@ -187,8 +187,8 @@ export default function Establishment() {
                 <h2 className="text-xl font-bold mb-3">Agende seu horário</h2>
                 <div className="flex flex-wrap gap-2 mb-4">
                     <Passo numero="1" rotulo="Dia" valor={bookingDate ? new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR') : null} />
-                    <Passo numero="2" rotulo="Horário" valor={bookingTime} />
-                    <Passo numero="3" rotulo="Serviço" valor={selectedServices.length > 0 ? `${selectedServices.length} escolhido(s)` : null} />
+                    <Passo numero="2" rotulo="Serviço" valor={selectedServices.length > 0 ? `${selectedServices.length} escolhido(s)` : null} />
+                    <Passo numero="3" rotulo="Horário" valor={bookingTime} />
                 </div>
 
                 <EscolhaAgenda
@@ -200,8 +200,7 @@ export default function Establishment() {
                     onTimeChange={setBookingTime}
                     services={selectedServices}
                     onServicesChange={setSelectedServices}
-                    onServicoRemovido={(nomes, horario) =>
-                        error(`${nomes} não cabe no horário ${horario}. Escolha outro serviço ou horário.`)}
+                    onAviso={error}
                 />
 
                 {/* Resumo só existe depois que há escolha: a página não abre
@@ -263,8 +262,8 @@ export default function Establishment() {
                             disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
                             className="btn btn-primary btn-lg w-full"
                         >
-                            {!bookingTime ? 'Escolha o horário'
-                                : selectedServices.length === 0 ? 'Escolha o serviço'
+                            {selectedServices.length === 0 ? 'Escolha o serviço'
+                                : !bookingTime ? 'Escolha o horário'
                                 : 'Continuar agendamento'}
                         </button>
                     </div>
