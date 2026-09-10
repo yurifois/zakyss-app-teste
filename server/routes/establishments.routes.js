@@ -3,6 +3,7 @@ import { getRepository } from '../repositories/index.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware.js'
 import { premiumMiddleware } from '../middleware/plan.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
+import { buildDaySchedule } from '../utils/daySchedule.js'
 
 const router = Router()
 const establishmentsRepo = getRepository('establishments.json')
@@ -423,6 +424,58 @@ router.get('/:id/clients', authMiddleware, async (req, res, next) => {
 })
 
 // Horários disponíveis
+// Retrato completo do dia: todos os horários com motivo (reservado, almoço,
+// fechado) e quais serviços cabem em cada um. Substitui a lógica de "horário
+// some da tela", que confundia cliente e estabelecimento.
+router.get('/:id/day-schedule', async (req, res, next) => {
+    try {
+        const { date } = req.query
+        if (!date) throw new AppError('Data é obrigatória', 400)
+
+        const establishmentId = parseInt(req.params.id)
+        const establishment = await establishmentsRepo.findById(establishmentId)
+        if (!establishment) throw new AppError('Estabelecimento não encontrado', 404)
+
+        const [allServices, employees, appointments] = await Promise.all([
+            servicesRepo.findAll(),
+            employeesRepo.findAll({ establishmentId }),
+            appointmentsRepo.findAll({ establishmentId })
+        ])
+
+        const services = allServices.filter(s => (establishment.services || []).includes(s.id))
+
+        const schedule = buildDaySchedule({
+            date,
+            workingHours: establishment.workingHours,
+            scheduleException: establishment.scheduleExceptions?.[date] || null,
+            appointments,
+            employees,
+            services,
+            servicePreferences: establishment.servicePreferences || {}
+        })
+
+        // Devolve os serviços com nome/preço junto, pra tela não precisar cruzar
+        const serviceById = new Map(services.map(s => [s.id, s]))
+        schedule.slots = schedule.slots.map(slot => ({
+            ...slot,
+            services: slot.services.map(item => {
+                const svc = serviceById.get(item.id)
+                const prefs = establishment.servicePreferences?.[item.id]
+                return {
+                    ...item,
+                    name: svc?.name,
+                    price: prefs?.price ?? svc?.price,
+                    duration: prefs?.duration ?? svc?.duration
+                }
+            })
+        }))
+
+        res.json({ success: true, data: schedule })
+    } catch (error) {
+        next(error)
+    }
+})
+
 router.get('/:id/available-slots', async (req, res, next) => {
     try {
         const { date } = req.query

@@ -294,6 +294,12 @@ export async function getEstablishmentServices(id) {
     return request(`/establishments/${id}/services`)
 }
 
+// Retrato completo do dia: todos os horários com motivo de indisponibilidade
+// e quais serviços cabem em cada um.
+export async function getDaySchedule(establishmentId, date) {
+    return request(`/establishments/${establishmentId}/day-schedule?date=${date}`)
+}
+
 export async function getAvailableSlots(establishmentId, date, services = [], assignments = []) {
     let url = `/establishments/${establishmentId}/available-slots?date=${date}`
     if (services.length > 0) {

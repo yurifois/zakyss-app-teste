@@ -30,6 +30,7 @@ export default function AdminCalendarView() {
     const [loadError, setLoadError] = useState(false)
     const [selectedDate, setSelectedDate] = useState(new Date())
     const [showDayModal, setShowDayModal] = useState(false)
+    const [daySchedule, setDaySchedule] = useState(null)
     const [exceptionForm, setExceptionForm] = useState(emptyException)
     const [saving, setSaving] = useState(false)
 
@@ -66,10 +67,16 @@ export default function AdminCalendarView() {
             : emptyException)
     }
 
-    const handleSelectDate = (date) => {
+    const handleSelectDate = async (date) => {
         setSelectedDate(date)
         syncExceptionForm(establishment, date)
         setShowDayModal(true)
+        setDaySchedule(null)
+        try {
+            setDaySchedule(await api.getDaySchedule(admin.establishmentId, toDateStr(date)))
+        } catch (err) {
+            console.error('Erro ao carregar horários do dia:', err)
+        }
     }
 
     // Dias da semana fechados no expediente + datas fechadas por exceção,
@@ -248,6 +255,53 @@ export default function AdminCalendarView() {
                                 })}
                             </div>
                         )}
+
+                        {/* Grade de horários do dia: mostra o que está livre e,
+                            quando não está, o porquê — é o que o estabelecimento
+                            precisa pra responder "por que o cliente não consegue agendar?" */}
+                        <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
+                            <h3 className="font-semibold mb-3">🕐 Horários do dia</h3>
+                            {!daySchedule ? (
+                                <p className="text-sm text-muted">Carregando...</p>
+                            ) : daySchedule.closed ? (
+                                <p className="text-sm text-muted">🚫 {daySchedule.closedReason}</p>
+                            ) : (
+                                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+                                    {daySchedule.slots.map(slot => {
+                                        const livre = slot.status === 'disponivel'
+                                        const agendado = dayAppointments.find(a => a.time === slot.time && ['pending', 'confirmed'].includes(a.status))
+                                        return (
+                                            <div
+                                                key={slot.time}
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '0.6rem',
+                                                    background: 'var(--secondary-500)',
+                                                    border: `1px solid ${livre ? 'var(--border-color)' : 'var(--error-500)'}`,
+                                                    opacity: livre ? 1 : 0.85
+                                                }}
+                                            >
+                                                <div className="font-semibold">{slot.time}</div>
+                                                <div className="text-xs" style={{ color: livre ? 'inherit' : 'var(--error-500)' }}>
+                                                    {livre ? `✅ ${slot.availableCount} serviço(s) disponíveis` : `⛔ ${slot.reason}`}
+                                                </div>
+                                                {agendado && (
+                                                    <div className="text-xs text-muted mt-1">
+                                                        {agendado.customerName}
+                                                        {agendado.servicesList?.length > 0 && ` · ${agendado.servicesList.map(x => x.name).join(', ')}`}
+                                                    </div>
+                                                )}
+                                                {livre && slot.services.some(x => !x.available) && (
+                                                    <div className="text-xs text-muted mt-1">
+                                                        Não cabe: {slot.services.filter(x => !x.available).map(x => x.name).slice(0, 3).join(', ')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Abrir/fechar horários do dia */}
                         <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>

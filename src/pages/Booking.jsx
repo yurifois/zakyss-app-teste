@@ -4,7 +4,6 @@ import * as api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import Calendar from '../components/Calendar'
-import TimeSlots from '../components/TimeSlots'
 import ServiceCard from '../components/ServiceCard'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import SpamNotice from '../components/SpamNotice'
@@ -20,10 +19,9 @@ export default function Booking() {
     const [services, setServices] = useState([])
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedTime, setSelectedTime] = useState(null)
-    const [availableSlots, setAvailableSlots] = useState([])
+    const [daySchedule, setDaySchedule] = useState(null)
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
-    const [allEstablishmentServices, setAllEstablishmentServices] = useState([])
     const [showReviewModal, setShowReviewModal] = useState(false)
     const [showLoginPrompt, setShowLoginPrompt] = useState(false)
     const [anamnesisForms, setAnamnesisForms] = useState([]) // fichas exigidas pelos serviços selecionados
@@ -132,12 +130,10 @@ export default function Booking() {
 
             setEstablishment(est)
 
+            // Serviço pré-escolhido (veio da página do estabelecimento) continua
+            // valendo; a etapa 3 revalida se ele cabe no horário escolhido.
             if (serviceIds.length > 0) {
-                const selected = allEstServices.filter(s => serviceIds.includes(s.id))
-                setServices(selected)
-            } else {
-                // If no services pre-selected, let user select from all
-                setAllEstablishmentServices(allEstServices)
+                setServices(allEstServices.filter(s => serviceIds.includes(s.id)))
             }
         } catch (err) {
             error('Erro ao carregar dados')
@@ -147,25 +143,26 @@ export default function Booking() {
         }
     }
 
+    // Carrega o dia inteiro: todo horário aparece, com o motivo de estar
+    // indisponível e quais serviços cabem nele.
     const loadAvailableSlots = async () => {
         try {
-            // Convert Date object to YYYY-MM-DD string if needed
             let dateStr = selectedDate
             if (selectedDate instanceof Date) {
                 // Monta a partir dos componentes locais em vez de toISOString() (UTC),
                 // que pode virar o dia errado dependendo do fuso horário do dispositivo.
                 dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
             }
-            const serviceIds = services.map(s => s.id)
-            const assignments = JSON.parse(sessionStorage.getItem('booking_assignments') || '[]')
-            const slots = await api.getAvailableSlots(id, dateStr, serviceIds, assignments)
-            setAvailableSlots(slots)
+            setDaySchedule(await api.getDaySchedule(id, dateStr))
             setSelectedTime(null)
         } catch (err) {
-            console.error('Error loading slots:', err)
-            setAvailableSlots([])
+            console.error('Error loading day schedule:', err)
+            setDaySchedule(null)
         }
     }
+
+    // Horário escolhido, com a lista de serviços e o motivo de cada bloqueio
+    const currentSlot = daySchedule?.slots?.find(s => s.time === selectedTime) || null
 
     // Retorna os dias da semana em que o estabelecimento está fechado
     // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
@@ -419,33 +416,115 @@ export default function Booking() {
                     {/* Main Form */}
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit}>
-                            {/* Step 0: Service Selection (if none selected) */}
-                            {services.length === 0 && (
-                                <div className="card mb-6 p-4 sm:p-6">
-                                    <h2 className="text-lg font-semibold mb-4 text-primary font-bold">✨ Escolha os serviços</h2>
-                                    <p className="text-sm text-muted mb-4">Selecione pelo menos um serviço para ver os horários disponíveis</p>
+                            {/* Step 1: Date */}
+                            <div ref={calendarRef} className="card mb-6 p-3 sm:p-6">
+                                <h2 className="text-lg font-semibold mb-4">📅 1. Escolha a data</h2>
+                                <Calendar
+                                    selectedDate={selectedDate}
+                                    onSelectDate={setSelectedDate}
+                                    minDate={new Date().toISOString().split('T')[0]}
+                                    disabledDays={getClosedDays()}
+                                    disabledDates={getClosedDates()}
+                                />
+                            </div>
+
+                            {/* Aviso de atendimento em domicílio nesse dia */}
+                            {selectedDate && getHomeVisitInfo() && (
+                                <div className="card mb-6 p-4" style={{ background: 'rgba(236, 72, 153, 0.08)', border: '1px solid var(--primary-500)' }}>
+                                    <p className="font-semibold mb-1">🏠 Atendimento em domicílio neste dia</p>
+                                    {getHomeVisitInfo().area && <p className="text-sm">Área atendida: {getHomeVisitInfo().area}</p>}
+                                    {getHomeVisitInfo().fee > 0 && <p className="text-sm">Taxa de deslocamento: R$ {getHomeVisitInfo().fee.toFixed(2)}</p>}
+                                    {getHomeVisitInfo().message && <p className="text-sm mt-1">{getHomeVisitInfo().message}</p>}
+                                </div>
+                            )}
+
+                            {/* Etapa 2: horário — todos aparecem, com o motivo de estar indisponível */}
+                            {selectedDate && (
+                                <div className="card mb-6 p-3 sm:p-6">
+                                    <h2 className="text-lg font-semibold mb-1">🕐 2. Escolha o horário</h2>
+                                    <p className="text-sm text-muted mb-4">{formatDate(selectedDate)}</p>
+
+                                    {daySchedule?.closed ? (
+                                        <p className="text-muted text-center py-4">🚫 {daySchedule.closedReason}</p>
+                                    ) : !daySchedule ? (
+                                        <p className="text-muted text-center py-4">Carregando horários...</p>
+                                    ) : (
+                                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+                                            {daySchedule.slots.map(slot => {
+                                                const livre = slot.status === 'disponivel'
+                                                const escolhido = selectedTime === slot.time
+                                                return (
+                                                    <button
+                                                        key={slot.time}
+                                                        type="button"
+                                                        disabled={!livre}
+                                                        onClick={() => setSelectedTime(slot.time)}
+                                                        title={slot.reason || ''}
+                                                        style={{
+                                                            padding: '0.6rem',
+                                                            borderRadius: '0.6rem',
+                                                            textAlign: 'left',
+                                                            cursor: livre ? 'pointer' : 'not-allowed',
+                                                            opacity: livre ? 1 : 0.55,
+                                                            border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
+                                                            background: escolhido ? 'var(--primary-500)' : livre ? 'transparent' : 'var(--secondary-500)',
+                                                            color: escolhido ? 'white' : 'inherit'
+                                                        }}
+                                                    >
+                                                        <div className="font-semibold">{slot.time}</div>
+                                                        <div className="text-xs" style={{ opacity: 0.85 }}>
+                                                            {livre ? `${slot.availableCount} serviço(s)` : slot.reason}
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Etapa 3: serviço — só os que cabem nesse horário podem ser escolhidos */}
+                            {currentSlot && (
+                                <div className="card mb-6 p-3 sm:p-6">
+                                    <h2 className="text-lg font-semibold mb-1">✨ 3. Escolha o serviço</h2>
+                                    <p className="text-sm text-muted mb-4">
+                                        Disponibilidade para {currentSlot.time}. Serviços em cinza não cabem neste horário.
+                                    </p>
                                     <div className="flex flex-col gap-2">
-                                        {allEstablishmentServices.map(service => (
-                                            <ServiceCard
-                                                key={service.id}
-                                                service={service}
-                                                selected={services.some(s => s.id === service.id)}
-                                                onToggle={() => {
-                                                    setServices(prev => {
-                                                        const isRemoving = prev.some(s => s.id === service.id)
-                                                        if (isRemoving) {
-                                                            return prev.filter(s => s.id !== service.id)
-                                                        }
-                                                        const updated = [...prev, service]
-                                                        // Scroll para o calendário após selecionar um serviço
-                                                        setTimeout(() => {
-                                                            calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                                                        }, 100)
-                                                        return updated
-                                                    })
-                                                }}
-                                            />
-                                        ))}
+                                        {currentSlot.services.map(item => {
+                                            const escolhido = services.some(s => s.id === item.id)
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    disabled={!item.available}
+                                                    onClick={() => setServices(prev => prev.some(s => s.id === item.id)
+                                                        ? prev.filter(s => s.id !== item.id)
+                                                        : [...prev, { id: item.id, name: item.name, price: item.price, duration: item.duration }])}
+                                                    className="flex justify-between items-center gap-3"
+                                                    style={{
+                                                        padding: '0.75rem 1rem',
+                                                        borderRadius: '0.75rem',
+                                                        textAlign: 'left',
+                                                        cursor: item.available ? 'pointer' : 'not-allowed',
+                                                        opacity: item.available ? 1 : 0.5,
+                                                        border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
+                                                        background: escolhido ? 'rgba(236, 72, 153, 0.12)' : item.available ? 'transparent' : 'var(--secondary-500)'
+                                                    }}
+                                                >
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div className="font-medium">{escolhido ? '✓ ' : ''}{item.name}</div>
+                                                        <div className="text-xs text-muted">
+                                                            {item.duration} min
+                                                            {!item.available && <> · <span style={{ color: 'var(--error-500)' }}>{item.reason}</span></>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="font-semibold" style={{ flexShrink: 0 }}>
+                                                        R$ {Number(item.price || 0).toFixed(2)}
+                                                    </div>
+                                                </button>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -552,48 +631,8 @@ export default function Booking() {
                                 </div>
                             ))}
 
-                            {/* Step 1: Date */}
-                            <div ref={calendarRef} className={`card mb-6 p-3 sm:p-6 ${services.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
-                                <h2 className="text-lg font-semibold mb-4">📅 Escolha a data</h2>
-                                <Calendar
-                                    selectedDate={selectedDate}
-                                    onSelectDate={setSelectedDate}
-                                    minDate={new Date().toISOString().split('T')[0]}
-                                    disabledDays={getClosedDays()}
-                                    disabledDates={getClosedDates()}
-                                />
-                            </div>
-
-                            {/* Aviso de atendimento em domicílio nesse dia */}
-                            {selectedDate && getHomeVisitInfo() && (
-                                <div className="card mb-6 p-4" style={{ background: 'rgba(236, 72, 153, 0.08)', border: '1px solid var(--primary-500)' }}>
-                                    <p className="font-semibold mb-1">🏠 Atendimento em domicílio neste dia</p>
-                                    {getHomeVisitInfo().area && <p className="text-sm">Área atendida: {getHomeVisitInfo().area}</p>}
-                                    {getHomeVisitInfo().fee > 0 && <p className="text-sm">Taxa de deslocamento: R$ {getHomeVisitInfo().fee.toFixed(2)}</p>}
-                                    {getHomeVisitInfo().message && <p className="text-sm mt-1">{getHomeVisitInfo().message}</p>}
-                                </div>
-                            )}
-
-                            {/* Step 2: Time */}
-                            {selectedDate && (
-                                <div className="card mb-6 p-3 sm:p-6">
-                                    <h2 className="text-lg font-semibold mb-4">🕐 Escolha o horário</h2>
-                                    <p className="text-sm text-muted mb-4">{formatDate(selectedDate)}</p>
-                                    {availableSlots.length === 0 ? (
-                                        <p className="text-muted text-center py-4">Nenhum horário disponível nesta data</p>
-                                    ) : (
-                                        <TimeSlots
-                                            slots={availableSlots}
-                                            selectedTime={selectedTime}
-                                            onSelectTime={setSelectedTime}
-                                            bookedTimes={[]}
-                                        />
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Step 3: Customer Info */}
-                            {selectedTime && (
+                            {/* Etapa 4: dados do cliente */}
+                            {services.length > 0 && (
                                 <div className="card mb-6 p-4 sm:p-6">
                                     <h2 className="text-lg font-semibold mb-4">👤 Seus dados</h2>
 
@@ -650,7 +689,7 @@ export default function Booking() {
                             )}
 
                             {/* Submit */}
-                            {selectedTime && (
+                            {services.length > 0 && (
                                 <button
                                     type="button"
                                     className="btn btn-primary btn-lg w-full"
