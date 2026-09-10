@@ -22,7 +22,6 @@ export default function Establishment() {
     const { error } = useToast()
 
     const [establishment, setEstablishment] = useState(null)
-    const [services, setServices] = useState([])
     const [employees, setEmployees] = useState([])
     const [selectedServices, setSelectedServices] = useState([])
     const [bookingDate, setBookingDate] = useState(null)
@@ -43,13 +42,13 @@ export default function Establishment() {
     const loadData = async () => {
         setLoading(true)
         try {
-            const [est, servs, emps] = await Promise.all([
+            // A lista de serviços vem junto com a agenda do dia, já filtrada
+            // pelo que cabe no horário — não precisa ser buscada aqui.
+            const [est, emps] = await Promise.all([
                 api.getEstablishmentById(id),
-                api.getEstablishmentServices(id),
                 api.getPublicEmployees(id)
             ])
             setEstablishment(est)
-            setServices(servs)
             setEmployees(emps)
         } catch (err) {
             error('Erro ao carregar estabelecimento')
@@ -195,7 +194,6 @@ export default function Establishment() {
                 <EscolhaAgenda
                     establishmentId={id}
                     establishment={establishment}
-                    servicosVitrine={services}
                     date={bookingDate}
                     onDateChange={setBookingDate}
                     time={bookingTime}

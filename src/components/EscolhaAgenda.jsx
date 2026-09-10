@@ -27,7 +27,6 @@ const Etapa = ({ titulo, subtitulo, travada, children }) => (
 export default function EscolhaAgenda({
     establishmentId,
     establishment,
-    servicosVitrine = [],
     date,
     onDateChange,
     time,
@@ -56,7 +55,6 @@ export default function EscolhaAgenda({
     // resto; ao voltar, o estabelecimento pode ter bloqueado o horário nesse
     // meio tempo. Recarrega a agenda ao reaparecer.
     const [versao, setVersao] = useState(0)
-    const [verPrecos, setVerPrecos] = useState(false)
     useEffect(() => {
         const aoVoltar = () => { if (document.visibilityState === 'visible') setVersao(v => v + 1) }
         document.addEventListener('visibilitychange', aoVoltar)
@@ -106,11 +104,6 @@ export default function EscolhaAgenda({
         .filter(([, exc]) => exc?.isClosed)
         .map(([dia]) => dia)
 
-    // Antes de escolher o horário a lista mostra tudo, em cinza: é a vitrine de
-    // preços. Depois, passa a valer a disponibilidade real daquele horário.
-    const listaServicos = currentSlot
-        ? currentSlot.services
-        : servicosVitrine.map(s => ({ ...s, available: false, reason: null }))
 
     return (
         <>
@@ -178,24 +171,14 @@ export default function EscolhaAgenda({
                     : 'Escolha o horário primeiro — estes são os preços do estabelecimento'}
                 travada={!currentSlot}
             >
-                {/* Sem horário escolhido a lista fica fechada: serviço exposto
-                    antes do dia é justamente a ordem que este fluxo desfaz. A
-                    tabela de preços continua a um clique pra quem só quer
-                    consultar quanto custa. */}
+                {/* Nenhum serviço na tela antes do horário: ver a lista cedo
+                    faz o cliente escolher o que talvez não caiba, que é
+                    exatamente a confusão que este fluxo desfaz. */}
                 {!currentSlot && (
-                    <div className="mb-1">
-                        <p className="text-muted text-sm mb-3">🔒 Escolha um horário acima para liberar os serviços.</p>
-                        <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => setVerPrecos(v => !v)}
-                        >
-                            {verPrecos ? 'Ocultar tabela de preços' : 'Ver tabela de preços'}
-                        </button>
-                    </div>
+                    <p className="text-muted text-sm">🔒 Escolha um horário acima para ver os serviços disponíveis.</p>
                 )}
-                <div className="flex flex-col gap-2" hidden={!currentSlot && !verPrecos}>
-                    {listaServicos.map(item => {
+                <div className="flex flex-col gap-2" hidden={!currentSlot}>
+                    {(currentSlot?.services || []).map(item => {
                         const escolhido = services.some(s => s.id === item.id)
                         return (
                             <button

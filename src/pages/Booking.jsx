@@ -16,7 +16,6 @@ export default function Booking() {
 
     const [establishment, setEstablishment] = useState(null)
     const [services, setServices] = useState([])
-    const [todosServicos, setTodosServicos] = useState([])
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedTime, setSelectedTime] = useState(null)
     const [recarregarAgenda, setRecarregarAgenda] = useState(0)
@@ -111,7 +110,6 @@ export default function Booking() {
             ])
 
             setEstablishment(est)
-            setTodosServicos(allEstServices || [])
 
             // Serviço pré-escolhido (veio da página do estabelecimento) continua
             // valendo; a etapa 3 revalida se ele cabe no horário escolhido.
@@ -351,7 +349,6 @@ export default function Booking() {
                                 <EscolhaAgenda
                                     establishmentId={id}
                                     establishment={establishment}
-                                    servicosVitrine={todosServicos}
                                     date={selectedDate}
                                     onDateChange={setSelectedDate}
                                     time={selectedTime}
