@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import * as api from '../services/api'
+import SpamNotice from '../components/SpamNotice'
 import EstablishmentCard from '../components/EstablishmentCard'
 export default function Profile() {
     const { user, isAuthenticated, updateProfile, refreshUser, logout, loading: authLoading } = useAuth()
@@ -499,6 +500,8 @@ export default function Profile() {
                         {tab === 'appointments' && (
                             <>
                                 <h1 className="text-2xl font-bold mb-6">Meus Agendamentos</h1>
+
+                                <SpamNotice className="mb-6" />
 
                                 {loading ? (
                                     <div className="card py-8 text-center">Carregando...</div>

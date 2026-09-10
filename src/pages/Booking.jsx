@@ -7,6 +7,7 @@ import Calendar from '../components/Calendar'
 import TimeSlots from '../components/TimeSlots'
 import ServiceCard from '../components/ServiceCard'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
+import SpamNotice from '../components/SpamNotice'
 import { ArrowLeft, Clock, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react'
 
 export default function Booking() {
@@ -631,6 +632,7 @@ export default function Booking() {
                                             value={formData.email}
                                             onChange={handleChange}
                                         />
+                                        <SpamNotice className="mt-2" />
                                     </div>
 
                                     <div className="form-group">
