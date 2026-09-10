@@ -3,16 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import * as api from '../services/api'
 import { getImageUrl } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
-import ServiceCard from '../components/ServiceCard'
+import EscolhaAgenda from '../components/EscolhaAgenda'
+import { toDateString } from '../utils/schedule'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import { ArrowLeft, Star, MapPin, X } from 'lucide-react'
-import CategoryIconBase from '../components/CategoryIcon'
-
-const CategoryIcon = ({ iconName, color }) => {
-    const Icon = (props) => <CategoryIconBase iconName={iconName} {...props} />
-    return <Icon size={24} color={color} />
-}
-
 export default function Establishment() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -20,9 +14,10 @@ export default function Establishment() {
 
     const [establishment, setEstablishment] = useState(null)
     const [services, setServices] = useState([])
-    const [categories, setCategories] = useState([])
     const [employees, setEmployees] = useState([])
     const [selectedServices, setSelectedServices] = useState([])
+    const [bookingDate, setBookingDate] = useState(null)
+    const [bookingTime, setBookingTime] = useState(null)
     const [employeePreferences, setEmployeePreferences] = useState({}) // { serviceId: employeeId }
     const [loading, setLoading] = useState(true)
     const [expandedImage, setExpandedImage] = useState(null)
@@ -39,15 +34,13 @@ export default function Establishment() {
     const loadData = async () => {
         setLoading(true)
         try {
-            const [est, servs, cats, emps] = await Promise.all([
+            const [est, servs, emps] = await Promise.all([
                 api.getEstablishmentById(id),
                 api.getEstablishmentServices(id),
-                api.getCategories(),
                 api.getPublicEmployees(id)
             ])
             setEstablishment(est)
             setServices(servs)
-            setCategories(cats)
             setEmployees(emps)
         } catch (err) {
             error('Erro ao carregar estabelecimento')
@@ -57,20 +50,6 @@ export default function Establishment() {
         }
     }
 
-    const toggleService = (serviceId) => {
-        setSelectedServices(prev => {
-            if (prev.includes(serviceId)) {
-                // Remove service and its employee preference
-                setEmployeePreferences(prefs => {
-                    const newPrefs = { ...prefs }
-                    delete newPrefs[serviceId]
-                    return newPrefs
-                })
-                return prev.filter(id => id !== serviceId)
-            }
-            return [...prev, serviceId]
-        })
-    }
 
     const setEmployeeForService = (serviceId, employeeId) => {
         setEmployeePreferences(prev => ({
@@ -84,7 +63,8 @@ export default function Establishment() {
     }
 
     const getSelectedServicesData = () => {
-        return services.filter(s => selectedServices.includes(s.id))
+        // a etapa 3 já entrega nome, preço e duração de cada serviço
+        return selectedServices
     }
 
     const getTotalPrice = () => {
@@ -113,7 +93,9 @@ export default function Establishment() {
         // horário — só ali dá pra saber o que cabe na agenda. Aqui a lista é
         // vitrine (preços): a pré-seleção segue como sugestão e é revalidada
         // contra o horário escolhido.
-        sessionStorage.setItem('booking_services', JSON.stringify(selectedServices))
+        sessionStorage.setItem('booking_services', JSON.stringify(selectedServices.map(sv => sv.id)))
+        sessionStorage.setItem('booking_date', toDateString(bookingDate) || '')
+        sessionStorage.setItem('booking_time', bookingTime || '')
 
         // Build assignments array
         const assignments = Object.entries(employeePreferences)
@@ -125,11 +107,6 @@ export default function Establishment() {
         sessionStorage.setItem('booking_assignments', JSON.stringify(assignments))
 
         navigate(`/agendar/${id}`)
-    }
-
-    const getCategoryName = (categoryId) => {
-        const cat = categories.find(c => c.id === categoryId)
-        return cat ? cat.name : ''
     }
 
 
@@ -205,28 +182,25 @@ export default function Establishment() {
                             <EstablishmentLocationCard establishment={establishment} />
                         </div>
 
-                        {/* Services */}
+                        {/* As três escolhas na ordem que a agenda exige: dia,
+                            horário e só então serviço. Antes o serviço vinha
+                            primeiro, então nada podia ser validado contra a
+                            agenda — dava pra escolher o que não cabia. */}
                         <div className="mb-8">
-                            <h2 className="text-xl font-bold mb-4">Serviços disponíveis</h2>
-
-                            {categories.filter(cat => services.some(s => s.categoryId === cat.id)).map(category => (
-                                <div key={category.id} className="mb-6">
-                                    <h3 className="font-semibold mb-3 flex items-center gap-3 p-2" style={{ background: 'rgba(139, 92, 246, 0.08)', borderRadius: 'var(--radius-lg)' }}>
-                                        <CategoryIcon iconName={category.icon} color={category.color} />
-                                        {category.name}
-                                    </h3>
-                                    <div className="flex flex-col gap-2">
-                                        {services.filter(s => s.categoryId === category.id).map(service => (
-                                            <ServiceCard
-                                                key={service.id}
-                                                service={service}
-                                                selected={selectedServices.includes(service.id)}
-                                                onToggle={() => toggleService(service.id)}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
+                            <h2 className="text-xl font-bold mb-4">Agende seu horário</h2>
+                            <EscolhaAgenda
+                                establishmentId={id}
+                                establishment={establishment}
+                                servicosVitrine={services}
+                                date={bookingDate}
+                                onDateChange={setBookingDate}
+                                time={bookingTime}
+                                onTimeChange={setBookingTime}
+                                services={selectedServices}
+                                onServicesChange={setSelectedServices}
+                                onServicoRemovido={(nomes, horario) =>
+                                    error(`${nomes} não cabe no horário ${horario}. Escolha outro serviço ou horário.`)}
+                            />
                         </div>
 
                         {/* Service Images Gallery */}
@@ -256,10 +230,17 @@ export default function Establishment() {
                         <div className="card" style={{ padding: '1.5rem', position: 'sticky', top: '5rem' }}>
                             <h3 className="text-lg font-bold mb-4">Resumo do agendamento</h3>
 
+                            {(bookingDate || bookingTime) && (
+                                <div className="text-sm mb-4" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                                    {bookingDate && <div>📅 {new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR')}</div>}
+                                    {bookingTime && <div>🕐 {bookingTime}</div>}
+                                </div>
+                            )}
+
                             {selectedServices.length === 0 ? (
                                 <p className="text-muted text-center py-8">
-                                    Escolha o dia e o horário primeiro — depois o app mostra
-                                    quais serviços cabem naquele horário.
+                                    Siga as etapas ao lado: primeiro o dia, depois o horário
+                                    e só então o serviço.
                                 </p>
                             ) : (
                                 <>
@@ -305,11 +286,16 @@ export default function Establishment() {
                                 </>
                             )}
 
+                            {/* Só libera quando as três etapas foram cumpridas */}
                             <button
                                 onClick={handleBooking}
+                                disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
                                 className="btn btn-primary btn-lg w-full"
                             >
-                                {selectedServices.length === 0 ? 'Ver horários e agendar' : 'Continuar agendamento'}
+                                {!bookingDate ? 'Escolha o dia'
+                                    : !bookingTime ? 'Escolha o horário'
+                                    : selectedServices.length === 0 ? 'Escolha o serviço'
+                                    : 'Continuar agendamento'}
                             </button>
                         </div>
                     </div>

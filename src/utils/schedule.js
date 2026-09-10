@@ -15,3 +15,15 @@ export function getClosedWeekdays(workingHours) {
         .map((key, index) => (workingHours[key] ? null : index))
         .filter(index => index !== null)
 }
+
+/**
+ * Data em YYYY-MM-DD a partir dos componentes locais.
+ *
+ * toISOString() converte para UTC e vira o dia errado em fusos negativos
+ * (no Brasil, qualquer horário antes das 21h viraria o dia seguinte).
+ */
+export function toDateString(date) {
+    if (!date) return null
+    if (typeof date === 'string') return date.slice(0, 10)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}

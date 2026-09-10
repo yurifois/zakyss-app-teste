@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import * as api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import Calendar from '../components/Calendar'
-import ServiceCard from '../components/ServiceCard'
+import EscolhaAgenda from '../components/EscolhaAgenda'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import SpamNotice from '../components/SpamNotice'
 import { ArrowLeft, Clock, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react'
@@ -17,9 +16,10 @@ export default function Booking() {
 
     const [establishment, setEstablishment] = useState(null)
     const [services, setServices] = useState([])
+    const [todosServicos, setTodosServicos] = useState([])
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedTime, setSelectedTime] = useState(null)
-    const [daySchedule, setDaySchedule] = useState(null)
+    const [recarregarAgenda, setRecarregarAgenda] = useState(0)
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [showReviewModal, setShowReviewModal] = useState(false)
@@ -73,30 +73,6 @@ export default function Booking() {
         }
     }, [id, user])
 
-    useEffect(() => {
-        if (selectedDate && establishment) {
-            loadAvailableSlots()
-        }
-    }, [selectedDate])
-
-    // Em navegadores mobile a aba fica em segundo plano (troca de app, tela
-    // bloqueada) enquanto o cliente preenche o formulário; ao voltar, os
-    // horários podem ter sido bloqueados pelo estabelecimento nesse meio tempo.
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && selectedDate && establishment) {
-                loadAvailableSlots()
-            }
-        }
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-        window.addEventListener('focus', handleVisibilityChange)
-
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange)
-            window.removeEventListener('focus', handleVisibilityChange)
-        }
-    }, [selectedDate, establishment])
-
     const loadData = async () => {
         setLoading(true)
         try {
@@ -121,6 +97,12 @@ export default function Booking() {
                 }
             } else if (storedServices) {
                 serviceIds = JSON.parse(storedServices)
+                // Dia e horário já foram escolhidos na página do estabelecimento:
+                // seguir com eles evita pedir as mesmas três coisas duas vezes.
+                const dataEscolhida = sessionStorage.getItem('booking_date')
+                const horaEscolhida = sessionStorage.getItem('booking_time')
+                if (dataEscolhida) setSelectedDate(new Date(`${dataEscolhida.slice(0, 10)}T12:00:00`))
+                if (horaEscolhida) setSelectedTime(horaEscolhida)
             }
 
             const [est, allEstServices] = await Promise.all([
@@ -129,6 +111,7 @@ export default function Booking() {
             ])
 
             setEstablishment(est)
+            setTodosServicos(allEstServices || [])
 
             // Serviço pré-escolhido (veio da página do estabelecimento) continua
             // valendo; a etapa 3 revalida se ele cabe no horário escolhido.
@@ -141,75 +124,6 @@ export default function Booking() {
         } finally {
             setLoading(false)
         }
-    }
-
-    // Carrega o dia inteiro: todo horário aparece, com o motivo de estar
-    // indisponível e quais serviços cabem nele.
-    const loadAvailableSlots = async () => {
-        try {
-            let dateStr = selectedDate
-            if (selectedDate instanceof Date) {
-                // Monta a partir dos componentes locais em vez de toISOString() (UTC),
-                // que pode virar o dia errado dependendo do fuso horário do dispositivo.
-                dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-            }
-            setDaySchedule(await api.getDaySchedule(id, dateStr))
-            setSelectedTime(null)
-        } catch (err) {
-            console.error('Error loading day schedule:', err)
-            setDaySchedule(null)
-        }
-    }
-
-    // Horário escolhido, com a lista de serviços e o motivo de cada bloqueio
-    const currentSlot = daySchedule?.slots?.find(s => s.time === selectedTime) || null
-
-    // Serviço que veio pré-escolhido (vitrine do estabelecimento ou agendamento
-    // retomado) precisa ser revalidado contra o horário: sem isso, quem já
-    // chega com serviço definido escapa da restrição da agenda.
-    useEffect(() => {
-        if (!currentSlot || services.length === 0) return
-        const cabe = sv => currentSlot.services.some(x => x.id === sv.id && x.available)
-        if (services.every(cabe)) return
-        const removidos = services.filter(sv => !cabe(sv)).map(sv => sv.name).join(', ')
-        setServices(services.filter(cabe))
-        error(`${removidos} não cabe no horário ${currentSlot.time}. Escolha outro serviço ou horário.`)
-    }, [currentSlot, services])
-
-    // Retorna os dias da semana em que o estabelecimento está fechado
-    // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
-    const getClosedDays = () => {
-        if (!establishment?.workingHours) return []
-
-        const dayMapping = {
-            sunday: 0,
-            monday: 1,
-            tuesday: 2,
-            wednesday: 3,
-            thursday: 4,
-            friday: 5,
-            saturday: 6
-        }
-
-        const closedDays = []
-        Object.entries(establishment.workingHours).forEach(([day, hours]) => {
-            if (hours === null) {
-                closedDays.push(dayMapping[day])
-            }
-        })
-
-        return closedDays
-    }
-
-    const getClosedDates = () => {
-        if (!establishment?.scheduleExceptions) return []
-        const closedDates = []
-        Object.entries(establishment.scheduleExceptions).forEach(([dateStr, exception]) => {
-            if (exception.isClosed) {
-                closedDates.push(dateStr)
-            }
-        })
-        return closedDates
     }
 
     // Se o dia selecionado tem atendimento em domicílio configurado pelo
@@ -348,6 +262,8 @@ export default function Booking() {
             })
 
             sessionStorage.removeItem('booking_services')
+            sessionStorage.removeItem('booking_date')
+            sessionStorage.removeItem('booking_time')
             sessionStorage.removeItem('booking_assignments')
             localStorage.removeItem('zakys_unfinished_booking')
             success('Agendamento realizado com sucesso!')
@@ -356,7 +272,7 @@ export default function Booking() {
             error(err.message || 'Erro ao criar agendamento')
             // O horário selecionado pode ter sido bloqueado/ocupado nesse meio tempo;
             // atualiza a lista para não deixar um horário inválido marcado como disponível.
-            loadAvailableSlots()
+            setRecarregarAgenda(v => v + 1)
         } finally {
             setSubmitting(false)
         }
@@ -428,15 +344,23 @@ export default function Booking() {
                     {/* Main Form */}
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit}>
-                            {/* Step 1: Date */}
-                            <div ref={calendarRef} className="card mb-6 p-3 sm:p-6">
-                                <h2 className="text-lg font-semibold mb-4">📅 1. Escolha a data</h2>
-                                <Calendar
-                                    selectedDate={selectedDate}
-                                    onSelectDate={setSelectedDate}
-                                    minDate={new Date().toISOString().split('T')[0]}
-                                    disabledDays={getClosedDays()}
-                                    disabledDates={getClosedDates()}
+                            {/* As três etapas (dia, horário, serviço) vivem num
+                                componente só, compartilhado com a página do
+                                estabelecimento — duas cópias divergiriam. */}
+                            <div ref={calendarRef}>
+                                <EscolhaAgenda
+                                    establishmentId={id}
+                                    establishment={establishment}
+                                    servicosVitrine={todosServicos}
+                                    date={selectedDate}
+                                    onDateChange={setSelectedDate}
+                                    time={selectedTime}
+                                    onTimeChange={setSelectedTime}
+                                    services={services}
+                                    onServicesChange={setServices}
+                                    recarregarToken={recarregarAgenda}
+                                    onServicoRemovido={(nomes, horario) =>
+                                        error(`${nomes} não cabe no horário ${horario}. Escolha outro serviço ou horário.`)}
                                 />
                             </div>
 
@@ -447,107 +371,6 @@ export default function Booking() {
                                     {getHomeVisitInfo().area && <p className="text-sm">Área atendida: {getHomeVisitInfo().area}</p>}
                                     {getHomeVisitInfo().fee > 0 && <p className="text-sm">Taxa de deslocamento: R$ {getHomeVisitInfo().fee.toFixed(2)}</p>}
                                     {getHomeVisitInfo().message && <p className="text-sm mt-1">{getHomeVisitInfo().message}</p>}
-                                </div>
-                            )}
-
-                            {/* Etapa 2: horário — todos aparecem, com o motivo de estar indisponível */}
-                            {selectedDate && (
-                                <div className="card mb-6 p-3 sm:p-6">
-                                    <h2 className="text-lg font-semibold mb-1">🕐 2. Escolha o horário</h2>
-                                    <p className="text-sm text-muted mb-4">{formatDate(selectedDate)}</p>
-
-                                    {daySchedule?.closed ? (
-                                        <p className="text-muted text-center py-4">🚫 {daySchedule.closedReason}</p>
-                                    ) : !daySchedule ? (
-                                        <p className="text-muted text-center py-4">Carregando horários...</p>
-                                    ) : (
-                                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-                                            {daySchedule.slots.map(slot => {
-                                                const livre = slot.status === 'disponivel'
-                                                const escolhido = selectedTime === slot.time
-                                                return (
-                                                    <button
-                                                        key={slot.time}
-                                                        type="button"
-                                                        disabled={!livre}
-                                                        onClick={() => setSelectedTime(slot.time)}
-                                                        title={slot.reason || ''}
-                                                        style={{
-                                                            padding: '0.6rem',
-                                                            borderRadius: '0.6rem',
-                                                            textAlign: 'left',
-                                                            cursor: livre ? 'pointer' : 'not-allowed',
-                                                            opacity: livre ? 1 : 0.55,
-                                                            border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
-                                                            background: escolhido ? 'var(--primary-500)' : livre ? 'transparent' : 'var(--secondary-500)',
-                                                            color: escolhido ? 'white' : 'inherit'
-                                                        }}
-                                                    >
-                                                        <div className="font-semibold">{slot.time}</div>
-                                                        <div className="text-xs" style={{ opacity: 0.85 }}>
-                                                            {livre ? `${slot.availableCount} serviço(s)` : slot.reason}
-                                                        </div>
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Etapa 3: serviço — só os que cabem nesse horário podem ser escolhidos */}
-                            {currentSlot && (
-                                <div className="card mb-6 p-3 sm:p-6">
-                                    <h2 className="text-lg font-semibold mb-1">✨ 3. Escolha o serviço</h2>
-                                    <p className="text-sm text-muted mb-4">
-                                        Disponibilidade para {currentSlot.time}. Serviços em cinza não cabem neste horário.
-                                    </p>
-                                    <div className="flex flex-col gap-2">
-                                        {currentSlot.services.map(item => {
-                                            const escolhido = services.some(s => s.id === item.id)
-                                            return (
-                                                <button
-                                                    key={item.id}
-                                                    type="button"
-                                                    disabled={!item.available}
-                                                    title={item.reasonLong || ''}
-                                                    onClick={() => setServices(prev => prev.some(s => s.id === item.id)
-                                                        ? prev.filter(s => s.id !== item.id)
-                                                        : [...prev, { id: item.id, name: item.name, price: item.price, duration: item.duration }])}
-                                                    style={{
-                                                        padding: '0.75rem 1rem',
-                                                        borderRadius: '0.75rem',
-                                                        textAlign: 'left',
-                                                        width: '100%',
-                                                        cursor: item.available ? 'pointer' : 'not-allowed',
-                                                        opacity: item.available ? 1 : 0.6,
-                                                        border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
-                                                        background: escolhido ? 'rgba(236, 72, 153, 0.12)' : item.available ? 'transparent' : 'var(--secondary-500)'
-                                                    }}
-                                                >
-                                                    {/* nome e preço na mesma linha; o motivo ganha linha própria
-                                                        pra caber inteiro sem espremer o preço */}
-                                                    <div className="flex justify-between items-baseline gap-3">
-                                                        <span className="font-medium" style={{ minWidth: 0, wordBreak: 'break-word' }}>
-                                                            {escolhido ? '✓ ' : ''}{item.name}
-                                                        </span>
-                                                        <span className="font-semibold" style={{ flexShrink: 0 }}>
-                                                            R$ {Number(item.price || 0).toFixed(2)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-xs text-muted mt-1">{item.duration} min</div>
-                                                    {!item.available && (
-                                                        <div
-                                                            className="text-xs mt-1"
-                                                            style={{ color: 'var(--error-500)', lineHeight: 1.35, wordBreak: 'break-word' }}
-                                                        >
-                                                            ⛔ {item.reason}
-                                                        </div>
-                                                    )}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
                                 </div>
                             )}
 
