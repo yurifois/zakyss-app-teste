@@ -300,17 +300,6 @@ export async function getDaySchedule(establishmentId, date) {
     return request(`/establishments/${establishmentId}/day-schedule?date=${date}`)
 }
 
-export async function getAvailableSlots(establishmentId, date, services = [], assignments = []) {
-    let url = `/establishments/${establishmentId}/available-slots?date=${date}`
-    if (services.length > 0) {
-        url += `&services=${services.join(',')}`
-    }
-    if (assignments.length > 0) {
-        url += `&assignments=${encodeURIComponent(JSON.stringify(assignments))}`
-    }
-    return request(url)
-}
-
 export async function createEstablishment(data) {
     return request('/establishments', {
         method: 'POST',

@@ -321,18 +321,35 @@ export default function AdminAppointments() {
         await loadSlotsForDate(apt.date, apt.time)
     }
 
-    const loadSlotsForDate = async (date, currentTime = null) => {
+    // Um motor de agenda só (day-schedule) para cliente e dashboard. Antes o
+    // encaixe manual usava outra rota, que contava almoço e bloqueio de um
+    // jeito diferente — os dois discordavam sobre o mesmo horário, e o
+    // horário indisponível simplesmente sumia daqui, sem dizer por quê.
+    const carregarAgenda = async (date, horarioAtual = null) => {
         try {
-            const slots = await api.getAvailableSlots(admin.establishmentId, date)
-            if (currentTime && !slots.includes(currentTime)) {
-                slots.push(currentTime)
-                slots.sort()
+            const schedule = await api.getDaySchedule(admin.establishmentId, date)
+            const slots = (schedule?.slots || []).map(s => ({
+                time: s.time,
+                livre: s.status === 'disponivel',
+                reason: s.reason
+            }))
+            // Na edição, o horário do próprio agendamento consta como reservado
+            // (por ele mesmo) e precisa continuar selecionável.
+            if (horarioAtual) {
+                const existente = slots.find(s => s.time === horarioAtual)
+                if (existente) { existente.livre = true; existente.reason = null }
+                else slots.push({ time: horarioAtual, livre: true, reason: null })
+                slots.sort((a, b) => a.time.localeCompare(b.time))
             }
-            setAvailableSlots(slots)
+            return slots
         } catch (err) {
-            console.error('Error loading slots:', err)
-            setAvailableSlots([])
+            console.error('Erro ao carregar agenda:', err)
+            return []
         }
+    }
+
+    const loadSlotsForDate = async (date, currentTime = null) => {
+        setAvailableSlots(await carregarAgenda(date, currentTime))
     }
 
     const handleEditFormChange = async (e) => {
@@ -422,13 +439,7 @@ export default function AdminAppointments() {
     }
 
     const loadNewSlots = async (date) => {
-        try {
-            const slots = await api.getAvailableSlots(admin.establishmentId, date)
-            setNewSlots(slots)
-        } catch (err) {
-            console.error('Error loading slots:', err)
-            setNewSlots([])
-        }
+        setNewSlots(await carregarAgenda(date))
     }
 
     const handleNewFormChange = async (e) => {
@@ -858,7 +869,9 @@ export default function AdminAppointments() {
                                 >
                                     <option value="">Selecione...</option>
                                     {availableSlots.map(slot => (
-                                        <option key={slot} value={slot}>{slot}</option>
+                                        <option key={slot.time} value={slot.time} disabled={!slot.livre}>
+                                            {slot.livre ? slot.time : `${slot.time} — ${slot.reason}`}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -1091,7 +1104,9 @@ export default function AdminAppointments() {
                                 >
                                     <option value="">Selecione...</option>
                                     {newSlots.map(slot => (
-                                        <option key={slot} value={slot}>{slot}</option>
+                                        <option key={slot.time} value={slot.time} disabled={!slot.livre}>
+                                            {slot.livre ? slot.time : `${slot.time} — ${slot.reason}`}
+                                        </option>
                                     ))}
                                 </select>
                             </div>

@@ -88,4 +88,15 @@ s = buildDaySchedule({ date: DATE, workingHours: { thursday: null }, services, e
 assert.equal(s.closed, true)
 assert.match(s.closedReason, /Sem expediente/)
 
+// --- abertura em hora quebrada ---
+// O motor antigo da dashboard pulava pra próxima hora redonda (09:30 => 10:00)
+// e o estabelecimento perdia a primeira meia hora do expediente. Aqui a grade
+// começa na abertura, igual ao que o cliente enxerga.
+s = buildDaySchedule({
+    date: DATE,
+    workingHours: { thursday: { open: '09:30', close: '12:30' } },
+    services, employees
+})
+assert.deepEqual(s.slots.map(x => x.time), ['09:30', '10:30', '11:30'], 'grade começa na abertura real, não na hora redonda seguinte')
+
 console.log('✅ daySchedule: todos os casos passaram')
