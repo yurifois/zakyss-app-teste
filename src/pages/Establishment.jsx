@@ -5,10 +5,11 @@ import { getImageUrl } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import ServiceCard from '../components/ServiceCard'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
-import * as LucideIcons from 'lucide-react'
+import { ArrowLeft, Star, MapPin, X } from 'lucide-react'
+import CategoryIconBase from '../components/CategoryIcon'
 
 const CategoryIcon = ({ iconName, color }) => {
-    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
+    const Icon = (props) => <CategoryIconBase iconName={iconName} {...props} />
     return <Icon size={24} color={color} />
 }
 
@@ -157,7 +158,7 @@ export default function Establishment() {
         <div className="py-8">
             <div className="container">
                 <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm mb-4 flex items-center gap-2">
-                    <LucideIcons.ArrowLeft size={16} />
+                    <ArrowLeft size={16} />
                     Voltar
                 </button>
                 <div className="grid lg:grid-cols-3 gap-8">
@@ -177,7 +178,7 @@ export default function Establishment() {
                             <h1 className="text-3xl font-bold mb-2">{establishment.name}</h1>
                             <div className="flex flex-wrap items-center gap-6 text-secondary mb-6">
                                 <span className="flex items-center gap-2">
-                                    <LucideIcons.Star size={20} className="text-yellow-500 fill-yellow-500" />
+                                    <Star size={20} className="text-yellow-500 fill-yellow-500" />
                                     <strong>{establishment.rating}</strong>
                                     <span className="text-muted">({establishment.reviewCount} avaliações)</span>
                                     <button
@@ -188,7 +189,7 @@ export default function Establishment() {
                                     </button>
                                 </span>
                                 <span className="flex items-center gap-2">
-                                    <LucideIcons.MapPin size={20} className="text-primary" />
+                                    <MapPin size={20} className="text-primary" />
                                     {establishment.address}
                                 </span>
                             </div>
@@ -350,7 +351,7 @@ export default function Establishment() {
                                 onClick={() => setShowReviewsModal(false)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                             >
-                                <LucideIcons.X size={22} />
+                                <X size={22} />
                             </button>
                         </div>
 
@@ -366,7 +367,7 @@ export default function Establishment() {
                                             <strong>{review.name}</strong>
                                             <div className="flex">
                                                 {[1, 2, 3, 4, 5].map(star => (
-                                                    <LucideIcons.Star
+                                                    <Star
                                                         key={star}
                                                         size={14}
                                                         className={star <= review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted'}

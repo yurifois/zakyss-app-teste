@@ -3,11 +3,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import MarketPriceIndicator from '../../components/MarketPriceIndicator'
-import * as LucideIcons from 'lucide-react'
+import CategoryIconBase from '../../components/CategoryIcon'
 
 const CategoryIcon = ({ iconName, color }) => {
-    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
-    return <Icon size={16} color={color} />
+    return <CategoryIconBase iconName={iconName} size={16} color={color} />
 }
 export default function AdminServices() {
     const { admin } = useAuth()

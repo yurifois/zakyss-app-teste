@@ -70,10 +70,13 @@ export default function AdminAppointments() {
         loadEmployees()
         loadEstablishment()
 
-        // Auto-refresh appointments every 15 seconds (silencioso, sem piscar a tela)
+        // Auto-refresh silencioso. 60s em vez de 15s: a lista completa é um
+        // payload grande (~160 KB) e o menu lateral já faz seu próprio polling
+        // de 30s pra avisar de agendamento novo. Quem volta pra aba recebe
+        // dados frescos na hora pelo visibilitychange/focus abaixo.
         const interval = setInterval(() => {
             loadAppointments(true)
-        }, 15000)
+        }, 60000)
 
         // Navegadores mobile suspendem o setInterval quando a aba fica em segundo
         // plano (troca de app, tela bloqueada); força atualização ao voltar.

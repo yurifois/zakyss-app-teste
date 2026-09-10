@@ -1,4 +1,4 @@
-import * as LucideIcons from 'lucide-react'
+import { MapPin, Instagram } from 'lucide-react'
 
 /**
  * Localização (link do Google Maps colado manualmente pelo estabelecimento no
@@ -51,13 +51,13 @@ export default function EstablishmentLocationCard({ establishment }) {
             <div className="flex flex-wrap gap-3">
                 {mapsLink && (
                     <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm flex items-center gap-2">
-                        <LucideIcons.MapPin size={16} />
+                        <MapPin size={16} />
                         Como chegar
                     </a>
                 )}
                 {instagramUrl && (
                     <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm flex items-center gap-2">
-                        <LucideIcons.Instagram size={16} />
+                        <Instagram size={16} />
                         Instagram
                     </a>
                 )}

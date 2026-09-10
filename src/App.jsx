@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 
 // Layouts
@@ -26,26 +27,30 @@ import PartnerServices from './pages/partner/SelectServices'
 import PartnerSetup from './pages/partner/Setup'
 
 // Admin Pages
-import AdminLogin from './pages/admin/Login'
-import AdminDashboard from './pages/admin/Dashboard'
-import AdminAppointments from './pages/admin/Appointments'
-import AdminClients from './pages/admin/Clients'
-import AdminSchedule from './pages/admin/Schedule'
-import AdminServices from './pages/admin/Services'
-import AdminEmployees from './pages/admin/Employees'
-import AdminEmployeeReport from './pages/admin/EmployeeReport'
-import AdminAnalytics from './pages/admin/Analytics'
-import AdminProfile from './pages/admin/AdminProfile'
-import AdminImages from './pages/admin/Images'
-import AdminLinks from './pages/admin/Links'
-import AdminProducts from './pages/admin/Products'
-import AdminCashFlow from './pages/admin/CashFlow'
-import AdminPackages from './pages/admin/Packages'
-import AdminAnamnesis from './pages/admin/Anamnesis'
-import AdminCalendarView from './pages/admin/CalendarView'
+const AdminLogin = lazy(() => import('./pages/admin/Login'))
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
+const AdminAppointments = lazy(() => import('./pages/admin/Appointments'))
+const AdminClients = lazy(() => import('./pages/admin/Clients'))
+const AdminSchedule = lazy(() => import('./pages/admin/Schedule'))
+const AdminServices = lazy(() => import('./pages/admin/Services'))
+const AdminEmployees = lazy(() => import('./pages/admin/Employees'))
+const AdminEmployeeReport = lazy(() => import('./pages/admin/EmployeeReport'))
+const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'))
+const AdminProfile = lazy(() => import('./pages/admin/AdminProfile'))
+const AdminImages = lazy(() => import('./pages/admin/Images'))
+const AdminLinks = lazy(() => import('./pages/admin/Links'))
+const AdminProducts = lazy(() => import('./pages/admin/Products'))
+const AdminCashFlow = lazy(() => import('./pages/admin/CashFlow'))
+const AdminPackages = lazy(() => import('./pages/admin/Packages'))
+const AdminAnamnesis = lazy(() => import('./pages/admin/Anamnesis'))
+const AdminCalendarView = lazy(() => import('./pages/admin/CalendarView'))
+
+// Fallback enquanto o pedaço da página admin baixa (só na primeira visita)
+const Carregando = () => <div className="text-center py-16">⏳ Carregando...</div>
 
 function App() {
     return (
+        <Suspense fallback={<Carregando />}>
         <Routes>
             {/* Public Routes */}
             <Route path="/" element={<MainLayout />}>
@@ -93,6 +98,7 @@ function App() {
                 <Route path="anamnese" element={<AdminAnamnesis />} />
             </Route>
         </Routes>
+        </Suspense>
     )
 }
 

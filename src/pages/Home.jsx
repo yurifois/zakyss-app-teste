@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../services/api'
 import { getCurrentPosition, sortByDistance } from '../services/geolocation'
 import EstablishmentCard from '../components/EstablishmentCard'
-import * as LucideIcons from 'lucide-react'
+import { Search, MapPin, Star } from 'lucide-react'
+import CategoryIconBase from '../components/CategoryIcon'
 
 const CategoryIcon = ({ iconName, color }) => {
-    const Icon = LucideIcons[iconName] || LucideIcons.Sparkles
+    const Icon = (props) => <CategoryIconBase iconName={iconName} {...props} />
     return <Icon size={32} color={color} />
 }
 
@@ -148,7 +149,7 @@ export default function Home() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                         <button type="submit" className="search-btn">
-                            <LucideIcons.Search size={20} />
+                            <Search size={20} />
                             Buscar
                         </button>
                     </form>
@@ -198,7 +199,7 @@ export default function Home() {
                 <div className="container">
                     <div className="flex justify-between items-center mb-8">
                         <h2 className="text-2xl font-bold">
-                            <LucideIcons.MapPin size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem', color: 'var(--accent-400)' }} />
+                            <MapPin size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem', color: 'var(--accent-400)' }} />
                             Próximos a você
                         </h2>
                         <Link to="/buscar" className="btn btn-outline btn-sm">
@@ -246,7 +247,7 @@ export default function Home() {
                             <div key={i} className="card" style={{ padding: '1.5rem' }}>
                                 <div className="flex gap-1 mb-3">
                                     {[1, 2, 3, 4, 5].map(star => (
-                                        <LucideIcons.Star key={star} size={16} className="text-yellow-500 fill-yellow-500" />
+                                        <Star key={star} size={16} className="text-yellow-500 fill-yellow-500" />
                                     ))}
                                 </div>
                                 <p className="text-secondary mb-4" style={{ fontStyle: 'italic' }}>"{t.text}"</p>
