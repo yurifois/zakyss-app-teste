@@ -26,7 +26,9 @@ export const toMinutes = (time) => {
 export const toTime = (minutes) =>
     `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 
-const overlaps = (startA, durA, startB, durB) => {
+// Exportada: a criação e a edição do agendamento precisam da MESMA conta
+// que desenha a tela. Cópias separadas já divergiram antes.
+export const overlaps = (startA, durA, startB, durB) => {
     const a = toMinutes(startA), b = a + durA
     const c = toMinutes(startB), d = c + (durB || 30)
     return a < d && b > c

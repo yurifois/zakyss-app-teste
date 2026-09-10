@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import Calendar from '../../components/Calendar'
-import { WEEKDAY_KEYS, getClosedWeekdays } from '../../utils/schedule'
+import { WEEKDAY_KEYS, getClosedWeekdays, toDateString } from '../../utils/schedule'
 
 const STATUS_BADGE = {
     pending: { class: 'badge-warning', label: 'Pendente' },
@@ -12,11 +12,6 @@ const STATUS_BADGE = {
     cancelled: { class: 'badge-error', label: 'Cancelado' },
     no_show: { class: 'badge-error', label: 'Não compareceu' }
 }
-
-// Monta YYYY-MM-DD a partir dos componentes locais (toISOString vira UTC e
-// pode virar o dia errado dependendo do fuso do aparelho).
-const toDateStr = (date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
 const emptyException = { isClosed: false, blockedRanges: [] }
 
@@ -61,7 +56,7 @@ export default function AdminCalendarView() {
     }
 
     const syncExceptionForm = (est, date) => {
-        const exception = est?.scheduleExceptions?.[toDateStr(date)]
+        const exception = est?.scheduleExceptions?.[toDateString(date)]
         setExceptionForm(exception
             ? { isClosed: exception.isClosed || false, blockedRanges: exception.blockedRanges || [] }
             : emptyException)
@@ -73,7 +68,7 @@ export default function AdminCalendarView() {
         setShowDayModal(true)
         setDaySchedule(null)
         try {
-            setDaySchedule(await api.getDaySchedule(admin.establishmentId, toDateStr(date)))
+            setDaySchedule(await api.getDaySchedule(admin.establishmentId, toDateString(date)))
         } catch (err) {
             console.error('Erro ao carregar horários do dia:', err)
         }
@@ -87,7 +82,7 @@ export default function AdminCalendarView() {
         .filter(([, exc]) => exc?.isClosed)
         .map(([date]) => date)
 
-    const dateStr = toDateStr(selectedDate)
+    const dateStr = toDateString(selectedDate)
     const dayAppointments = appointments
         .filter(apt => apt.date === dateStr)
         .sort((a, b) => (a.time || '').localeCompare(b.time || ''))

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toDateString } from '../utils/schedule'
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const MONTHS = [
@@ -50,7 +51,7 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
         if (disabledDays.includes(dayOfWeek)) return true
         
         // Check specific disabled dates
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        const dateStr = toDateString(date)
         if (disabledDates.includes(dateStr)) return true
 
         return false
@@ -102,7 +103,7 @@ export default function Calendar({ selectedDate, onSelectDate, disabledDays = []
 
         const isPast = !allowPastDates && date.getTime() < parsedMinDate.getTime()
         const dayOfWeek = date.getDay()
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        const dateStr = toDateString(date)
         // disabledDays/disabledDates impedem selecionar (uso do cliente); closedDays/closedDates
         // só marcam visualmente (uso do admin, que precisa poder clicar num dia fechado pra editá-lo)
         const isBlocked = disabledDays.includes(dayOfWeek) || disabledDates.includes(dateStr)

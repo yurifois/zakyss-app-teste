@@ -1,6 +1,6 @@
 // Check do motor de agenda do dia. Roda com: node server/utils/daySchedule.test.js
 import assert from 'node:assert/strict'
-import { buildDaySchedule, MOTIVOS, MOTIVOS_LONGOS } from './daySchedule.js'
+import { buildDaySchedule, overlaps, MOTIVOS, MOTIVOS_LONGOS } from './daySchedule.js'
 
 // 2026-09-10 é uma quinta-feira
 const DATE = '2026-09-10'
@@ -158,5 +158,15 @@ assert.equal(s.slots.find(x => x.time === '11:00').combo.reason, MOTIVOS.reserva
 
 // mensagem longa precisa existir também para o motivo novo
 assert.ok(MOTIVOS_LONGOS[MOTIVOS.semHorario], 'todo motivo curto precisa da versão longa')
+
+// --- sobreposição: a mesma conta usada pela tela e pela gravação ---
+// Encostar não é conflito. É a diferença entre a agenda caber e o servidor
+// recusar um horário que estava livre.
+assert.equal(overlaps('09:00', 60, '10:00', 60), false, '9-10 e 10-11 apenas se encostam')
+assert.equal(overlaps('09:00', 61, '10:00', 60), true, 'um minuto a mais já invade')
+assert.equal(overlaps('10:00', 60, '09:00', 120), true, 'o de trás pode invadir o da frente')
+assert.equal(overlaps('09:00', 60, '09:30', 30), true, 'começar no meio conflita')
+assert.equal(overlaps('09:00', 30, '10:00'), false, 'sem duração, o outro vale 30 min')
+assert.equal(overlaps('09:00', 90, '10:00'), true, 'e esses 30 min contam no conflito')
 
 console.log('✅ daySchedule: todos os casos passaram')

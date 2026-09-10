@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import Calendar from '../../components/Calendar'
-import { getClosedWeekdays } from '../../utils/schedule'
+import { getClosedWeekdays, toDateString } from '../../utils/schedule'
 
 export default function AdminAppointments() {
     const { admin } = useAuth()
@@ -170,17 +170,11 @@ export default function AdminAppointments() {
         .filter(([, exception]) => exception.isClosed)
         .map(([date]) => date)
 
-    // Monta a chave de data a partir dos componentes locais (ano/mês/dia), em vez de
-    // toISOString(), que converte para UTC e pode salvar sob a data errada dependendo
-    // do fuso horário do dispositivo — foi a causa de bloqueios "sumindo" do editor.
-    const toDateStr = (date) =>
-        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-
     const emptyHomeVisit = { active: false, startTime: '', endTime: '', area: '', fee: '', message: '' }
 
     const handleScheduleDateChange = (date) => {
         setScheduleDate(date)
-        const dateStr = toDateStr(date)
+        const dateStr = toDateString(date)
         const exception = scheduleExceptions[dateStr]
         if (exception) {
             setExceptionForm({
@@ -201,7 +195,7 @@ export default function AdminAppointments() {
         if (!admin) return
         setSavingSchedule(true)
         try {
-            const dateStr = toDateStr(scheduleDate)
+            const dateStr = toDateString(scheduleDate)
             const newExceptions = { ...scheduleExceptions }
             const hasHomeVisit = exceptionForm.homeVisit?.active
 
@@ -253,7 +247,7 @@ export default function AdminAppointments() {
     }
 
     const handleFilterByScheduleDate = () => {
-        const dateStr = toDateStr(scheduleDate)
+        const dateStr = toDateString(scheduleDate)
         setDateFilter(dateStr)
         setShowScheduleModal(false)
     }

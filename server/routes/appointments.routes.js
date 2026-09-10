@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
+import { overlaps } from '../utils/daySchedule.js'
 import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
 
 const router = Router()
@@ -237,19 +238,6 @@ router.post('/', async (req, res, next) => {
         if (totalDuration === 0) totalDuration = 30; // fallback
 
         // Helpers
-        const timeToMinutes = (t) => {
-            const [h, m] = t.split(':').map(Number)
-            return h * 60 + m
-        }
-
-        const checkOverlap = (start1, duration1, start2, duration2) => {
-            const s1 = timeToMinutes(start1)
-            const e1 = s1 + duration1
-            const s2 = timeToMinutes(start2)
-            const e2 = s2 + (duration2 || 30)
-            return s1 < e2 && e1 > s2
-        }
-
         const employeesRepo = getRepository('employees.json')
         const employees = await employeesRepo.findAll({ establishmentId: parseInt(establishmentId) })
         const isSolo = employees.length === 0
@@ -260,7 +248,7 @@ router.post('/', async (req, res, next) => {
         let finalAssignments = []
 
         if (isSolo) {
-            const hasConflict = activeAppointments.some(apt => checkOverlap(time, totalDuration, apt.time, apt.totalDuration))
+            const hasConflict = activeAppointments.some(apt => overlaps(time, totalDuration, apt.time, apt.totalDuration))
             if (hasConflict) {
                 throw new AppError('Este horário já está ocupado. Por favor, escolha outro horário.', 409)
             }
@@ -270,10 +258,10 @@ router.post('/', async (req, res, next) => {
             const availableEmployees = employees.filter(emp => {
                 return !activeAppointments.some(apt => {
                     if (!apt.assignments || apt.assignments.length === 0) {
-                        return checkOverlap(time, totalDuration, apt.time, apt.totalDuration)
+                        return overlaps(time, totalDuration, apt.time, apt.totalDuration)
                     }
                     const isAssigned = apt.assignments.some(a => a.employeeId === emp.id)
-                    return isAssigned && checkOverlap(time, totalDuration, apt.time, apt.totalDuration)
+                    return isAssigned && overlaps(time, totalDuration, apt.time, apt.totalDuration)
                 })
             })
 
@@ -494,19 +482,6 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             }
 
             // Helpers
-            const timeToMinutes = (t) => {
-                const [h, m] = t.split(':').map(Number)
-                return h * 60 + m
-            }
-
-            const checkOverlap = (start1, duration1, start2, duration2) => {
-                const s1 = timeToMinutes(start1)
-                const e1 = s1 + duration1
-                const s2 = timeToMinutes(start2)
-                const e2 = s2 + (duration2 || 30)
-                return s1 < e2 && e1 > s2
-            }
-
             const employeesRepo = getRepository('employees.json')
             const employees = await employeesRepo.findAll({ establishmentId: parseInt(existingAppointment.establishmentId) })
             const isSolo = employees.length === 0
@@ -522,7 +497,7 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             let finalAssignments = []
 
             if (isSolo) {
-                const hasConflict = activeAppointments.some(apt => checkOverlap(newTime, newTotalDuration, apt.time, apt.totalDuration))
+                const hasConflict = activeAppointments.some(apt => overlaps(newTime, newTotalDuration, apt.time, apt.totalDuration))
                 if (hasConflict) {
                     throw new AppError('Este horário já está ocupado. Por favor, escolha outro horário.', 409)
                 }
@@ -530,10 +505,10 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
                 const availableEmployees = employees.filter(emp => {
                     return !activeAppointments.some(apt => {
                         if (!apt.assignments || apt.assignments.length === 0) {
-                            return checkOverlap(newTime, newTotalDuration, apt.time, apt.totalDuration)
+                            return overlaps(newTime, newTotalDuration, apt.time, apt.totalDuration)
                         }
                         const isAssigned = apt.assignments.some(a => a.employeeId === emp.id)
-                        return isAssigned && checkOverlap(newTime, newTotalDuration, apt.time, apt.totalDuration)
+                        return isAssigned && overlaps(newTime, newTotalDuration, apt.time, apt.totalDuration)
                     })
                 })
 

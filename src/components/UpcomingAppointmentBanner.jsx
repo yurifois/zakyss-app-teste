@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CalendarIcon, X } from 'lucide-react'
 import * as api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+import { toDateString } from '../utils/schedule'
 
 export default function UpcomingAppointmentBanner() {
     const { user } = useAuth()
@@ -16,9 +17,7 @@ export default function UpcomingAppointmentBanner() {
                 const appointments = await api.getUserAppointments(user.id)
                 const confirmed = appointments.filter(a => a.status === 'confirmed')
                 
-                // Obter a data de hoje no formato YYYY-MM-DD local
-                const today = new Date()
-                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                const todayStr = toDateString(new Date())
 
                 // Filtrar os de hoje e ordenar por horário (mais cedo primeiro)
                 const todayAppointments = confirmed
