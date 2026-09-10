@@ -19,13 +19,33 @@ import { getClosedWeekdays, toDateString } from '../utils/schedule'
  * agendamento fazem exatamente a mesma pergunta: duas cópias divergiriam.
  */
 
-const Etapa = ({ titulo, subtitulo, travada, children }) => (
-    <div className="card mb-6 p-3 sm:p-6" style={travada ? { opacity: 0.65 } : undefined}>
-        <h2 className="text-lg font-semibold mb-1">{titulo}</h2>
-        {subtitulo && <p className="text-sm text-muted mb-4">{subtitulo}</p>}
-        {children}
-    </div>
-)
+/**
+ * Uma etapa do agendamento. O estado guia o olho para onde agir agora:
+ * 'ativa' acende, 'concluida' fica neutra, 'bloqueada' recua.
+ *
+ * Fundo sólido de propósito: o card padrão é translúcido e o degradê do site
+ * atravessava justamente a hora de escolher, embaralhando as cores.
+ */
+const Etapa = ({ titulo, subtitulo, estado, children }) => {
+    const ativa = estado === 'ativa'
+    return (
+        <div
+            className="mb-6 p-3 sm:p-6"
+            style={{
+                background: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-xl)',
+                border: `1px solid ${ativa ? 'var(--primary-500)' : 'var(--border-color)'}`,
+                boxShadow: ativa ? 'var(--shadow-glow)' : 'none',
+                opacity: estado === 'bloqueada' ? 0.55 : 1,
+                transition: 'box-shadow .25s ease, border-color .25s ease, opacity .25s ease'
+            }}
+        >
+            <h2 className="text-lg font-semibold mb-1">{titulo}</h2>
+            {subtitulo && <p className="text-sm text-muted mb-4">{subtitulo}</p>}
+            {children}
+        </div>
+    )
+}
 
 // Caixa de escolha usada por serviços e horários: mesma aparência para
 // disponível, escolhido e bloqueado-com-motivo.
@@ -41,9 +61,15 @@ const Opcao = ({ disponivel, escolhido, titulo, onClick, dica, children }) => (
             textAlign: 'left',
             width: '100%',
             cursor: disponivel ? 'pointer' : 'not-allowed',
-            opacity: disponivel ? 1 : 0.6,
-            border: `1px solid ${escolhido ? 'var(--primary-500)' : 'var(--border-color)'}`,
-            background: escolhido ? 'rgba(236, 72, 153, 0.12)' : disponivel ? 'transparent' : 'var(--secondary-500)'
+            // Bloqueado recua com cor, não com opacidade: opacidade sobre um
+            // fundo colorido apaga o texto e some com o motivo.
+            background: escolhido
+                ? 'rgba(236, 72, 153, 0.18)'
+                : disponivel ? 'var(--secondary-500)' : 'var(--bg-primary)',
+            border: `1px solid ${escolhido ? 'var(--primary-500)' : disponivel ? 'var(--border-color)' : 'transparent'}`,
+            color: disponivel ? 'var(--text-primary)' : 'var(--text-muted)',
+            boxShadow: escolhido ? 'var(--shadow-glow)' : 'none',
+            transition: 'background .2s ease, border-color .2s ease'
         }}
     >
         {titulo}
@@ -52,7 +78,7 @@ const Opcao = ({ disponivel, escolhido, titulo, onClick, dica, children }) => (
 )
 
 const Motivo = ({ texto }) => (
-    <div className="text-xs mt-1" style={{ color: 'var(--error-500)', lineHeight: 1.35, wordBreak: 'break-word' }}>
+    <div className="text-xs mt-1" style={{ color: '#fca5a5', lineHeight: 1.35, wordBreak: 'break-word' }}>
         ⛔ {texto}
     </div>
 )
@@ -166,9 +192,15 @@ export default function EscolhaAgenda({
     const duracaoTotal = services.reduce((soma, s) => soma + (s.duration || 0), 0)
     const algumHorarioServe = slots.some(s => s.combo?.available)
 
+    // Qual etapa pede ação agora. É ela que acende; as anteriores ficam
+    // neutras e as seguintes recuam.
+    const etapaAtual = !dateStr ? 1 : services.length === 0 ? 2 : !time ? 3 : 0
+    const estadoDa = (n, liberada) =>
+        etapaAtual === n ? 'ativa' : liberada ? 'concluida' : 'bloqueada'
+
     return (
         <>
-            <Etapa titulo="📅 1. Escolha a data">
+            <Etapa titulo="📅 1. Escolha a data" estado={estadoDa(1, true)}>
                 <Calendar
                     selectedDate={date}
                     onSelectDate={onDateChange}
@@ -182,7 +214,7 @@ export default function EscolhaAgenda({
             <Etapa
                 titulo="✨ 2. Escolha o serviço"
                 subtitulo={dateStr ? 'Serviços em cinza não têm horário livre neste dia' : 'Escolha a data primeiro'}
-                travada={!dateStr}
+                estado={estadoDa(2, !!dateStr)}
             >
                 {!dateStr ? (
                     <p className="text-muted text-center py-4">🔒 Selecione um dia no calendário para ver os serviços.</p>
@@ -228,7 +260,7 @@ export default function EscolhaAgenda({
                 subtitulo={services.length > 0
                     ? `Horários que comportam os ${duracaoTotal} min escolhidos`
                     : 'Escolha o serviço primeiro'}
-                travada={services.length === 0}
+                estado={estadoDa(3, services.length > 0)}
             >
                 {services.length === 0 ? (
                     <p className="text-muted text-center py-4">🔒 Escolha um serviço acima para ver os horários.</p>

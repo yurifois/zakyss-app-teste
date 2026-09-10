@@ -7,10 +7,16 @@ import EscolhaAgenda from '../components/EscolhaAgenda'
 import { toDateString } from '../utils/schedule'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import { ArrowLeft, Star, MapPin, X } from 'lucide-react'
-const Passo = ({ numero, rotulo, valor }) => (
+// Chip de progresso. O da etapa atual acende junto com a seção correspondente.
+const Passo = ({ numero, rotulo, valor, ativo }) => (
     <span
         className="badge"
-        style={{ opacity: valor ? 1 : 0.5, border: `1px solid ${valor ? 'var(--primary-500)' : 'var(--border-color)'}` }}
+        style={{
+            background: valor ? 'rgba(236, 72, 153, 0.15)' : 'var(--secondary-500)',
+            color: valor ? 'var(--text-primary)' : 'var(--text-muted)',
+            border: `1px solid ${ativo ? 'var(--primary-500)' : 'transparent'}`,
+            boxShadow: ativo ? 'var(--shadow-glow)' : 'none'
+        }}
     >
         {valor ? '✓' : numero} {rotulo}{valor ? `: ${valor}` : ''}
     </span>
@@ -74,6 +80,9 @@ export default function Establishment() {
         // a etapa 3 já entrega nome, preço e duração de cada serviço
         return selectedServices
     }
+
+    // Mesma conta que o componente das etapas usa para acender a seção certa
+    const etapaAtual = !bookingDate ? 1 : selectedServices.length === 0 ? 2 : !bookingTime ? 3 : 0
 
     const getTotalPrice = () => {
         return getSelectedServicesData().reduce((sum, s) => sum + s.price, 0)
@@ -186,9 +195,9 @@ export default function Establishment() {
                     horário dá pra saber quais serviços cabem na agenda. */}
                 <h2 className="text-xl font-bold mb-3">Agende seu horário</h2>
                 <div className="flex flex-wrap gap-2 mb-4">
-                    <Passo numero="1" rotulo="Dia" valor={bookingDate ? new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR') : null} />
-                    <Passo numero="2" rotulo="Serviço" valor={selectedServices.length > 0 ? `${selectedServices.length} escolhido(s)` : null} />
-                    <Passo numero="3" rotulo="Horário" valor={bookingTime} />
+                    <Passo ativo={etapaAtual === 1} numero="1" rotulo="Dia" valor={bookingDate ? new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR') : null} />
+                    <Passo ativo={etapaAtual === 2} numero="2" rotulo="Serviço" valor={selectedServices.length > 0 ? `${selectedServices.length} escolhido(s)` : null} />
+                    <Passo ativo={etapaAtual === 3} numero="3" rotulo="Horário" valor={bookingTime} />
                 </div>
 
                 <EscolhaAgenda
@@ -239,7 +248,7 @@ export default function Establishment() {
                         <button
                             onClick={handleBooking}
                             disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
-                            className="btn btn-primary btn-lg w-full"
+                            className={`btn btn-lg w-full ${bookingTime ? 'btn-primary' : 'btn-secondary'}`}
                         >
                             {!bookingTime ? 'Escolha o horário' : 'Continuar agendamento'}
                         </button>

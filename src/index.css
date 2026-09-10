@@ -156,6 +156,11 @@
   --text-muted: #6b6588;
   --border-color: rgba(139, 92, 246, 0.15);
   --border-color-hover: rgba(236, 72, 153, 0.3);
+
+  /* Superfície interna (blocos dentro de um card). Estava sendo usada em 12
+     telas sem nunca ter sido definida: background inválido é ignorado, então
+     esses blocos ficavam transparentes e o degradê do fundo atravessava. */
+  --secondary-500: #1a1545;
 }
 
 /* Base Styles */
