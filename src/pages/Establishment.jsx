@@ -7,6 +7,15 @@ import EscolhaAgenda from '../components/EscolhaAgenda'
 import { toDateString } from '../utils/schedule'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import { ArrowLeft, Star, MapPin, X } from 'lucide-react'
+const Passo = ({ numero, rotulo, valor }) => (
+    <span
+        className="badge"
+        style={{ opacity: valor ? 1 : 0.5, border: `1px solid ${valor ? 'var(--primary-500)' : 'var(--border-color)'}` }}
+    >
+        {valor ? '✓' : numero} {rotulo}{valor ? `: ${valor}` : ''}
+    </span>
+)
+
 export default function Establishment() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -137,169 +146,159 @@ export default function Establishment() {
                     <ArrowLeft size={16} />
                     Voltar
                 </button>
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Main Content */}
-                    <div className="lg:col-span-2">
-                        {/* Header Image */}
-                        <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', marginBottom: '2rem' }}>
-                            <img
-                                src={getImageUrl(establishment.image)}
-                                alt={establishment.name}
-                                style={{ width: '100%', height: '300px', objectFit: 'cover' }}
-                            />
+                {/* Identidade enxuta de propósito: o primeiro passo do
+                    agendamento precisa aparecer sem o cliente rolar a tela. */}
+                <div className="card mb-6" style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <img
+                        src={getImageUrl(establishment.image)}
+                        alt={establishment.name}
+                        style={{ width: '96px', height: '96px', objectFit: 'cover', borderRadius: '0.75rem', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                        <h1 className="text-2xl font-bold mb-1" style={{ wordBreak: 'break-word' }}>{establishment.name}</h1>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">
+                            <span className="flex items-center gap-1">
+                                <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                                <strong>{establishment.rating}</strong>
+                                <span className="text-muted">({establishment.reviewCount})</span>
+                                <button
+                                    onClick={handleOpenReviews}
+                                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', color: 'var(--primary-400)' }}
+                                >
+                                    Ver avaliações
+                                </button>
+                            </span>
+                            <span className="flex items-center gap-1" style={{ minWidth: 0 }}>
+                                <MapPin size={16} className="text-primary" />
+                                {establishment.address}
+                            </span>
                         </div>
-
-                        {/* Info */}
-                        <div className="mb-8">
-                            <h1 className="text-3xl font-bold mb-2">{establishment.name}</h1>
-                            <div className="flex flex-wrap items-center gap-6 text-secondary mb-6">
-                                <span className="flex items-center gap-2">
-                                    <Star size={20} className="text-yellow-500 fill-yellow-500" />
-                                    <strong>{establishment.rating}</strong>
-                                    <span className="text-muted">({establishment.reviewCount} avaliações)</span>
-                                    <button
-                                        onClick={handleOpenReviews}
-                                        style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', color: 'var(--primary-400)' }}
-                                    >
-                                        Ver avaliações
-                                    </button>
-                                </span>
-                                <span className="flex items-center gap-2">
-                                    <MapPin size={20} className="text-primary" />
-                                    {establishment.address}
-                                </span>
-                            </div>
-
-                            {(establishment.accessible || establishment.parking) && (
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {establishment.accessible && <span className="badge">♿ Acessível</span>}
-                                    {establishment.parking && <span className="badge">🅿️ Estacionamento</span>}
-                                </div>
-                            )}
-
-                            <p className="text-secondary mb-4">{establishment.description}</p>
-
-                            <EstablishmentLocationCard establishment={establishment} />
-                        </div>
-
-                        {/* As três escolhas na ordem que a agenda exige: dia,
-                            horário e só então serviço. Antes o serviço vinha
-                            primeiro, então nada podia ser validado contra a
-                            agenda — dava pra escolher o que não cabia. */}
-                        <div className="mb-8">
-                            <h2 className="text-xl font-bold mb-4">Agende seu horário</h2>
-                            <EscolhaAgenda
-                                establishmentId={id}
-                                establishment={establishment}
-                                servicosVitrine={services}
-                                date={bookingDate}
-                                onDateChange={setBookingDate}
-                                time={bookingTime}
-                                onTimeChange={setBookingTime}
-                                services={selectedServices}
-                                onServicesChange={setSelectedServices}
-                                onServicoRemovido={(nomes, horario) =>
-                                    error(`${nomes} não cabe no horário ${horario}. Escolha outro serviço ou horário.`)}
-                            />
-                        </div>
-
-                        {/* Service Images Gallery */}
-                        {establishment.serviceImages && establishment.serviceImages.length > 0 && (
-                            <div className="mb-8">
-                                <h2 className="text-xl font-bold mb-4">Galeria de Serviços</h2>
-                                <div className="service-images-gallery">
-                                    {establishment.serviceImages.map((img, index) => (
-                                        <div
-                                            key={index}
-                                            className="service-image-item"
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => setExpandedImage(img)}
-                                        >
-                                            <img src={getImageUrl(img)} alt={`Serviço ${index + 1}`} />
-                                        </div>
-                                    ))}
-                                </div>
+                        {(establishment.accessible || establishment.parking) && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {establishment.accessible && <span className="badge">♿ Acessível</span>}
+                                {establishment.parking && <span className="badge">🅿️ Estacionamento</span>}
                             </div>
                         )}
-
-
-                    </div>
-
-                    {/* Booking Sidebar */}
-                    <div>
-                        <div className="card" style={{ padding: '1.5rem', position: 'sticky', top: '5rem' }}>
-                            <h3 className="text-lg font-bold mb-4">Resumo do agendamento</h3>
-
-                            {(bookingDate || bookingTime) && (
-                                <div className="text-sm mb-4" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-                                    {bookingDate && <div>📅 {new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR')}</div>}
-                                    {bookingTime && <div>🕐 {bookingTime}</div>}
-                                </div>
-                            )}
-
-                            {selectedServices.length === 0 ? (
-                                <p className="text-muted text-center py-8">
-                                    Siga as etapas ao lado: primeiro o dia, depois o horário
-                                    e só então o serviço.
-                                </p>
-                            ) : (
-                                <>
-                                    <div className="mb-4">
-                                        {getSelectedServicesData().map(service => {
-                                            const qualifiedEmployees = getQualifiedEmployees(service.id)
-                                            return (
-                                                <div key={service.id} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
-                                                    <div className="flex justify-between">
-                                                        <span>{service.name}</span>
-                                                        <span>R$ {service.price.toFixed(2)}</span>
-                                                    </div>
-                                                    {/* Employee Selection */}
-                                                    <div className="mt-2">
-                                                        <select
-                                                            className="form-select"
-                                                            style={{ fontSize: '0.875rem', padding: '0.4rem 0.75rem' }}
-                                                            value={employeePreferences[service.id] || ''}
-                                                            onChange={(e) => setEmployeeForService(service.id, e.target.value)}
-                                                        >
-                                                            <option value="">👤 Qualquer funcionário</option>
-                                                            {qualifiedEmployees.length > 0 ? (
-                                                                qualifiedEmployees.map(emp => (
-                                                                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                                                                ))
-                                                            ) : (
-                                                                <option disabled>Sem funcionários qualificados</option>
-                                                            )}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-
-                                    <div className="flex justify-between font-bold mb-2">
-                                        <span>Total</span>
-                                        <span className="text-gradient">R$ {getTotalPrice().toFixed(2)}</span>
-                                    </div>
-                                    <div className="text-sm text-muted mb-4">
-                                        Duração estimada: {getTotalDuration()} min
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Só libera quando as três etapas foram cumpridas */}
-                            <button
-                                onClick={handleBooking}
-                                disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
-                                className="btn btn-primary btn-lg w-full"
-                            >
-                                {!bookingDate ? 'Escolha o dia'
-                                    : !bookingTime ? 'Escolha o horário'
-                                    : selectedServices.length === 0 ? 'Escolha o serviço'
-                                    : 'Continuar agendamento'}
-                            </button>
-                        </div>
                     </div>
                 </div>
+
+                {/* O agendamento é o conteúdo principal da página. As três
+                    etapas destravam em ordem porque só depois do dia e do
+                    horário dá pra saber quais serviços cabem na agenda. */}
+                <h2 className="text-xl font-bold mb-3">Agende seu horário</h2>
+                <div className="flex flex-wrap gap-2 mb-4">
+                    <Passo numero="1" rotulo="Dia" valor={bookingDate ? new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR') : null} />
+                    <Passo numero="2" rotulo="Horário" valor={bookingTime} />
+                    <Passo numero="3" rotulo="Serviço" valor={selectedServices.length > 0 ? `${selectedServices.length} escolhido(s)` : null} />
+                </div>
+
+                <EscolhaAgenda
+                    establishmentId={id}
+                    establishment={establishment}
+                    servicosVitrine={services}
+                    date={bookingDate}
+                    onDateChange={setBookingDate}
+                    time={bookingTime}
+                    onTimeChange={setBookingTime}
+                    services={selectedServices}
+                    onServicesChange={setSelectedServices}
+                    onServicoRemovido={(nomes, horario) =>
+                        error(`${nomes} não cabe no horário ${horario}. Escolha outro serviço ou horário.`)}
+                />
+
+                {/* Resumo só existe depois que há escolha: a página não abre
+                    com uma caixa explicando o que o cliente tem que fazer. */}
+                {bookingDate && (
+                    <div className="card mb-8 p-3 sm:p-6">
+                        <h3 className="text-lg font-bold mb-3">Resumo</h3>
+                        <div className="text-sm mb-3">
+                            <div>📅 {new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR')}</div>
+                            {bookingTime && <div>🕐 {bookingTime}</div>}
+                        </div>
+
+                        {selectedServices.length > 0 && (
+                            <>
+                                <div className="mb-3">
+                                    {getSelectedServicesData().map(service => {
+                                        const qualifiedEmployees = getQualifiedEmployees(service.id)
+                                        return (
+                                            <div key={service.id} style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                                                <div className="flex justify-between gap-3">
+                                                    <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{service.name}</span>
+                                                    <span style={{ flexShrink: 0 }}>R$ {Number(service.price || 0).toFixed(2)}</span>
+                                                </div>
+                                                <div className="mt-2">
+                                                    <select
+                                                        className="form-select"
+                                                        style={{ fontSize: '0.875rem', padding: '0.4rem 0.75rem' }}
+                                                        value={employeePreferences[service.id] || ''}
+                                                        onChange={(e) => setEmployeeForService(service.id, e.target.value)}
+                                                    >
+                                                        <option value="">👤 Qualquer funcionário</option>
+                                                        {qualifiedEmployees.length > 0 ? (
+                                                            qualifiedEmployees.map(emp => (
+                                                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                                            ))
+                                                        ) : (
+                                                            <option disabled>Sem funcionários qualificados</option>
+                                                        )}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                <div className="flex justify-between font-bold mb-1">
+                                    <span>Total</span>
+                                    <span className="text-gradient">R$ {getTotalPrice().toFixed(2)}</span>
+                                </div>
+                                <div className="text-sm text-muted mb-4">
+                                    Duração estimada: {getTotalDuration()} min
+                                </div>
+                            </>
+                        )}
+
+                        {/* Só libera quando as três etapas foram cumpridas */}
+                        <button
+                            onClick={handleBooking}
+                            disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
+                            className="btn btn-primary btn-lg w-full"
+                        >
+                            {!bookingTime ? 'Escolha o horário'
+                                : selectedServices.length === 0 ? 'Escolha o serviço'
+                                : 'Continuar agendamento'}
+                        </button>
+                    </div>
+                )}
+
+                {/* Informações do estabelecimento vêm depois do agendamento:
+                    quem chega nesta página quer marcar horário. */}
+                {establishment.description && (
+                    <div className="mb-8">
+                        <h2 className="text-xl font-bold mb-3">Sobre</h2>
+                        <p className="text-secondary mb-4">{establishment.description}</p>
+                        <EstablishmentLocationCard establishment={establishment} />
+                    </div>
+                )}
+
+                {establishment.serviceImages && establishment.serviceImages.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="text-xl font-bold mb-4">Galeria de Serviços</h2>
+                        <div className="service-images-gallery">
+                            {establishment.serviceImages.map((img, index) => (
+                                <div
+                                    key={index}
+                                    className="service-image-item"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => setExpandedImage(img)}
+                                >
+                                    <img src={getImageUrl(img)} alt={`Serviço ${index + 1}`} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Lightbox: expande a imagem clicada da galeria */}

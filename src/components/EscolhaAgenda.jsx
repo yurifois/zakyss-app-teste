@@ -56,6 +56,7 @@ export default function EscolhaAgenda({
     // resto; ao voltar, o estabelecimento pode ter bloqueado o horário nesse
     // meio tempo. Recarrega a agenda ao reaparecer.
     const [versao, setVersao] = useState(0)
+    const [verPrecos, setVerPrecos] = useState(false)
     useEffect(() => {
         const aoVoltar = () => { if (document.visibilityState === 'visible') setVersao(v => v + 1) }
         document.addEventListener('visibilitychange', aoVoltar)
@@ -177,10 +178,23 @@ export default function EscolhaAgenda({
                     : 'Escolha o horário primeiro — estes são os preços do estabelecimento'}
                 travada={!currentSlot}
             >
+                {/* Sem horário escolhido a lista fica fechada: serviço exposto
+                    antes do dia é justamente a ordem que este fluxo desfaz. A
+                    tabela de preços continua a um clique pra quem só quer
+                    consultar quanto custa. */}
                 {!currentSlot && (
-                    <p className="text-muted text-sm mb-3">🔒 Selecione um horário acima para liberar a escolha.</p>
+                    <div className="mb-1">
+                        <p className="text-muted text-sm mb-3">🔒 Escolha um horário acima para liberar os serviços.</p>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setVerPrecos(v => !v)}
+                        >
+                            {verPrecos ? 'Ocultar tabela de preços' : 'Ver tabela de preços'}
+                        </button>
+                    </div>
                 )}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2" hidden={!currentSlot && !verPrecos}>
                     {listaServicos.map(item => {
                         const escolhido = services.some(s => s.id === item.id)
                         return (
