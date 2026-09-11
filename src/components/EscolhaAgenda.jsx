@@ -204,7 +204,7 @@ export default function EscolhaAgenda({
                 <Calendar
                     selectedDate={date}
                     onSelectDate={onDateChange}
-                    minDate={new Date().toISOString().split('T')[0]}
+                    minDate={toDateString(new Date())}
                     disabledDays={diasFechados}
                     disabledDates={datasFechadas}
                 />

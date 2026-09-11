@@ -423,7 +423,7 @@ export default function AdminAppointments() {
 
     const openNewModal = () => {
         setNewForm({
-            date: new Date().toISOString().split('T')[0],
+            date: toDateString(new Date()),
             time: '',
             services: [],
             customerName: '',
@@ -433,7 +433,7 @@ export default function AdminAppointments() {
         })
         setNewSlots([])
         setShowNewModal(true)
-        loadNewSlots(new Date().toISOString().split('T')[0])
+        loadNewSlots(toDateString(new Date()))
     }
 
     const loadNewSlots = async (date) => {
@@ -1089,7 +1089,7 @@ export default function AdminAppointments() {
                                     className="form-input"
                                     value={newForm.date}
                                     onChange={handleNewFormChange}
-                                    min={new Date().toISOString().split('T')[0]}
+                                    min={toDateString(new Date())}
                                 />
                             </div>
                             <div className="form-group">

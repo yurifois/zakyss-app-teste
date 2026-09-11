@@ -1,6 +1,6 @@
 // Check do motor de agenda do dia. Roda com: node server/utils/daySchedule.test.js
 import assert from 'node:assert/strict'
-import { buildDaySchedule, overlaps, MOTIVOS, MOTIVOS_LONGOS } from './daySchedule.js'
+import { buildDaySchedule, overlaps, agoraNoFuso, MOTIVOS, MOTIVOS_LONGOS } from './daySchedule.js'
 
 // 2026-09-10 é uma quinta-feira
 const DATE = '2026-09-10'
@@ -168,5 +168,36 @@ assert.equal(overlaps('10:00', 60, '09:00', 120), true, 'o de trás pode invadir
 assert.equal(overlaps('09:00', 60, '09:30', 30), true, 'começar no meio conflita')
 assert.equal(overlaps('09:00', 30, '10:00'), false, 'sem duração, o outro vale 30 min')
 assert.equal(overlaps('09:00', 90, '10:00'), true, 'e esses 30 min contam no conflito')
+
+// --- horário que já passou ---
+// Bug relatado: dava pra agendar às 8h quando já eram quase 10h. O dia
+// anterior era bloqueado pelo calendário, mas o dia de hoje vinha inteiro.
+const hoje = { date: DATE, time: '10:30' }
+s = buildDaySchedule({ date: DATE, workingHours, services, employees, now: hoje })
+assert.equal(at('09:00').status, 'passou', '9h com 10h30 no relógio já passou')
+assert.equal(at('09:00').reason, MOTIVOS.passou)
+assert.equal(at('10:00').status, 'passou', '10h com 10h30 no relógio também passou')
+assert.equal(at('11:00').status, 'disponivel', '11h ainda está à frente')
+assert.equal(at('09:00').services.every(x => !x.available), true, 'nenhum serviço cabe num horário vencido')
+
+// a borda: o horário exatamente igual ao relógio não serve mais
+s = buildDaySchedule({ date: DATE, workingHours, services, employees, now: { date: DATE, time: '11:00' } })
+assert.equal(at('11:00').status, 'passou', 'começar exatamente agora não é agendável')
+assert.equal(at('12:00').reason, MOTIVOS.almoco, 'e o resto do dia mantém os motivos normais')
+
+// dia futuro não tem horário vencido, por mais tarde que seja agora
+s = buildDaySchedule({ date: DATE, workingHours, services, employees, now: { date: '2026-09-09', time: '23:59' } })
+assert.equal(at('09:00').status, 'disponivel', 'dia à frente vem inteiro')
+
+// e o serviço some da etapa 2 se todos os horários dele já passaram
+s = buildDaySchedule({ date: DATE, workingHours, services, employees, now: { date: DATE, time: '11:30' } })
+assert.equal(s.resumoServicos.find(x => x.id === 1).available, false, 'sobrou só o almoço: corte não tem mais horário hoje')
+
+// relógio real: devolve data e hora em texto comparável
+const agora = agoraNoFuso()
+assert.match(agora.date, /^\d{4}-\d{2}-\d{2}$/, 'data em YYYY-MM-DD')
+assert.match(agora.time, /^([01]\d|2[0-3]):[0-5]\d$/, 'hora em HH:mm de 00 a 23')
+
+assert.ok(MOTIVOS_LONGOS[MOTIVOS.passou], 'todo motivo curto precisa da versão longa')
 
 console.log('✅ daySchedule: todos os casos passaram')

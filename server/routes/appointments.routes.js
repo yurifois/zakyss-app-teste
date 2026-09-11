@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
-import { overlaps } from '../utils/daySchedule.js'
+import { overlaps, agoraNoFuso } from '../utils/daySchedule.js'
 import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
 
 const router = Router()
@@ -181,6 +181,14 @@ router.post('/', async (req, res, next) => {
             if (scheduleException.blockedRanges?.some(range => time >= range.start && time < range.end)) {
                 throw new AppError('Este horário foi bloqueado pelo estabelecimento. Por favor, escolha outro horário.', 409)
             }
+        }
+
+        // Horário que já passou. O calendário bloqueia o dia anterior, mas o
+        // dia de hoje vinha inteiro — dava pra marcar às 8h com 10h no relógio.
+        // O admin segue livre: registrar atendimento já feito é uso legítimo.
+        const agora = agoraNoFuso()
+        if (!isAuthenticatedAdminRequest(req) && date === agora.date && time <= agora.time) {
+            throw new AppError('Este horário já passou. Por favor, escolha um horário mais tarde ou outro dia.', 409)
         }
 
         // Encaixe feito pelo próprio admin pode ser fora do expediente (é o

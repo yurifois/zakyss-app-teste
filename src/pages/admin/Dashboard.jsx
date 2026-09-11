@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { toDateString } from '../../utils/schedule'
 
 export default function AdminDashboard() {
     const { admin, adminLogout } = useAuth()
@@ -42,7 +43,7 @@ export default function AdminDashboard() {
             setAppointments(enriched)
 
             // Filter today's appointments (incluindo cancelados para visibilidade e reativação)
-            const today = new Date().toISOString().split('T')[0]
+            const today = toDateString(new Date())
             const todayApts = enriched
                 .filter(apt => apt.date === today)
                 .sort((a, b) => a.time.localeCompare(b.time))
@@ -51,7 +52,7 @@ export default function AdminDashboard() {
             // Calculate stats
             const weekAgo = new Date()
             weekAgo.setDate(weekAgo.getDate() - 7)
-            const weekAgoStr = weekAgo.toISOString().split('T')[0]
+            const weekAgoStr = toDateString(weekAgo)
 
             setStats({
                 today: todayApts.length,

@@ -15,6 +15,25 @@
 // continua ocupando: o atendimento aconteceu ali. Esta é a mesma regra da
 // criação e da edição do agendamento — se a tela usasse uma regra mais
 // frouxa, ela ofereceria horário que o servidor recusa na hora de salvar.
+export const FUSO_PADRAO = 'America/Sao_Paulo'
+
+/**
+ * Data e hora de agora no fuso do estabelecimento, em texto comparável.
+ *
+ * Não usa new Date() direto porque o servidor roda em UTC no Render: "15:00"
+ * seria lido como 15:00 UTC, ou seja, meio-dia em Brasília — três horas de
+ * erro justamente na conta que decide se o horário já passou.
+ */
+export function agoraNoFuso(tz = FUSO_PADRAO) {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(new Date())
+    const p = Object.fromEntries(partes.map(x => [x.type, x.value]))
+    return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` }
+}
+
 const FREEING_STATUSES = ['cancelled', 'no_show']
 const occupies = (status) => !FREEING_STATUSES.includes(status)
 
@@ -49,6 +68,7 @@ export const MOTIVOS = {
     ultrapassa: 'Ultrapassa a agenda do estabelecimento',
     semProfissional: 'Nenhum profissional disponível',
     semHorario: 'Sem horário livre neste dia',
+    passou: 'Horário já passou',
     disponivel: null
 }
 
@@ -60,7 +80,8 @@ export const MOTIVOS_LONGOS = {
     [MOTIVOS.ultrapassa]: 'Não é possível agendar esse serviço nesse horário por ultrapassar a agenda do estabelecimento.',
     [MOTIVOS.semProfissional]: 'Nenhum profissional habilitado neste serviço está livre neste horário.',
     [MOTIVOS.semServico]: 'Nenhum serviço cadastrado cabe neste horário.',
-    [MOTIVOS.semHorario]: 'Não sobrou nenhum horário neste dia que comporte a duração deste serviço.'
+    [MOTIVOS.semHorario]: 'Não sobrou nenhum horário neste dia que comporte a duração deste serviço.',
+    [MOTIVOS.passou]: 'Este horário já passou. Escolha um horário mais tarde ou outro dia.'
 }
 
 export function buildDaySchedule({
@@ -72,6 +93,7 @@ export function buildDaySchedule({
     services = [],
     servicePreferences = {},
     comboServiceIds = [],
+    now = agoraNoFuso(),
     slotStepMinutes = 60
 }) {
     const weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
@@ -96,6 +118,9 @@ export function buildDaySchedule({
     const closeMin = toMinutes(hours.close)
     const slots = []
 
+    // Só o dia de hoje tem horário vencido; dias futuros estão todos à frente
+    const jaPassou = (time) => !!now && date === now.date && time <= now.time
+
     const livresPara = (time, duracao) => employees.filter(emp => !active.some(apt => {
         const semDono = !apt.assignments || apt.assignments.length === 0
         const desteEmp = !semDono && apt.assignments.some(a => a.employeeId === emp.id)
@@ -116,6 +141,9 @@ export function buildDaySchedule({
     const avaliar = (m, time, duration, serviceIds) => {
         const deny = (reason) => ({ available: false, reason })
         const ok = { available: true, reason: null }
+
+        // Horário que já passou não é agendável, nem que a agenda esteja vazia
+        if (jaPassou(time)) return deny(MOTIVOS.passou)
 
         if (m + duration > closeMin) return deny(MOTIVOS.expediente)
 
@@ -177,7 +205,8 @@ export function buildDaySchedule({
             const startsBlocked = blockedRanges.some(r => time >= r.start && time < r.end)
             const takenNow = active.some(apt => overlaps(time, slotStepMinutes, apt.time, apt.totalDuration))
 
-            if (startsInLunch) { status = 'almoco'; reason = MOTIVOS.almoco }
+            if (jaPassou(time)) { status = 'passou'; reason = MOTIVOS.passou }
+            else if (startsInLunch) { status = 'almoco'; reason = MOTIVOS.almoco }
             else if (startsBlocked) { status = 'fechado'; reason = MOTIVOS.fechado }
             else if (takenNow) { status = 'reservado'; reason = MOTIVOS.reservado }
             else { status = 'indisponivel'; reason = MOTIVOS.semServico }
