@@ -356,6 +356,13 @@ export async function addClientNote(data) {
     })
 }
 
+export async function updateClientNote(id, data) {
+    return request(`/client-notes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    })
+}
+
 export async function deleteClientNote(id) {
     return request(`/client-notes/${id}`, { method: 'DELETE' })
 }

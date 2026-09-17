@@ -4,6 +4,21 @@ import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 import Calendar from '../../components/Calendar'
 import { getClosedWeekdays, toDateString } from '../../utils/schedule'
+import ClientNotesModal from '../../components/ClientNotesModal'
+
+// Mesma chave usada no backend pra agrupar a ficha do cliente:
+// telefone só com dígitos, ou email como fallback.
+const clientKeyOf = (apt) =>
+    (apt.customerPhone || '').replace(/\D/g, '') || `email:${(apt.customerEmail || '').toLowerCase()}`
+
+// Prévia curta da anotação mais recente, pra dar contexto sem abrir o card.
+const notePreview = (note) => {
+    if (!note) return ''
+    const text = (note.note || '').trim()
+    if (text) return text.length > 70 ? `${text.slice(0, 70)}...` : text
+    if (note.flags?.length) return `${note.flags.length} marcação(ões) registrada(s)`
+    return 'Anotação registrada'
+}
 
 export default function AdminAppointments() {
     const { admin } = useAuth()
@@ -16,6 +31,11 @@ export default function AdminAppointments() {
     const [dateFilter, setDateFilter] = useState('')
     const [expandedAptId, setExpandedAptId] = useState(null)
     const [anamnesisByApt, setAnamnesisByApt] = useState({}) // cache: { [appointmentId]: respostas[] }
+
+    // Anotações do cliente abertas a partir do card do agendamento
+    const [notesTarget, setNotesTarget] = useState(null)
+    const [notesByClient, setNotesByClient] = useState({}) // cache: { [clientKey]: anotacoes[] }
+    const [loadingNotesKey, setLoadingNotesKey] = useState(null)
 
     // Modal de edição
     const [editingAppointment, setEditingAppointment] = useState(null)
@@ -242,6 +262,21 @@ export default function AdminAppointments() {
                 setAnamnesisByApt(prev => ({ ...prev, [apt.id]: responses }))
             } catch (err) {
                 console.error('Erro ao carregar ficha de anamnese:', err)
+            }
+        }
+
+        // Anotações do cliente: uma busca por cliente, guardada em cache, pra
+        // a área do card já abrir mostrando quantas existem e a mais recente.
+        const key = clientKeyOf(apt)
+        if (opening && key && !notesByClient[key]) {
+            setLoadingNotesKey(key)
+            try {
+                const notes = await api.getClientNotes(key)
+                setNotesByClient(prev => ({ ...prev, [key]: notes || [] }))
+            } catch (err) {
+                console.error('Erro ao carregar anotações do cliente:', err)
+            } finally {
+                setLoadingNotesKey(null)
             }
         }
     }
@@ -742,6 +777,51 @@ export default function AdminAppointments() {
                                     </div>
                                     <div className="text-xs text-muted mt-2">Duração: {apt.totalDuration} min</div>
                                 </div>
+
+                                {/* Área de anotações do procedimento. Clique abre o card com
+                                    todas as anotações desse cliente. Privado — o cliente não vê. */}
+                                {(() => {
+                                    const notesKey = clientKeyOf(apt)
+                                    const aptNotes = notesByClient[notesKey] || []
+                                    const isLoadingNotes = loadingNotesKey === notesKey
+                                    const preview = notePreview(aptNotes[0])
+                                    return (
+                                        <div
+                                            onClick={() => setNotesTarget(apt)}
+                                            className="mb-3"
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '0.75rem',
+                                                padding: '0.75rem',
+                                                border: '1px dashed var(--border-color)',
+                                                borderRadius: '0.75rem',
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Abrir anotações deste cliente"
+                                        >
+                                            <div style={{ minWidth: 0 }}>
+                                                <div className="text-sm font-medium">
+                                                    📝 Anotações
+                                                    {!isLoadingNotes && aptNotes.length > 0 && (
+                                                        <span className="badge badge-primary text-xs" style={{ marginLeft: '0.5rem' }}>
+                                                            {aptNotes.length}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-muted" style={{ wordBreak: 'break-word' }}>
+                                                    {isLoadingNotes
+                                                        ? 'Carregando...'
+                                                        : aptNotes.length === 0
+                                                            ? 'Nenhuma anotação — clique para escrever sobre o procedimento'
+                                                            : preview}
+                                                </div>
+                                            </div>
+                                            <span className="text-secondary text-sm" style={{ flexShrink: 0 }}>Abrir ›</span>
+                                        </div>
+                                    )
+                                })()}
 
                                 {/* Footer */}
                                 <div className="flex justify-between items-center" style={{ borderTop: '1px solid var(--gray-200)', paddingTop: '0.75rem' }}>
@@ -1411,6 +1491,25 @@ export default function AdminAppointments() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Anotações do cliente, abertas pelo card do agendamento.
+                Mesma lista que aparece na ficha do cliente. */}
+            {notesTarget && (
+                <ClientNotesModal
+                    clientKey={clientKeyOf(notesTarget)}
+                    clientName={notesTarget.customerName}
+                    appointment={{
+                        id: notesTarget.id,
+                        date: notesTarget.date,
+                        serviceName: notesTarget.servicesList?.map(sv => sv.name).join(', ') || ''
+                    }}
+                    initialNotes={notesByClient[clientKeyOf(notesTarget)]}
+                    onClose={() => setNotesTarget(null)}
+                    onNotesChange={(next) =>
+                        setNotesByClient(prev => ({ ...prev, [clientKeyOf(notesTarget)]: next }))
+                    }
+                />
             )}
 
         </div>

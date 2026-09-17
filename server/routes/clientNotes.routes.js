@@ -34,7 +34,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
 router.post('/', authMiddleware, async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.user.establishmentId)
-        const { clientKey, clientName, flags, note } = req.body
+        const { clientKey, clientName, flags, note, appointmentId, serviceName, appointmentDate } = req.body
 
         if (!clientKey) throw new AppError('clientKey é obrigatório', 400)
         const cleanFlags = Array.isArray(flags) ? flags.filter(f => FLAGS.includes(f)) : []
@@ -42,12 +42,18 @@ router.post('/', authMiddleware, async (req, res, next) => {
             throw new AppError('Selecione ao menos uma marcação ou escreva uma observação', 400)
         }
 
+        // Contexto do procedimento: quando a anotação nasce dentro de um
+        // agendamento, guarda de qual atendimento ela veio. Campos opcionais —
+        // anotação solta pela ficha do cliente continua funcionando sem eles.
         const entry = await clientNotesRepo.create({
             establishmentId,
             clientKey,
             clientName: clientName || '',
             flags: cleanFlags,
             note: note?.trim() || '',
+            appointmentId: appointmentId ? parseInt(appointmentId) : null,
+            serviceName: serviceName || '',
+            appointmentDate: appointmentDate || '',
             createdByName: req.user?.name || 'Admin'
         })
 
@@ -57,11 +63,33 @@ router.post('/', authMiddleware, async (req, res, next) => {
     }
 })
 
+router.put('/:id', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.user.establishmentId)
+        const existing = await clientNotesRepo.findById(req.params.id)
+        if (!existing || parseInt(existing.establishmentId) !== establishmentId) {
+            throw new AppError('Registro não encontrado', 404)
+        }
+
+        const { flags, note } = req.body
+        const cleanFlags = Array.isArray(flags) ? flags.filter(f => FLAGS.includes(f)) : (existing.flags || [])
+        const cleanNote = note !== undefined ? (note?.trim() || '') : (existing.note || '')
+        if (cleanFlags.length === 0 && !cleanNote) {
+            throw new AppError('Selecione ao menos uma marcação ou escreva uma observação', 400)
+        }
+
+        const updated = await clientNotesRepo.update(req.params.id, { flags: cleanFlags, note: cleanNote })
+        res.json({ success: true, data: updated })
+    } catch (error) {
+        next(error)
+    }
+})
+
 router.delete('/:id', authMiddleware, async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.user.establishmentId)
         const existing = await clientNotesRepo.findById(req.params.id)
-        if (!existing || existing.establishmentId !== establishmentId) {
+        if (!existing || parseInt(existing.establishmentId) !== establishmentId) {
             throw new AppError('Registro não encontrado', 404)
         }
         await clientNotesRepo.delete(req.params.id)

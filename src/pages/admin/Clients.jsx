@@ -1,21 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
-import { useToast } from '../../contexts/ToastContext'
+import ClientNotesModal, { FLAG_LABELS } from '../../components/ClientNotesModal'
 
-const FLAG_OPTIONS = [
-    { value: 'atraso', label: '⏰ Atrasou' },
-    { value: 'falta', label: '🚫 Faltou' },
-    { value: 'cancelamento_recorrente', label: '🔁 Cancela com frequência' },
-    { value: 'pontual', label: '✅ Pontual' },
-    { value: 'comunicacao_dificil', label: '⚠️ Comunicação difícil' },
-    { value: 'boa_comunicacao', label: '💬 Boa comunicação' },
-]
-const FLAG_LABELS = Object.fromEntries(FLAG_OPTIONS.map(f => [f.value, f.label]))
+// Prévia curta da anotação mais recente, pra dar contexto sem abrir o card.
+const lastNotePreview = (note) => {
+    if (!note) return ''
+    const text = (note.note || '').trim()
+    if (text) return text.length > 60 ? `${text.slice(0, 60)}...` : text
+    if (note.flags?.length) return note.flags.map(f => FLAG_LABELS[f] || f).join(', ')
+    return 'Anotação registrada'
+}
 
 export default function AdminClients() {
     const { admin } = useAuth()
-    const { success, error } = useToast()
     const [clients, setClients] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -25,9 +23,7 @@ export default function AdminClients() {
     // normalizado, ou email como fallback — igual ao backend usa).
     const [notesByKey, setNotesByKey] = useState({})
     const [loadingNotes, setLoadingNotes] = useState(false)
-    const [newFlags, setNewFlags] = useState([])
-    const [newNoteText, setNewNoteText] = useState('')
-    const [savingNote, setSavingNote] = useState(false)
+    const [notesClient, setNotesClient] = useState(null)
 
     useEffect(() => {
         if (admin) {
@@ -56,8 +52,6 @@ export default function AdminClients() {
         const key = client.key
         const opening = expandedKey !== key
         setExpandedKey(opening ? key : null)
-        setNewFlags([])
-        setNewNoteText('')
 
         if (opening && !notesByKey[key]) {
             setLoadingNotes(true)
@@ -69,44 +63,6 @@ export default function AdminClients() {
             } finally {
                 setLoadingNotes(false)
             }
-        }
-    }
-
-    const toggleFlag = (flag) => {
-        setNewFlags(prev => prev.includes(flag) ? prev.filter(f => f !== flag) : [...prev, flag])
-    }
-
-    const handleAddNote = async (client) => {
-        if (newFlags.length === 0 && !newNoteText.trim()) {
-            error('Selecione ao menos uma marcação ou escreva uma observação')
-            return
-        }
-        setSavingNote(true)
-        try {
-            const entry = await api.addClientNote({
-                clientKey: client.key,
-                clientName: client.name,
-                flags: newFlags,
-                note: newNoteText
-            })
-            setNotesByKey(prev => ({ ...prev, [client.key]: [entry, ...(prev[client.key] || [])] }))
-            setNewFlags([])
-            setNewNoteText('')
-            success('Nota registrada!')
-        } catch (err) {
-            error(err.message || 'Erro ao registrar nota')
-        } finally {
-            setSavingNote(false)
-        }
-    }
-
-    const handleDeleteNote = async (client, noteId) => {
-        if (!confirm('Remover essa nota interna?')) return
-        try {
-            await api.deleteClientNote(noteId)
-            setNotesByKey(prev => ({ ...prev, [client.key]: prev[client.key].filter(n => n.id !== noteId) }))
-        } catch (err) {
-            error(err.message || 'Erro ao remover nota')
         }
     }
 
@@ -186,82 +142,44 @@ export default function AdminClients() {
                                             ))}
                                         </div>
 
-                                        {/* Notas internas: só o próprio estabelecimento vê, cliente nunca vê */}
-                                        <div className="pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                            <p className="text-sm font-medium mb-2">📋 Notas Internas <span className="text-xs text-muted font-normal">(privado — o cliente não vê)</span></p>
-
-                                            {loadingNotes ? (
-                                                <p className="text-sm text-muted">Carregando...</p>
-                                            ) : notes.length === 0 ? (
-                                                <p className="text-sm text-muted mb-2">Nenhuma nota registrada ainda.</p>
-                                            ) : (
-                                                <div className="flex flex-col gap-2 mb-3">
-                                                    {notes.map(n => (
-                                                        <div key={n.id} className="text-sm" style={{ padding: '0.5rem', background: 'var(--secondary-500)', borderRadius: '0.5rem' }}>
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <div>
-                                                                    {n.flags?.length > 0 && (
-                                                                        <div className="flex flex-wrap gap-1 mb-1">
-                                                                            {n.flags.map(f => (
-                                                                                <span key={f} className="text-xs" style={{ background: 'var(--primary-50)', padding: '0.1rem 0.4rem', borderRadius: '0.375rem' }}>
-                                                                                    {FLAG_LABELS[f] || f}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                    {n.note && <p>{n.note}</p>}
-                                                                    <p className="text-xs text-muted mt-1">
-                                                                        {n.createdByName} · {new Date(n.createdAt).toLocaleDateString('pt-BR')}
-                                                                    </p>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => handleDeleteNote(client, n.id)}
-                                                                    className="btn btn-ghost btn-sm"
-                                                                    style={{ color: 'var(--error-500)' }}
-                                                                    title="Remover"
-                                                                >
-                                                                    🗑️
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                        {/* Anotações: área clicável que abre o card com todas as
+                                            anotações desse cliente. Privado — o cliente não vê. */}
+                                        <div
+                                            className="pt-3"
+                                            style={{ borderTop: '1px solid var(--border-color)' }}
+                                        >
+                                            <div
+                                                onClick={() => setNotesClient(client)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    gap: '0.75rem',
+                                                    padding: '0.75rem',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '0.75rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Abrir anotações deste cliente"
+                                            >
+                                                <div style={{ minWidth: 0 }}>
+                                                    <p className="text-sm font-medium">
+                                                        📝 Anotações
+                                                        {!loadingNotes && notes.length > 0 && (
+                                                            <span className="badge badge-primary text-xs" style={{ marginLeft: '0.5rem' }}>
+                                                                {notes.length}
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-xs text-muted">
+                                                        {loadingNotes
+                                                            ? 'Carregando...'
+                                                            : notes.length === 0
+                                                                ? 'Nenhuma anotação ainda — clique para escrever'
+                                                                : lastNotePreview(notes[0])}
+                                                    </p>
                                                 </div>
-                                            )}
-
-                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                {FLAG_OPTIONS.map(f => (
-                                                    <button
-                                                        key={f.value}
-                                                        onClick={() => toggleFlag(f.value)}
-                                                        className="text-xs"
-                                                        style={{
-                                                            padding: '0.25rem 0.5rem',
-                                                            borderRadius: '0.375rem',
-                                                            border: '1px solid var(--border-color)',
-                                                            background: newFlags.includes(f.value) ? 'var(--primary-500)' : 'transparent',
-                                                            color: newFlags.includes(f.value) ? 'white' : 'inherit',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        {f.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    className="form-input flex-1"
-                                                    placeholder="Observação (opcional)"
-                                                    value={newNoteText}
-                                                    onChange={(e) => setNewNoteText(e.target.value)}
-                                                />
-                                                <button
-                                                    onClick={() => handleAddNote(client)}
-                                                    className="btn btn-primary btn-sm"
-                                                    disabled={savingNote}
-                                                >
-                                                    {savingNote ? 'Salvando...' : 'Registrar'}
-                                                </button>
+                                                <span className="text-secondary text-sm" style={{ flexShrink: 0 }}>Abrir ›</span>
                                             </div>
                                         </div>
                                     </div>
@@ -270,6 +188,18 @@ export default function AdminClients() {
                         )
                     })}
                 </div>
+            )}
+
+            {notesClient && (
+                <ClientNotesModal
+                    clientKey={notesClient.key}
+                    clientName={notesClient.name}
+                    initialNotes={notesByKey[notesClient.key]}
+                    onClose={() => setNotesClient(null)}
+                    onNotesChange={(next) =>
+                        setNotesByKey(prev => ({ ...prev, [notesClient.key]: next }))
+                    }
+                />
             )}
         </div>
     )
