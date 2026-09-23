@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-
+import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
+import { loginErrorMessage } from '../../services/authErrors'
 
 export default function AdminLogin() {
     const navigate = useNavigate()
@@ -33,7 +34,11 @@ export default function AdminLogin() {
             success('Login realizado com sucesso!')
             navigate('/admin')
         } catch (err) {
-            error('Credenciais inválidas ou usuário não encontrado')
+            // Antes esta tela anunciava "credenciais inválidas" para QUALQUER
+            // falha: servidor fora do ar, rede caindo, armazenamento bloqueado.
+            // Isso escondia o problema real e mandava o dono trocar uma senha
+            // que estava certa. Agora cada causa aparece com o próprio nome.
+            error(loginErrorMessage(err))
         } finally {
             setLoading(false)
         }
@@ -51,6 +56,22 @@ export default function AdminLogin() {
                 </div>
 
                 <div className="card" style={{ padding: '2rem' }}>
+                    {/* Avisa ANTES da tentativa, pra pessoa não achar que
+                        errou a senha quando o problema é o navegador. */}
+                    {!isStoragePersistent() && (
+                        <div
+                            className="mb-4 text-sm"
+                            style={{
+                                padding: '0.75rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid var(--warning-500, #f59e0b)',
+                                background: 'rgba(245, 158, 11, 0.08)'
+                            }}
+                        >
+                            ⚠️ {STORAGE_BLOCKED_HINT}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label className="form-label">E-mail</label>

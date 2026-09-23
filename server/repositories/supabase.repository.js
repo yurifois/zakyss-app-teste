@@ -49,17 +49,40 @@ export class SupabaseRepository {
         if (!supabase) throw new Error('Serviço de banco de dados indisponível')
         let query = supabase.from(this.tableName).select('*')
 
+        // Igualdade exata, inclusive para texto.
+        //
+        // Antes isto usava ilike para ser insensível a maiúsculas. O problema
+        // é que ilike interpreta _ e % como CURINGA: um email como
+        // "ana_paula@x.com" casava também com "anaXpaula@x.com" e, sem ordem
+        // definida, o limit(1) podia trazer o registro de outra pessoa. O
+        // resultado era a senha certa sendo recusada como inválida.
+        //
+        // A igualdade é segura aqui porque todo filtro de texto do sistema é
+        // email, gravado e consultado sempre em minúsculas (as rotas fazem
+        // toLowerCase().trim() na escrita e na leitura).
         Object.entries(filter).forEach(([key, value]) => {
-            if (typeof value === 'string') {
-                query = query.ilike(key, value)
-            } else {
-                query = query.eq(key, value)
-            }
+            query = query.eq(key, value)
         })
 
         const { data, error } = await query.limit(1).single()
         if (error && error.code !== 'PGRST116') throw error
-        return data || null
+        if (data) return data
+
+        // Rede de segurança: se a igualdade não achou nada, tenta de novo sem
+        // diferenciar maiúsculas, para alcançar algum registro antigo gravado
+        // fora do padrão. Só vale para valores SEM curinga (_ ou %), senão
+        // voltaríamos a correr o risco de casar com a pessoa errada.
+        const textFilters = Object.entries(filter).filter(([, v]) => typeof v === 'string')
+        const temCuringa = textFilters.some(([, v]) => /[%_]/.test(v))
+        if (textFilters.length === 0 || temCuringa) return null
+
+        let retry = supabase.from(this.tableName).select('*')
+        Object.entries(filter).forEach(([key, value]) => {
+            retry = typeof value === 'string' ? retry.ilike(key, value) : retry.eq(key, value)
+        })
+        const { data: data2, error: error2 } = await retry.limit(1).single()
+        if (error2 && error2.code !== 'PGRST116') throw error2
+        return data2 || null
     }
 
     async create(item) {

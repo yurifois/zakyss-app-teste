@@ -1,3 +1,8 @@
+// PRIMEIRO de tudo: troca localStorage/sessionStorage por versões que não
+// lançam quando o navegador bloqueia dados do site. Precisa vir antes de
+// qualquer import que leia sessão na carga do módulo.
+import './services/safeStorage'
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

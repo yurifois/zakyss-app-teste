@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
+import { loginErrorMessage } from '../../services/authErrors'
 
 export default function Login() {
     const navigate = useNavigate()
@@ -39,7 +41,7 @@ export default function Login() {
                 navigate('/')
             }
         } catch (err) {
-            error(err.message)
+            error(loginErrorMessage(err))
         } finally {
             setLoading(false)
         }
@@ -57,6 +59,20 @@ export default function Login() {
                 </div>
 
                 <div className="card" style={{ padding: '2rem' }}>
+                    {!isStoragePersistent() && (
+                        <div
+                            className="mb-4 text-sm"
+                            style={{
+                                padding: '0.75rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid var(--warning-500, #f59e0b)',
+                                background: 'rgba(245, 158, 11, 0.08)'
+                            }}
+                        >
+                            ⚠️ {STORAGE_BLOCKED_HINT}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label className="form-label">E-mail</label>
@@ -116,6 +132,10 @@ export default function Login() {
                         <p className="text-secondary text-sm">
                             Não tem uma conta?{' '}
                             <Link to="/cadastro" className="font-semibold" style={{ color: 'var(--accent-400)' }}>Cadastre-se</Link>
+                        </p>
+                        <p className="text-muted text-xs mt-2">
+                            Já agendou aqui mas nunca criou senha? Agendar não cria conta.
+                            Use o mesmo email no cadastro e seu histórico aparece junto.
                         </p>
                     </div>
                 </div>
