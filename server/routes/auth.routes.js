@@ -11,6 +11,21 @@ const usersRepo = getRepository('users.json')
 const adminsRepo = getRepository('admins.json')
 const establishmentsRepo = getRepository('establishments.json')
 
+// Grava quando a conta entrou pela última vez. Serve para um eventual
+// controle de inatividade no futuro — hoje o sistema não guardava isso em
+// lugar nenhum, então não havia como saber quem parou de usar.
+//
+// Nunca pode derrubar o login: se a gravação falhar (coluna ainda não criada,
+// banco lento, o que for), o erro é só registrado e a pessoa entra normal.
+async function registrarUltimoLogin(repo, id) {
+    try {
+        await repo.update(id, { lastLoginAt: new Date().toISOString() })
+    } catch (err) {
+        console.warn('[auth] Não foi possível registrar o último login:', err.message)
+    }
+}
+
+
 
 // Login de usuário
 router.post('/login', async (req, res, next) => {
@@ -32,6 +47,8 @@ router.post('/login', async (req, res, next) => {
         if (!validPassword) {
             throw new AppError('Credenciais inválidas', 401)
         }
+
+        await registrarUltimoLogin(usersRepo, user.id)
 
         const { password: _, ...userWithoutPassword } = user
         const token = generateToken({
@@ -121,6 +138,8 @@ router.post('/admin/login', async (req, res, next) => {
         if (!validPassword) {
             throw new AppError('Credenciais inválidas', 401)
         }
+
+        await registrarUltimoLogin(adminsRepo, admin.id)
 
         const { password: _, ...adminWithoutPassword } = admin
         const token = generateToken({
