@@ -9,6 +9,7 @@ import { authMiddleware } from '../middleware/auth.middleware.js'
 const router = Router()
 const usersRepo = getRepository('users.json')
 const adminsRepo = getRepository('admins.json')
+const establishmentsRepo = getRepository('establishments.json')
 
 
 // Login de usuário
@@ -159,12 +160,44 @@ router.post('/admin/register', async (req, res, next) => {
             throw new AppError('Email já cadastrado', 400)
         }
 
+        // ---------------------------------------------------------------
+        // Reivindicação do estabelecimento.
+        //
+        // Esta rota é pública de propósito: o cadastro de parceiro cria o
+        // estabelecimento e, um segundo depois, registra o dono dele. O que
+        // faltava era fechar a porta DEPOIS disso. Sem estas checagens,
+        // qualquer pessoa podia mandar o número de um estabelecimento alheio
+        // e receber na hora um token de administrador dele, com acesso à
+        // agenda, à ficha dos clientes e ao fluxo de caixa.
+        //
+        // Não afeta quem já está dentro: a regra só decide se um NOVO
+        // administrador pode nascer, e nenhum dado existente é tocado.
+        // ---------------------------------------------------------------
+        const targetEstablishmentId = parseInt(establishmentId)
+        if (!Number.isInteger(targetEstablishmentId)) {
+            throw new AppError('Estabelecimento inválido', 400)
+        }
+
+        const establishment = await establishmentsRepo.findById(targetEstablishmentId)
+        if (!establishment) {
+            throw new AppError('Estabelecimento não encontrado', 404)
+        }
+
+        const jaTemDono = await adminsRepo.findOne({ establishmentId: targetEstablishmentId })
+        if (jaTemDono) {
+            throw new AppError(
+                'Este estabelecimento já possui um responsável cadastrado. ' +
+                'Se a conta é sua, use "Esqueci minha senha" para recuperar o acesso.',
+                403
+            )
+        }
+
         const hashedPassword = await hashPassword(password)
         const admin = await adminsRepo.create({
             name,
             email: email.toLowerCase().trim(),
             password: hashedPassword,
-            establishmentId
+            establishmentId: targetEstablishmentId
         })
 
         await recordTermsAcceptance({ userId: admin.id, userType: 'admin' })
