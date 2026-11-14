@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 
@@ -8,10 +8,17 @@ export default function Register() {
     const { register } = useAuth()
     const { success, error } = useToast()
 
+    // O convite de cadastro enviado por e-mail (ver sendAccountInviteEmail) traz
+    // o endereço na URL. Pré-preencher evita que a pessoa se cadastre com um
+    // e-mail diferente do que já está nos agendamentos dela — que é justamente
+    // o que a deixaria sem ver o próprio histórico.
+    const [searchParams] = useSearchParams()
+    const emailConvite = searchParams.get('email') || ''
+
     const [accountType, setAccountType] = useState('client') // 'client' | 'establishment'
     const [formData, setFormData] = useState({
         name: '',
-        email: '',
+        email: emailConvite,
         phone: '',
         password: '',
         confirmPassword: '',

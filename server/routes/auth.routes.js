@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
 import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken } from '../utils/auth.js'
-import { sendPasswordResetEmail } from '../utils/email.js'
+import { sendPasswordResetEmail, sendAccountInviteEmail } from '../utils/email.js'
 import { recordTermsAcceptance } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
@@ -10,6 +10,7 @@ const router = Router()
 const usersRepo = getRepository('users.json')
 const adminsRepo = getRepository('admins.json')
 const establishmentsRepo = getRepository('establishments.json')
+const appointmentsRepo = getRepository('appointments.json')
 
 // Grava quando a conta entrou pela última vez. Serve para um eventual
 // controle de inatividade no futuro — hoje o sistema não guardava isso em
@@ -22,6 +23,34 @@ async function registrarUltimoLogin(repo, id) {
         await repo.update(id, { lastLoginAt: new Date().toISOString() })
     } catch (err) {
         console.warn('[auth] Não foi possível registrar o último login:', err.message)
+    }
+}
+
+/**
+ * Procura um agendamento feito com esse e-mail.
+ *
+ * Serve para distinguir "nunca vi esse e-mail na vida" de "essa pessoa é
+ * cliente da casa, só nunca criou conta" — o segundo caso é o de quem foi
+ * agendado manualmente pelo estabelecimento.
+ *
+ * Nunca lança: se o banco falhar, devolve null e a recuperação de senha segue
+ * seu curso normal. Essa busca é um extra, não pode derrubar a rota.
+ */
+async function encontrarAgendamentoPorEmail(emailLower) {
+    try {
+        // Caminho rápido: igualdade exata, que cobre a maioria dos registros.
+        const direto = await appointmentsRepo.findOne({ customerEmail: emailLower })
+        if (direto) return direto
+
+        // O e-mail do agendamento é gravado exatamente como a pessoa digitou,
+        // sem normalizar (ver appointments.routes.js), então pode ter vindo com
+        // maiúsculas ou espaços. Varredura comparando tudo em minúsculas para
+        // alcançar esses casos.
+        const todos = await appointmentsRepo.findAll()
+        return todos.find(a => (a.customerEmail || '').toLowerCase().trim() === emailLower) || null
+    } catch (err) {
+        console.error('[auth] Falha ao procurar agendamento por e-mail:', err.message)
+        return null
     }
 }
 
@@ -290,7 +319,34 @@ router.post('/forgot-password', async (req, res, next) => {
         }
 
         if (!user) {
-            // Retorna sucesso mesmo se não encontrar para evitar enumeração de e-mails
+            // Sem conta com esse e-mail. Antes a rota parava aqui e devolvia
+            // sucesso sem enviar nada: a pessoa via "verifique seu e-mail" e
+            // ficava esperando para sempre uma mensagem que nunca foi pedida.
+            //
+            // Quem cai aqui quase sempre foi agendado manualmente pelo
+            // estabelecimento (fluxo que existe de propósito, ver
+            // appointments.routes.js) e nunca se cadastrou. Para essa pessoa não
+            // há senha a recuperar — o que ela precisa é criar conta. Então, se
+            // o e-mail já aparece em algum agendamento, mandamos um convite de
+            // cadastro no lugar do link de redefinição.
+            //
+            // A resposta continua idêntica à do caminho com conta, de propósito:
+            // é isso que impede descobrir de fora quais e-mails têm cadastro.
+            const agendamento = await encontrarAgendamentoPorEmail(emailLower)
+
+            if (agendamento) {
+                console.warn(`[auth] forgot-password: ${emailLower} não tem conta, mas tem agendamento. Enviando convite de cadastro.`)
+                try {
+                    await sendAccountInviteEmail((agendamento.customerEmail || emailLower).trim())
+                } catch (err) {
+                    // Falha de envio aqui não pode mudar a resposta da rota,
+                    // senão vira justamente o vazamento que queremos evitar.
+                    console.error('[auth] Falha ao enviar convite de cadastro:', err.message)
+                }
+            } else {
+                console.warn(`[auth] forgot-password: ${emailLower} não tem conta nem agendamento. Nada enviado.`)
+            }
+
             return res.json({ success: true, data: { message: 'Se o e-mail existir, um link de recuperação foi enviado.' } })
         }
 

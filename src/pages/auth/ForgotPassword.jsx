@@ -42,21 +42,25 @@ export default function ForgotPassword() {
                             </div>
                             <h2 className="text-xl font-bold mb-4">Verifique seu e-mail</h2>
                             <p className="text-secondary mb-4">
-                                Se <strong>{email}</strong> estiver cadastrado, enviamos as instruções de recuperação para ele.
+                                Enviamos uma mensagem para <strong>{email}</strong>.
                             </p>
-                            {/* Não dá pra confirmar se o email existe (protege contra enumeração de contas),
-                                então em vez disso a gente orienta o próximo passo caso nada chegue —
-                                o caso mais comum na prática é a pessoa digitar um email diferente do
-                                que usou no cadastro. */}
+                            {/* Não dá pra confirmar se o email existe (protege contra enumeração de contas).
+                                Mas quem já é cliente e nunca se cadastrou agora recebe um convite de
+                                cadastro em vez de silêncio (ver forgot-password em auth.routes.js), então
+                                a tela pode explicar os dois casos sem revelar qual deles aconteceu. */}
                             <div
                                 className="text-sm text-secondary mb-6"
                                 style={{ background: 'var(--secondary-500)', borderRadius: '0.75rem', padding: '0.875rem 1rem', textAlign: 'left' }}
                             >
-                                Não chegou em alguns minutos?
+                                O que você vai receber:
                                 <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
-                                    <li>Confira se esse é o mesmo e-mail usado no cadastro</li>
-                                    <li>Dá uma olhada na caixa de spam/lixo eletrônico</li>
+                                    <li>Se já tem conta: o link para criar uma senha nova</li>
+                                    <li>Se ainda não tem conta: um convite para criar a sua</li>
                                 </ul>
+                                <div style={{ marginTop: '0.75rem' }}>
+                                    Não chegou em alguns minutos? Dá uma olhada no spam/lixo eletrônico e
+                                    confira se o e-mail está escrito certo.
+                                </div>
                             </div>
                             <button
                                 onClick={() => setSubmitted(false)}
@@ -64,6 +68,9 @@ export default function ForgotPassword() {
                             >
                                 Tentar com outro e-mail
                             </button>
+                            <Link to={`/cadastro?email=${encodeURIComponent(email)}`} className="btn btn-outline w-full mb-3">
+                                Criar uma conta
+                            </Link>
                             <Link to="/entrar" className="btn btn-primary w-full">Voltar para o Login</Link>
                         </div>
                     ) : (
