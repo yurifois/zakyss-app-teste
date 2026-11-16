@@ -9,7 +9,7 @@ if (isProd && !import.meta.env.VITE_API_URL) {
 
 // Verificar se token JWT está expirado
 // Teto de espera por resposta do servidor. Ver comentário em request().
-const TEMPO_LIMITE_MS = 45000
+const TEMPO_LIMITE_MS = 90000
 
 function isTokenValid(token) {
     if (!token) return false
@@ -58,13 +58,20 @@ async function request(endpoint, options = {}) {
         ...options,
     }
 
-    // Tempo limite de 45s.
+    // Tempo limite de 90s.
     //
     // Sem limite, uma requisição que nunca responde deixa a tela girando para
     // sempre, sem mensagem nenhuma — foi assim que clientes relataram
-    // "fica carregando e não finaliza". 45s é o número porque o backend dorme
-    // no Render e pode levar de 30s a 60s para acordar: cortar antes disso
-    // quebraria o primeiro acesso do dia, que é justamente o mais lento.
+    // "fica carregando e não finaliza".
+    //
+    // O número é alto de propósito. O backend roda no plano gratuito do
+    // Render, que desliga a instância por inatividade; o próprio painel avisa
+    // que isso "pode atrasar requisições em 50 segundos ou mais". Um teto
+    // menor cortaria justamente o primeiro acesso do dia — o mais lento e o
+    // mais importante — e, numa escrita, deixaria a pessoa sem saber se o
+    // agendamento foi criado. Esperar demais é ruim; abortar algo que teria
+    // dado certo é pior. Quem reduzir isto um dia, reduza junto o tempo de
+    // partida do servidor (plano pago), não só o número aqui.
     const controlador = new AbortController()
     const limite = setTimeout(() => controlador.abort(), TEMPO_LIMITE_MS)
     config.signal = controlador.signal

@@ -776,7 +776,7 @@ export default function Booking() {
                             disabled={submitting}
                         >
                             {submitting
-                                ? (demorando ? 'Ainda confirmando, aguarde...' : 'Confirmando...')
+                                ? (demorando ? 'Ainda confirmando, pode levar até 1 minuto...' : 'Confirmando...')
                                 : 'Confirmar agendamento'}
                         </button>
                         <button
