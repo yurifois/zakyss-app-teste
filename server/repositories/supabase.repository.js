@@ -69,20 +69,44 @@ export class SupabaseRepository {
         if (data) return data
 
         // Rede de segurança: se a igualdade não achou nada, tenta de novo sem
-        // diferenciar maiúsculas, para alcançar algum registro antigo gravado
-        // fora do padrão. Só vale para valores SEM curinga (_ ou %), senão
-        // voltaríamos a correr o risco de casar com a pessoa errada.
+        // diferenciar maiúsculas, para alcançar registros gravados fora do
+        // padrão (ex.: "Fulano@Email.com").
+        //
+        // Antes esta rede era desligada para qualquer valor contendo _ ou %,
+        // porque o ilike trata os dois como CURINGA e podia casar com a pessoa
+        // errada. O efeito colateral era grave e silencioso: quem tem underline
+        // no e-mail — "silvia_santos64@hotmail.com" e companhia — simplesmente
+        // não era encontrado se o cadastro tivesse uma maiúscula. Nem login,
+        // nem recuperação de senha; a conta parecia não existir.
+        //
+        // Agora os curingas são escapados (viram caractere literal) E o
+        // resultado é conferido em JavaScript antes de voltar. Com a conferência
+        // explícita, casar com a pessoa errada deixa de ser possível mesmo que
+        // o padrão escape de alguma forma — que era o risco original.
         const textFilters = Object.entries(filter).filter(([, v]) => typeof v === 'string')
-        const temCuringa = textFilters.some(([, v]) => /[%_]/.test(v))
-        if (textFilters.length === 0 || temCuringa) return null
+        if (textFilters.length === 0) return null
+
+        const escaparCuringas = (v) => v.replace(/([\\%_])/g, '\\$1')
 
         let retry = supabase.from(this.tableName).select('*')
         Object.entries(filter).forEach(([key, value]) => {
-            retry = typeof value === 'string' ? retry.ilike(key, value) : retry.eq(key, value)
+            retry = typeof value === 'string'
+                ? retry.ilike(key, escaparCuringas(value))
+                : retry.eq(key, value)
         })
-        const { data: data2, error: error2 } = await retry.limit(1).single()
-        if (error2 && error2.code !== 'PGRST116') throw error2
-        return data2 || null
+
+        // Sem .single(): o padrão pode trazer mais de uma linha, e é a
+        // conferência abaixo que decide qual (se alguma) realmente serve.
+        const { data: candidatos, error: error2 } = await retry.limit(20)
+        if (error2) throw error2
+
+        const confere = (linha) => Object.entries(filter).every(([key, value]) =>
+            typeof value === 'string'
+                ? String(linha[key] ?? '').trim().toLowerCase() === value.trim().toLowerCase()
+                : linha[key] === value
+        )
+
+        return (candidatos || []).find(confere) || null
     }
 
     async create(item) {

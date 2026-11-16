@@ -22,6 +22,10 @@ export default function Booking() {
     const [recarregarAgenda, setRecarregarAgenda] = useState(0)
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
+    // Depois de alguns segundos confirmando, o botão passa a dizer que ainda
+    // está trabalhando. O backend dorme no Render e pode demorar; sem esse
+    // aviso a espera silenciosa parece travamento e a pessoa fecha a tela.
+    const [demorando, setDemorando] = useState(false)
     const [showReviewModal, setShowReviewModal] = useState(false)
     const [showLoginPrompt, setShowLoginPrompt] = useState(false)
     // Quando dia, serviço e horário já vieram escolhidos da página do
@@ -76,6 +80,12 @@ export default function Booking() {
     //
     // A posição é guardada e devolvida na saída, então fechar o modal traz a
     // pessoa de volta exatamente ao ponto em que ela estava.
+    useEffect(() => {
+        if (!submitting) { setDemorando(false); return }
+        const t = setTimeout(() => setDemorando(true), 8000)
+        return () => clearTimeout(t)
+    }, [submitting])
+
     useEffect(() => {
         if (!showReviewModal && !showLoginPrompt) return
 
@@ -765,7 +775,9 @@ export default function Booking() {
                             onClick={handleSubmit}
                             disabled={submitting}
                         >
-                            {submitting ? 'Confirmando...' : 'Confirmar agendamento'}
+                            {submitting
+                                ? (demorando ? 'Ainda confirmando, aguarde...' : 'Confirmando...')
+                                : 'Confirmar agendamento'}
                         </button>
                         <button
                             className="btn btn-ghost w-full"

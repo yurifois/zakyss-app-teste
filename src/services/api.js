@@ -8,6 +8,9 @@ if (isProd && !import.meta.env.VITE_API_URL) {
 }
 
 // Verificar se token JWT está expirado
+// Teto de espera por resposta do servidor. Ver comentário em request().
+const TEMPO_LIMITE_MS = 45000
+
 function isTokenValid(token) {
     if (!token) return false
     try {
@@ -55,6 +58,17 @@ async function request(endpoint, options = {}) {
         ...options,
     }
 
+    // Tempo limite de 45s.
+    //
+    // Sem limite, uma requisição que nunca responde deixa a tela girando para
+    // sempre, sem mensagem nenhuma — foi assim que clientes relataram
+    // "fica carregando e não finaliza". 45s é o número porque o backend dorme
+    // no Render e pode levar de 30s a 60s para acordar: cortar antes disso
+    // quebraria o primeiro acesso do dia, que é justamente o mais lento.
+    const controlador = new AbortController()
+    const limite = setTimeout(() => controlador.abort(), TEMPO_LIMITE_MS)
+    config.signal = controlador.signal
+
     try {
         const response = await fetch(`${API_URL}${endpoint}`, config)
         const data = await response.json()
@@ -66,10 +80,23 @@ async function request(endpoint, options = {}) {
         return data.data
     } catch (err) {
         console.error(`❌ API Error [${endpoint}]:`, err)
+        if (err.name === 'AbortError') {
+            // Importante não dizer "deu erro, tente de novo": numa escrita
+            // (POST/PUT) o servidor pode ter concluído mesmo sem a resposta
+            // chegar, e repetir criaria um registro duplicado.
+            const escrita = (options.method || 'GET').toUpperCase() !== 'GET'
+            throw new Error(
+                escrita
+                    ? 'O servidor demorou demais para responder. A ação PODE ter sido concluída — confira antes de tentar de novo.'
+                    : 'O servidor demorou demais para responder. Verifique sua conexão e tente de novo.'
+            )
+        }
         if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
             throw new Error(`Não foi possível conectar ao servidor (${API_URL}). Verifique sua conexão ou se a URL da API está correta.`)
         }
         throw err
+    } finally {
+        clearTimeout(limite)
     }
 }
 
