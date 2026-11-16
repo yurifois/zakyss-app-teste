@@ -24,6 +24,18 @@ export default function Booking() {
     const [submitting, setSubmitting] = useState(false)
     const [showReviewModal, setShowReviewModal] = useState(false)
     const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+    // Quando dia, serviço e horário já vieram escolhidos da página do
+    // estabelecimento, repetir os três seletores aqui empurrava o formulário e o
+    // botão de confirmar para mais de 2.600px abaixo do topo — três telas de
+    // rolagem. A pessoa reencontrava as mesmas perguntas que tinha acabado de
+    // responder, concluía que a tela havia voltado ao início e desistia, às
+    // vezes achando que já tinha agendado.
+    //
+    // Agora esse caso mostra um resumo compacto com um botão "Alterar". Quem
+    // chega aqui sem as três escolhas feitas (link direto, rascunho parcial)
+    // continua vendo os seletores — e segue vendo, mesmo depois de completar a
+    // terceira escolha, para a tela não se reorganizar sob o dedo da pessoa.
+    const [editandoEscolhas, setEditandoEscolhas] = useState(false)
     const [anamnesisForms, setAnamnesisForms] = useState([]) // fichas exigidas pelos serviços selecionados
     const [anamnesisAnswers, setAnamnesisAnswers] = useState({}) // { [formId]: { [questionId]: valor } }
 
@@ -47,6 +59,43 @@ export default function Booking() {
             }))
         }
     }, [user])
+
+    const escolhasCompletas = !!(selectedDate && selectedTime && services.length > 0)
+
+    useEffect(() => {
+        if (!loading && !escolhasCompletas) setEditandoEscolhas(true)
+    }, [loading, escolhasCompletas])
+
+    // Trava a página enquanto um modal está aberto.
+    //
+    // Sem isto o fundo continua rolando sob o modal no celular: ao abrir a
+    // confirmação a página saltava sozinha (medido: de 3183px para 2249px), e
+    // ao fechar a pessoa caía num ponto diferente de onde estava — com a
+    // sensação de que "a tela voltou para o início do agendamento" e de que
+    // algo já tinha sido feito.
+    //
+    // A posição é guardada e devolvida na saída, então fechar o modal traz a
+    // pessoa de volta exatamente ao ponto em que ela estava.
+    useEffect(() => {
+        if (!showReviewModal && !showLoginPrompt) return
+
+        const y = window.scrollY
+        const estilo = document.body.style
+        const anterior = { position: estilo.position, top: estilo.top, width: estilo.width, overflow: estilo.overflow }
+
+        estilo.position = 'fixed'
+        estilo.top = `-${y}px`
+        estilo.width = '100%'
+        estilo.overflow = 'hidden'
+
+        return () => {
+            estilo.position = anterior.position
+            estilo.top = anterior.top
+            estilo.width = anterior.width
+            estilo.overflow = anterior.overflow
+            window.scrollTo(0, y)
+        }
+    }, [showReviewModal, showLoginPrompt])
 
     // Salva o estado do agendamento incompleto no localStorage
     useEffect(() => {
@@ -370,18 +419,54 @@ export default function Booking() {
                                 componente só, compartilhado com a página do
                                 estabelecimento — duas cópias divergiriam. */}
                             <div ref={calendarRef}>
-                                <EscolhaAgenda
-                                    establishmentId={id}
-                                    establishment={establishment}
-                                    date={selectedDate}
-                                    onDateChange={setSelectedDate}
-                                    time={selectedTime}
-                                    onTimeChange={setSelectedTime}
-                                    services={services}
-                                    onServicesChange={setServices}
-                                    recarregarToken={recarregarAgenda}
-                                    onAviso={error}
-                                />
+                                {escolhasCompletas && !editandoEscolhas ? (
+                                    // Veio tudo escolhido da página anterior: mostra o que
+                                    // foi escolhido e deixa o formulário logo abaixo, à mão.
+                                    // Quem quiser trocar abre os seletores pelo botão.
+                                    <div
+                                        className="mb-6 p-4"
+                                        style={{
+                                            background: 'var(--bg-secondary)',
+                                            borderRadius: 'var(--radius-xl)',
+                                            border: '1px solid var(--border-color)'
+                                        }}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="text-sm">
+                                                <p className="font-semibold mb-1">
+                                                    📅 {formatDate(selectedDate)}
+                                                    {selectedTime && <> às {selectedTime}</>}
+                                                </p>
+                                                <p className="text-muted">
+                                                    {services.map(sv => sv.name).join(' + ')}
+                                                </p>
+                                                <p className="text-muted mt-1">
+                                                    R$ {getTotalPrice().toFixed(2)} · {getTotalDuration()} min
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => setEditandoEscolhas(true)}
+                                            >
+                                                Alterar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <EscolhaAgenda
+                                        establishmentId={id}
+                                        establishment={establishment}
+                                        date={selectedDate}
+                                        onDateChange={setSelectedDate}
+                                        time={selectedTime}
+                                        onTimeChange={setSelectedTime}
+                                        services={services}
+                                        onServicesChange={setServices}
+                                        recarregarToken={recarregarAgenda}
+                                        onAviso={error}
+                                    />
+                                )}
                             </div>
 
                             {/* Aviso de atendimento em domicílio nesse dia */}
@@ -618,22 +703,76 @@ export default function Booking() {
 
             {/* Review Modal */}
             {/* Simple Confirmation Modal */}
+            {/* Confirmação do agendamento.
+                Antes esta caixa tinha só o botão "Confirmar agendamento" solto no
+                meio da tela escura, sem título, sem resumo e sem como voltar, e um
+                toque em qualquer ponto fora dela fechava tudo em silêncio. Quem
+                errava o alvo voltava para a página e achava que tinha agendado —
+                foi assim que clientes relataram "achei que já tinha marcado" e o
+                horário nunca existiu. Agora a caixa diz o que está sendo
+                confirmado, tem saída explícita e só fecha por botão. */}
             {showReviewModal && (
                 <div
                     className="modal-backdrop"
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
-                    onClick={() => !submitting && setShowReviewModal(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="titulo-confirmacao"
                 >
-                    <div 
-                        className="bg-base-100 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-300 p-6 flex flex-col gap-3"
+                    <div
+                        className="rounded-2xl w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom-8 duration-300 p-6 flex flex-col gap-3"
+                        style={{ maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}
                         onClick={(e) => e.stopPropagation()}
                     >
+                        <h3 id="titulo-confirmacao" className="text-lg font-bold">Confirme seu agendamento</h3>
+                        <p className="text-sm text-muted" style={{ marginTop: '-0.25rem' }}>
+                            Falta só confirmar — ainda não está marcado.
+                        </p>
+
+                        <div className="text-sm" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                            <p className="font-medium">{establishment?.name}</p>
+                            {selectedDate && (
+                                <p className="mt-1">
+                                    📅 {formatDate(selectedDate)}
+                                    {selectedTime && <strong> às {selectedTime}</strong>}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="text-sm">
+                            {services.map(service => (
+                                <div key={service.id} className="flex justify-between py-1">
+                                    <span className="text-muted">{service.name}</span>
+                                    <span>R$ {Number(service.price || 0).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                            <div className="flex justify-between font-bold">
+                                <span>Total</span>
+                                <span className="text-gradient">R$ {getTotalPrice().toFixed(2)}</span>
+                            </div>
+                            <div className="text-sm text-muted">Duração: {getTotalDuration()} min</div>
+                        </div>
+
+                        <div className="text-xs text-muted" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                            Em nome de <strong>{formData.name}</strong> · {formData.phone}
+                        </div>
+
                         <button
                             className="btn btn-primary btn-lg w-full text-lg shadow-lg shadow-primary/20"
                             onClick={handleSubmit}
                             disabled={submitting}
                         >
                             {submitting ? 'Confirmando...' : 'Confirmar agendamento'}
+                        </button>
+                        <button
+                            className="btn btn-ghost w-full"
+                            onClick={() => setShowReviewModal(false)}
+                            disabled={submitting}
+                        >
+                            Voltar e revisar
                         </button>
                     </div>
                 </div>
@@ -645,7 +784,10 @@ export default function Booking() {
                     className="modal-backdrop"
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1000 }}
                 >
-                    <div className="bg-base-100 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center animate-in fade-in zoom-in duration-200">
+                    <div
+                        className="rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center animate-in fade-in zoom-in duration-200"
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}
+                    >
                         <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
                             <UserIcon size={32} />
                         </div>
