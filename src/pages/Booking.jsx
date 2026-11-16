@@ -90,7 +90,28 @@ export default function Booking() {
                         serviceIds = parsed.services || []
                         if (parsed.selectedDate) setSelectedDate(new Date(parsed.selectedDate))
                         if (parsed.selectedTime) setSelectedTime(parsed.selectedTime)
-                        if (parsed.formData) setFormData(parsed.formData)
+                        if (parsed.formData) {
+                            // Mesclado com o perfil, nunca substituído por ele.
+                            //
+                            // Esta função roda de novo quando a sessão termina de
+                            // carregar (o efeito depende de `user`), e nesse
+                            // segundo passe o rascunho já existe: foi salvo
+                            // segundos antes, com o formulário ainda vazio porque
+                            // `user` era null. Substituir aqui apagava o nome e o
+                            // telefone que o efeito de pré-preenchimento tinha
+                            // acabado de colocar, e a pessoa logada via "Agendar"
+                            // falhar com "Preencha nome e telefone" sem entender
+                            // por quê — o formulário parecia certo mas estava vazio.
+                            //
+                            // O que a pessoa digitou sempre vence; o perfil só
+                            // preenche o que está em branco.
+                            setFormData({
+                                ...parsed.formData,
+                                name: parsed.formData.name || user?.name || '',
+                                phone: parsed.formData.phone || user?.phone || '',
+                                email: parsed.formData.email || user?.email || '',
+                            })
+                        }
                     }
                 } catch (e) {
                     console.error('Error parsing unfinished booking', e)
@@ -215,7 +236,14 @@ export default function Booking() {
         }
 
         if (!formData.name || !formData.phone) {
+            // Leva a pessoa até o campo que falta. Sem isto o clique em
+            // "Agendar" parecia não fazer nada: o aviso aparece no canto e some,
+            // e o campo vazio pode estar fora da tela — foi exatamente assim que
+            // o problema chegou ao suporte, descrito como "não finaliza".
             error('Preencha nome e telefone')
+            const alvo = document.querySelector(!formData.name ? 'input[name="name"]' : 'input[name="phone"]')
+            alvo?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            alvo?.focus({ preventScroll: true })
             return
         }
 
