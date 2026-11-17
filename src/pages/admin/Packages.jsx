@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const STATUS_LABELS = {
     ativo: { label: '✅ Ativo', color: 'var(--success-500, #10b981)' },
@@ -12,6 +13,7 @@ const STATUS_LABELS = {
 export default function AdminPackages() {
     const { admin } = useAuth()
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const [packages, setPackages] = useState([])
     const [sold, setSold] = useState([])
@@ -95,7 +97,7 @@ export default function AdminPackages() {
     }
 
     const handleDeletePackage = async (id, name) => {
-        if (!confirm(`Remover o pacote "${name}"? Isso não afeta pacotes já vendidos.`)) return
+        if (!(await confirm(`Remover o pacote "${name}"? Isso não afeta pacotes já vendidos.`, { confirmLabel: 'Remover' }))) return
         try {
             await api.deletePackage(id)
             success('Pacote removido!')

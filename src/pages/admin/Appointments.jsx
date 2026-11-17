@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 import Calendar from '../../components/Calendar'
 import { getClosedWeekdays, toDateString } from '../../utils/schedule'
 import ClientNotesModal from '../../components/ClientNotesModal'
@@ -23,6 +24,7 @@ const notePreview = (note) => {
 export default function AdminAppointments() {
     const { admin } = useAuth()
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const [appointments, setAppointments] = useState([])
     const [filteredAppointments, setFilteredAppointments] = useState([])
@@ -316,7 +318,7 @@ export default function AdminAppointments() {
 
     const handleStatusChange = async (appointmentId, newStatus) => {
         if (newStatus === 'cancelled') {
-            if (!window.confirm('Tem certeza que deseja cancelar este agendamento?')) return
+            if (!(await confirm('Tem certeza que deseja cancelar este agendamento?', { confirmLabel: 'Sim, cancelar' }))) return
         }
         try {
             if (newStatus === 'reactivate') {
@@ -1087,7 +1089,7 @@ export default function AdminAppointments() {
                             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
                                 <button
                                     onClick={async () => {
-                                        if (!window.confirm(`Tem certeza que deseja cancelar o atendimento de ${editingAppointment.customerName}?`)) return
+                                        if (!(await confirm(`Tem certeza que deseja cancelar o atendimento de ${editingAppointment.customerName}?`, { confirmLabel: 'Sim, cancelar' }))) return
                                         setCancelling(true)
                                         try {
                                             await api.updateAppointmentStatus(editingAppointment.id, 'cancelled', 'establishment')

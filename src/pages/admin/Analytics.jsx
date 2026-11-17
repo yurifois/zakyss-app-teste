@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import * as api from '../../services/api'
 
 export default function Analytics() {
     const { admin } = useAuth()
+    // Avisos pelo Toast do app: window.alert some calado no navegador embutido do WhatsApp/Instagram.
+    const { error } = useToast()
     const now = new Date()
 
     // Filters
@@ -91,7 +94,7 @@ export default function Analytics() {
         if (isRegisteredClient) {
             const client = clients.find(c => c.name === selectedClientKey)
             if (!client) {
-                alert('Selecione um cliente válido da lista.')
+                error('Selecione um cliente válido da lista.')
                 return
             }
             customerData = {
@@ -120,7 +123,7 @@ export default function Analytics() {
             loadData() // reload data to show new entry
         } catch (err) {
             console.error('Error adding manual finance:', err)
-            alert('Erro ao adicionar lançamento manual. Verifique os dados e tente novamente.')
+            error('Erro ao adicionar lançamento manual. Verifique os dados e tente novamente.')
         } finally {
             setIsSubmittingManual(false)
         }

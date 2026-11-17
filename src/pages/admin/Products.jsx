@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const MOVEMENT_LABELS = {
     entrada: '📥 Entrada',
@@ -12,6 +13,7 @@ const MOVEMENT_LABELS = {
 
 export default function AdminProducts() {
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const [products, setProducts] = useState([])
     const [sales, setSales] = useState([])
@@ -118,7 +120,7 @@ export default function AdminProducts() {
     }
 
     const handleDelete = async (id, name) => {
-        if (!confirm(`Remover o produto "${name}"?`)) return
+        if (!(await confirm(`Remover o produto "${name}"?`, { confirmLabel: 'Remover' }))) return
         try {
             await api.deleteProduct(id)
             success('Produto removido!')

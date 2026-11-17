@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 import Calendar from '../../components/Calendar'
 import { WEEKDAY_KEYS, getClosedWeekdays, toDateString } from '../../utils/schedule'
 
@@ -18,6 +19,7 @@ const emptyException = { isClosed: false, blockedRanges: [] }
 export default function AdminCalendarView() {
     const { admin } = useAuth()
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const [appointments, setAppointments] = useState([])
     const [establishment, setEstablishment] = useState(null)
@@ -237,7 +239,7 @@ export default function AdminCalendarView() {
                                                     <button onClick={() => handleStatusChange(apt.id, 'completed')} className="btn btn-outline btn-sm">Concluir</button>
                                                     <button onClick={() => handleStatusChange(apt.id, 'no_show')} className="btn btn-outline btn-sm">Não compareceu</button>
                                                     <button
-                                                        onClick={() => confirm(`Cancelar o agendamento de ${apt.customerName}?`) && handleStatusChange(apt.id, 'cancelled')}
+                                                        onClick={async () => (await confirm(`Cancelar o agendamento de ${apt.customerName}?`, { confirmLabel: 'Sim, cancelar' })) && handleStatusChange(apt.id, 'cancelled')}
                                                         className="btn btn-ghost btn-sm"
                                                         style={{ color: 'var(--error-500)' }}
                                                     >

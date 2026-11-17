@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const CATEGORIES = [
     { value: 'material', label: 'Material' },
@@ -27,6 +28,7 @@ const months = [
 export default function CashFlow() {
     const { admin } = useAuth()
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const now = new Date()
     const [month, setMonth] = useState(now.getMonth() + 1)
@@ -139,7 +141,7 @@ export default function CashFlow() {
     }
 
     const handleDeleteExpense = async (id, description) => {
-        if (!confirm(`Remover a saída "${description}"?`)) return
+        if (!(await confirm(`Remover a saída "${description}"?`, { confirmLabel: 'Remover' }))) return
         try {
             await api.deleteCashflowEntry(id)
             success('Saída removida!')

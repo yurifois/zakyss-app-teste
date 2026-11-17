@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 import { toDateString } from '../../utils/schedule'
 
 export default function AdminDashboard() {
     const { admin, adminLogout } = useAuth()
     const { success, error, warning } = useToast()
+    const confirm = useConfirm()
     const navigate = useNavigate()
     const [copied, setCopied] = useState(false)
 
@@ -83,7 +85,7 @@ export default function AdminDashboard() {
     }
 
     const handleCancel = async (appointmentId) => {
-        if (!window.confirm('Tem certeza que deseja cancelar este agendamento?')) return
+        if (!(await confirm('Tem certeza que deseja cancelar este agendamento?', { confirmLabel: 'Sim, cancelar' }))) return
         try {
             await api.updateAppointmentStatus(appointmentId, 'cancelled', 'establishment')
             success('Agendamento cancelado com sucesso!')

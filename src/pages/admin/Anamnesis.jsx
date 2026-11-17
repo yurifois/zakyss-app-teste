@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const QUESTION_TYPES = [
     { value: 'texto_curto', label: 'Texto curto' },
@@ -15,6 +16,7 @@ const emptyQuestion = () => ({ id: `q_${Date.now()}_${Math.random().toString(36)
 
 export default function AdminAnamnesis() {
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const [forms, setForms] = useState([])
     const [loading, setLoading] = useState(true)
@@ -87,7 +89,7 @@ export default function AdminAnamnesis() {
     }
 
     const handleDelete = async (id, name) => {
-        if (!confirm(`Remover a ficha "${name}"? Ela será desanexada de qualquer serviço que a use.`)) return
+        if (!(await confirm(`Remover a ficha "${name}"? Ela será desanexada de qualquer serviço que a use.`, { confirmLabel: 'Remover' }))) return
         try {
             await api.deleteAnamnesisForm(id)
             success('Ficha removida!')

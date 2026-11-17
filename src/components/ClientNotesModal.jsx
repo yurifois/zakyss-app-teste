@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as api from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import { useConfirm } from '../contexts/ConfirmContext'
 
 // Marcações objetivas de comportamento — mesmas do backend. Ficam opcionais:
 // o centro da tela é o campo de texto livre, pra anotação do procedimento.
@@ -44,6 +45,7 @@ export default function ClientNotesModal({
     onNotesChange
 }) {
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     // initialNotes só conta como "já carregado" se for mesmo um array.
     // undefined = o pai ainda não buscou, então o modal busca sozinho.
@@ -146,7 +148,7 @@ export default function ClientNotesModal({
     }
 
     const handleDelete = async (note) => {
-        if (!confirm('Remover esta anotação? Essa ação não pode ser desfeita.')) return
+        if (!(await confirm('Remover esta anotação? Essa ação não pode ser desfeita.', { confirmLabel: 'Remover' }))) return
         try {
             await api.deleteClientNote(note.id)
             publish(notes.filter(n => n.id !== note.id))

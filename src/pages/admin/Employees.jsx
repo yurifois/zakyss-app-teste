@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import * as api from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 export default function AdminEmployees() {
     const { admin } = useAuth()
     const { success, error } = useToast()
+    const confirm = useConfirm()
 
     const [employees, setEmployees] = useState([])
     const [services, setServices] = useState([]) // Services offered by establishment
@@ -121,7 +123,7 @@ export default function AdminEmployees() {
     }
 
     const handleDelete = async (id, name) => {
-        if (!confirm(`Deseja remover o funcionário "${name}"?`)) return
+        if (!(await confirm(`Deseja remover o funcionário "${name}"?`, { confirmLabel: 'Remover' }))) return
 
         try {
             await api.deleteEmployee(id)
