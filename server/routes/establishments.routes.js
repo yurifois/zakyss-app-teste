@@ -628,31 +628,61 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
     }
 })
 
+// Tudo que pertence a um estabelecimento, na ordem de apagar (dependentes
+// antes). Antes a exclusão só levava agendamentos, funcionários e o admin:
+// produtos, pacotes, caixa, notas de cliente e até as fichas de ANAMNESE
+// (dados de saúde) ficavam para trás, embora a tela prometa "todos os dados".
+const ESTABLISHMENT_OWNED_TABLES = [
+    'anamnesis_responses.json',
+    'package_usage.json',
+    'customer_packages.json',
+    'packages.json',
+    'stock_movements.json',
+    'products.json',
+    'cashflow.json',
+    'client_notes.json',
+    'anamnesis_forms.json',
+    'commission_payments.json',
+    'audit_log.json',
+    'appointments.json',
+    'employees.json',
+    'services.json', // só os serviços próprios; os globais não têm establishmentId
+]
+
+// Tabela que ainda não existe no banco (ex.: commission_payments) não é motivo
+// para travar a exclusão: não há o que apagar nela.
+function isMissingTable(err) {
+    return ['PGRST205', '42P01'].includes(err?.code)
+}
+
 // Excluir estabelecimento e todos os dados relacionados (Zerar dados)
 router.delete('/:id', authMiddleware, async (req, res, next) => {
     try {
         const id = parseInt(req.params.id)
+        assertAdminOf(req.user, id)
 
-        // Verificar se é o próprio estabelecimento (ou admin master se houvesse)
-        if (req.user.type !== 'admin' || req.user.establishmentId !== id) {
-            throw new AppError('Não autorizado a excluir este estabelecimento', 403)
+        const falhas = []
+        for (const table of ESTABLISHMENT_OWNED_TABLES) {
+            try {
+                await getRepository(table).deleteMany({ establishmentId: id })
+            } catch (err) {
+                if (isMissingTable(err)) continue
+                console.error(`[Establishments] Falha ao apagar ${table} do estabelecimento ${id}:`, err.message)
+                falhas.push(table.replace('.json', ''))
+            }
         }
 
-        // 1. Excluir agendamentos
-        await appointmentsRepo.deleteMany({ establishmentId: id })
+        // O login do dono só some se o resto saiu inteiro: assim, se algo falhar,
+        // a pessoa ainda consegue entrar e tentar de novo, em vez de ficar sem
+        // conta e com dados órfãos no banco.
+        if (falhas.length > 0) {
+            throw new AppError('Não foi possível apagar todos os dados agora. Sua conta continua ativa: tente de novo em alguns minutos.', 500)
+        }
 
-        // 2. Excluir funcionários
-        await employeesRepo.deleteMany({ establishmentId: id })
-
-        // 3. Excluir admins vinculados
+        // O estabelecimento pode já não existir (cadastro antigo/quebrado);
+        // mesmo assim a conta e o que sobrou dela precisam poder ser apagados.
+        await establishmentsRepo.delete(id)
         await adminsRepo.deleteMany({ establishmentId: id })
-
-        // 4. Excluir o estabelecimento
-        const deleted = await establishmentsRepo.delete(id)
-
-        if (!deleted) {
-            throw new AppError('Estabelecimento não encontrado', 404)
-        }
 
         res.json({
             success: true,

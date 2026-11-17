@@ -281,3 +281,35 @@ test('manter-me conectado: marcado dá sessão de 30 dias, desmarcado de 7', asy
     const semLembrar = await call('POST', '/auth/login', { body: { email, password: 'senhaforte1', remember: false } })
     assert.equal(diasDeSessao(semLembrar.json.data.token), 7)
 })
+
+// Fica por último: apaga o salão 1 inteiro.
+test('excluir conta: leva tudo do salão, só o dono pode, e funciona mesmo com o salão já sumido', async () => {
+    const owned = ['products.json', 'cashflow.json', 'client_notes.json', 'anamnesis_forms.json', 'anamnesis_responses.json', 'packages.json', 'audit_log.json']
+    for (const file of owned) {
+        await fs.writeFile(path.join(dataDir, file), JSON.stringify([
+            { id: 1, establishmentId: 1, nome: 'do A' },
+            { id: 2, establishmentId: 2, nome: 'do B' },
+        ]))
+    }
+
+    assert.equal((await call('DELETE', '/establishments/1', { token: tokens.adminB })).status, 403)
+    assert.equal((await call('DELETE', '/establishments/1', { token: tokens.cliente1 })).status, 403)
+
+    // o caso real da conta de teste: admin apontando para um salão que já não existe
+    const ests = (await readData('establishments.json')).filter(e => e.id !== 1)
+    await fs.writeFile(path.join(dataDir, 'establishments.json'), JSON.stringify(ests))
+
+    const r = await call('DELETE', '/establishments/1', { token: tokens.adminA })
+    assert.equal(r.status, 200, JSON.stringify(r.json))
+
+    for (const file of [...owned, 'appointments.json', 'employees.json', 'admins.json']) {
+        const rows = await readData(file)
+        assert.equal(rows.filter(x => x.establishmentId === 1).length, 0, `${file}: sobrou dado do salão 1`)
+    }
+    for (const file of owned) {
+        assert.equal((await readData(file)).filter(x => x.establishmentId === 2).length, 1, `${file}: apagou dado do salão 2`)
+    }
+    assert.ok((await readData('services.json')).some(s => s.id === 100), 'serviço global continua')
+    assert.ok((await readData('services.json')).some(s => s.id === 102), 'serviço do B continua')
+    assert.ok((await readData('admins.json')).some(a => a.id === 2), 'admin do B continua')
+})

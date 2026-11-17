@@ -16,6 +16,7 @@ export default function AdminDashboard() {
     const [todayAppointments, setTodayAppointments] = useState([])
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(false)
+    const [confirmingDelete, setConfirmingDelete] = useState(false)
     const [stats, setStats] = useState({
         today: 0,
         week: 0,
@@ -104,14 +105,12 @@ export default function AdminDashboard() {
         }
     }
 
+    // Antes: dois window.confirm seguidos com establishment.name. Quebrava de
+    // dois jeitos e o botão "não fazia nada": (1) se o salão não carregou,
+    // establishment era null e o clique estourava antes de perguntar; (2) o
+    // navegador embutido do WhatsApp/Instagram bloqueia window.confirm, que
+    // devolve "não" na hora. A confirmação agora é na própria página.
     const handleDeleteAccount = async () => {
-        const confirmStr = `Tem certeza que deseja EXCLUIR TOTALMENTE sua conta e o estabelecimento "${establishment.name}"?\n\nEsta ação é PERMANENTE e apagará todos os agendamentos, funcionários e dados históricos. Você poderá criar um novo cadastro após esta ação.`
-
-        if (!window.confirm(confirmStr)) return
-
-        const secondConfirm = window.confirm("ÚLTIMO AVISO: Todos os seus dados serão apagados agora. Confirmar exclusão?")
-        if (!secondConfirm) return
-
         setDeleting(true)
         try {
             await api.deleteEstablishment(admin.establishmentId)
@@ -381,16 +380,40 @@ export default function AdminDashboard() {
                 <div className="card" style={{ padding: '1.5rem', background: '#fff1f1', border: '1px solid #fee2e2' }}>
                     <h2 className="text-xl font-bold text-error-700 mb-2" style={{ color: '#b91c1c' }}>⚠️ Zona de Perigo</h2>
                     <p className="text-secondary mb-4">
-                        Ao excluir sua conta, todos os dados do estabelecimento, agendamentos e funcionários serão removidos permanentemente do nosso banco de dados.
+                        Ao excluir sua conta, todos os dados do estabelecimento (agendamentos, funcionários, clientes, produtos, pacotes, caixa e fichas) são removidos permanentemente do nosso banco de dados.
                     </p>
-                    <button
-                        onClick={handleDeleteAccount}
-                        className="btn btn-error"
-                        disabled={deleting}
-                        style={{ background: '#ef4444', color: 'white' }}
-                    >
-                        {deleting ? 'Excluindo tudo...' : '🗑️ Excluir minha conta e todos os dados'}
-                    </button>
+                    {!confirmingDelete ? (
+                        <button
+                            onClick={() => setConfirmingDelete(true)}
+                            className="btn btn-error"
+                            style={{ background: '#ef4444', color: 'white' }}
+                        >
+                            🗑️ Excluir minha conta e todos os dados
+                        </button>
+                    ) : (
+                        <div role="alertdialog" aria-labelledby="titulo-excluir-conta">
+                            <p id="titulo-excluir-conta" className="font-semibold mb-3" style={{ color: '#b91c1c' }}>
+                                Tem certeza? Isso apaga para sempre {establishment?.name ? `"${establishment.name}"` : 'o seu estabelecimento'}, com agendamentos, funcionários, clientes, produtos, pacotes, caixa e fichas. Não dá para desfazer.
+                            </p>
+                            <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="btn btn-error"
+                                    disabled={deleting}
+                                    style={{ background: '#b91c1c', color: 'white' }}
+                                >
+                                    {deleting ? 'Excluindo tudo...' : 'Sim, excluir tudo'}
+                                </button>
+                                <button
+                                    onClick={() => setConfirmingDelete(false)}
+                                    className="btn btn-outline"
+                                    disabled={deleting}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <p className="mt-3 text-xs font-medium" style={{ color: '#dc2626' }}>
                         * Você poderá realizar um novo cadastro com o mesmo e-mail após a exclusão.
                     </p>
