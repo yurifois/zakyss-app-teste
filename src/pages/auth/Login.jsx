@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
 import { loginErrorMessage } from '../../services/authErrors'
-import { getLastEmail } from '../../services/api'
+import { getLastEmail, resendVerification } from '../../services/api'
 
 export default function Login() {
     const navigate = useNavigate()
@@ -31,9 +31,26 @@ export default function Login() {
         }))
     }
 
+    // Conta nova que ainda não confirmou o e-mail: em vez de só um erro,
+    // mostra o aviso com o botão de reenviar o link.
+    const [pendingEmail, setPendingEmail] = useState('')
+    const [resending, setResending] = useState(false)
+    const handleResend = async () => {
+        setResending(true)
+        try {
+            await resendVerification(pendingEmail)
+            success('Se houver uma conta aguardando confirmação, enviamos um novo link.')
+        } catch (err) {
+            error(err.message || 'Não foi possível reenviar agora.')
+        } finally {
+            setResending(false)
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
+        setPendingEmail('')
 
         try {
             await login(formData.email, formData.password, formData.remember)
@@ -47,7 +64,11 @@ export default function Login() {
                 navigate('/')
             }
         } catch (err) {
-            error(loginErrorMessage(err))
+            if (err.code === 'EMAIL_NOT_VERIFIED') {
+                setPendingEmail(formData.email.trim())
+            } else {
+                error(loginErrorMessage(err))
+            }
         } finally {
             setLoading(false)
         }
@@ -76,6 +97,26 @@ export default function Login() {
                             }}
                         >
                             ⚠️ {STORAGE_BLOCKED_HINT}
+                        </div>
+                    )}
+
+                    {pendingEmail && (
+                        <div
+                            className="mb-4 text-sm"
+                            role="status"
+                            style={{
+                                padding: '0.75rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid var(--accent-400)',
+                                background: 'rgba(236, 72, 153, 0.08)'
+                            }}
+                        >
+                            <p className="mb-2">
+                                📬 Falta confirmar o e-mail <strong>{pendingEmail}</strong>. Abra a mensagem que enviamos e toque em <strong>Confirmar meu e-mail</strong>.
+                            </p>
+                            <button type="button" className="btn btn-outline btn-sm" onClick={handleResend} disabled={resending}>
+                                {resending ? 'Reenviando…' : 'Reenviar o link'}
+                            </button>
                         </div>
                     )}
 

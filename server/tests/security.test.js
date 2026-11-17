@@ -73,6 +73,13 @@ async function call(method, url, { token, body } = {}) {
 
 const readData = async (file) => JSON.parse(await fs.readFile(path.join(dataDir, file), 'utf-8'))
 
+// Gera o mesmo link que iria por e-mail e "clica" nele.
+let linkDeConfirmacao
+async function confirmarEmail(file, email, kind) {
+    const conta = (await readData(file)).find(c => c.email === email)
+    return call('POST', '/auth/verify-email', { body: { token: linkDeConfirmacao(conta, kind) } })
+}
+
 before(async () => {
     dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zakys-sec-test-'))
     process.env.JSON_DATA_DIR = dataDir
@@ -83,7 +90,8 @@ before(async () => {
     const express = (await import('express')).default
     const routes = (await import('../routes/index.js')).default
     const { errorHandler } = await import('../middleware/error.middleware.js')
-    const { generateToken } = await import('../utils/auth.js')
+    const { generateToken, generateEmailVerificationToken } = await import('../utils/auth.js')
+    linkDeConfirmacao = generateEmailVerificationToken
 
     tokens = {
         adminA: generateToken({ id: 1, email: 'admin-a@teste.local', type: 'admin', establishmentId: 1 }),
@@ -269,6 +277,7 @@ test('senha: menos de 8 caracteres é recusada no cadastro', async () => {
 test('manter-me conectado: marcado dá sessão de 30 dias, desmarcado de 7', async () => {
     const email = 'lembrar@teste.local'
     assert.equal((await call('POST', '/auth/register', { body: { name: 'L', email, password: 'senhaforte1', termsAccepted: true } })).status, 201)
+    assert.equal((await confirmarEmail('users.json', email, 'customer')).status, 200)
 
     const diasDeSessao = (token) => {
         const { iat, exp } = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())
@@ -280,6 +289,84 @@ test('manter-me conectado: marcado dá sessão de 30 dias, desmarcado de 7', asy
 
     const semLembrar = await call('POST', '/auth/login', { body: { email, password: 'senhaforte1', remember: false } })
     assert.equal(diasDeSessao(semLembrar.json.data.token), 7)
+})
+
+test('confirmação de e-mail: conta nova só entra depois de clicar no link', async () => {
+    const email = 'nova@teste.local'
+    const cad = await call('POST', '/auth/register', { body: { name: 'Nova', email, password: 'senhaforte1', termsAccepted: true } })
+    assert.equal(cad.status, 201)
+    assert.equal(cad.json.data.verificationRequired, true)
+    assert.equal(cad.json.data.token, undefined, 'cadastro não devolve sessão')
+
+    const antes = await call('POST', '/auth/login', { body: { email, password: 'senhaforte1' } })
+    assert.equal(antes.status, 403)
+    assert.equal(antes.json.code, 'EMAIL_NOT_VERIFIED')
+
+    const conf = await confirmarEmail('users.json', email, 'customer')
+    assert.equal(conf.status, 200)
+    assert.ok(conf.json.data.token, 'clicar no link já entra')
+    assert.equal(conf.json.data.user.password, undefined)
+
+    assert.equal((await call('POST', '/auth/login', { body: { email, password: 'senhaforte1' } })).status, 200)
+    // conta confirmada não pode ser recadastrada por cima
+    assert.equal((await call('POST', '/auth/register', { body: { name: 'X', email, password: 'outrasenha1', termsAccepted: true } })).status, 400)
+})
+
+test('confirmação de e-mail: impostor não aproveita o clique do dono', async () => {
+    const email = 'vitima@teste.local'
+    await call('POST', '/auth/register', { body: { name: 'Impostor', email, password: 'senhaimpostor', termsAccepted: true } })
+    const contaImpostor = (await readData('users.json')).find(u => u.email === email)
+    const linkDoImpostor = linkDeConfirmacao(contaImpostor, 'customer')
+
+    // o dono real se cadastra por cima da conta nunca confirmada
+    assert.equal((await call('POST', '/auth/register', { body: { name: 'Dono', email, password: 'senhadodono1', termsAccepted: true } })).status, 201)
+    assert.equal((await call('POST', '/auth/verify-email', { body: { token: linkDoImpostor } })).status, 400, 'link antigo morreu')
+    assert.equal((await confirmarEmail('users.json', email, 'customer')).status, 200)
+
+    assert.equal((await call('POST', '/auth/login', { body: { email, password: 'senhaimpostor' } })).status, 401)
+    assert.equal((await call('POST', '/auth/login', { body: { email, password: 'senhadodono1' } })).status, 200)
+    assert.equal((await readData('users.json')).find(u => u.email === email).name, 'Dono')
+})
+
+test('confirmação de e-mail: contas antigas seguem entrando; link não vale como login', async () => {
+    const { hashPassword, generateEmailVerificationToken } = await import('../utils/auth.js')
+    const users = await readData('users.json')
+    const antiga = { id: 900, name: 'Antiga', email: 'antiga@teste.local', password: await hashPassword('senhaantiga1') }
+    await fs.writeFile(path.join(dataDir, 'users.json'), JSON.stringify([...users, antiga]))
+    assert.equal((await call('POST', '/auth/login', { body: { email: antiga.email, password: 'senhaantiga1' } })).status, 200)
+
+    const link = generateEmailVerificationToken(antiga, 'customer')
+    assert.equal((await call('GET', '/auth/me', { token: link })).status, 401, 'token do link não abre sessão')
+})
+
+test('confirmação de e-mail: reenviar responde igual exista a conta ou não', async () => {
+    const a = await call('POST', '/auth/resend-verification', { body: { email: 'pendente@teste.local' } })
+    const b = await call('POST', '/auth/resend-verification', { body: { email: 'naoexiste@teste.local' } })
+    assert.equal(a.status, 200)
+    assert.deepEqual(a.json, b.json)
+})
+
+test('confirmação de e-mail: redefinir a senha também confirma (o link chegou na caixa do dono)', async () => {
+    const { generateResetToken } = await import('../utils/auth.js')
+    const email = 'esqueceu@teste.local'
+    await call('POST', '/auth/register', { body: { name: 'E', email, password: 'senhaforte1', termsAccepted: true } })
+    const conta = (await readData('users.json')).find(u => u.email === email)
+    const r = await call('POST', '/auth/reset-password', { body: { token: generateResetToken(conta, 'customer'), newPassword: 'senhanova123' } })
+    assert.equal(r.status, 200)
+    assert.equal((await call('POST', '/auth/login', { body: { email, password: 'senhanova123' } })).status, 200)
+})
+
+test('confirmação de e-mail: parceiro novo também confirma antes de abrir o painel', async () => {
+    const est = await call('POST', '/establishments', { body: { name: 'Salão Novo' } })
+    const email = 'parceiro@teste.local'
+    const cad = await call('POST', '/auth/admin/register', { body: { name: 'P', email, password: 'senhaforte1', establishmentId: est.json.data.id, termsAccepted: true } })
+    assert.equal(cad.status, 201)
+    assert.equal(cad.json.data.token, undefined)
+    assert.equal((await call('POST', '/auth/admin/login', { body: { email, password: 'senhaforte1' } })).json.code, 'EMAIL_NOT_VERIFIED')
+    const conf = await confirmarEmail('admins.json', email, 'admin')
+    assert.equal(conf.status, 200)
+    assert.equal(conf.json.data.admin.establishmentId, est.json.data.id)
+    assert.equal((await call('POST', '/auth/admin/login', { body: { email, password: 'senhaforte1' } })).status, 200)
 })
 
 // Fica por último: apaga o salão 1 inteiro.

@@ -25,10 +25,17 @@ export function AuthProvider({ children }) {
         return userData
     }
 
+    // Devolve { verificationRequired, email }: a conta só entra depois de
+    // confirmar o e-mail (ver completeEmailVerification).
     const register = async (userData) => {
-        const newUser = await api.register(userData)
-        setUser(newUser)
-        return newUser
+        return api.register(userData)
+    }
+
+    const completeEmailVerification = async (token) => {
+        const result = await api.verifyEmail(token)
+        if (result.kind === 'admin') setAdmin(result.admin)
+        else setUser(result.user)
+        return result
     }
 
     const logout = () => {
@@ -74,6 +81,7 @@ export function AuthProvider({ children }) {
         refreshUser,
         adminLogin,
         adminLogout,
+        completeEmailVerification,
     }
 
     return (

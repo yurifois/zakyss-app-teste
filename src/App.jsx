@@ -19,6 +19,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
+import VerifyEmail from './pages/auth/VerifyEmail'
 import Profile from './pages/Profile'
 
 // Partner Pages
@@ -66,6 +67,7 @@ function App() {
                 <Route path="cadastro" element={<Register />} />
                 <Route path="recuperar-senha" element={<ForgotPassword />} />
                 <Route path="redefinir-senha" element={<ResetPassword />} />
+                <Route path="verificar-email" element={<VerifyEmail />} />
                 <Route path="perfil" element={<Profile />} />
 
                 {/* Partner Routes */}

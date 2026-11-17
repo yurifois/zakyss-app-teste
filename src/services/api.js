@@ -81,7 +81,12 @@ async function request(endpoint, options = {}) {
         const data = await response.json()
 
         if (!response.ok) {
-            throw new Error(data.error || `Erro na requisição: ${response.status}`)
+            const err = new Error(data.error || `Erro na requisição: ${response.status}`)
+            // Código estável do backend (ex.: EMAIL_NOT_VERIFIED) para a tela
+            // reagir sem depender do texto da mensagem.
+            err.code = data.code
+            err.status = response.status
+            throw err
         }
 
         return data.data
@@ -141,14 +146,41 @@ export async function login(email, password, remember = true) {
     return result.user
 }
 
+// Conta nova não entra direto: o backend manda um link de confirmação para o
+// e-mail e devolve { verificationRequired: true, email }.
 export async function register(userData) {
-    const result = await request('/auth/register', {
+    return request('/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
     })
-    localStorage.setItem('zakys_token', result.token)
-    localStorage.setItem('zakys_user', JSON.stringify(result.user))
-    return result.user
+}
+
+// Clique no link do e-mail. O backend confirma e já devolve a sessão (30 dias),
+// guardada como num login com "Manter-me conectado".
+export async function verifyEmail(token) {
+    const result = await request('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+    })
+    if (result.kind === 'admin') {
+        adminLogout()
+        localStorage.setItem('zakys_admin_token', result.token)
+        localStorage.setItem('zakys_admin', JSON.stringify(result.admin))
+        rememberLastEmail('admin', result.admin.email, true)
+    } else {
+        logout()
+        localStorage.setItem('zakys_token', result.token)
+        localStorage.setItem('zakys_user', JSON.stringify(result.user))
+        rememberLastEmail('customer', result.user.email, true)
+    }
+    return result
+}
+
+export async function resendVerification(email) {
+    return request('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    })
 }
 
 export async function adminLogin(email, password, remember = true) {
@@ -165,14 +197,12 @@ export async function adminLogin(email, password, remember = true) {
     return result.admin
 }
 
+// Igual ao cliente: o painel só abre depois de confirmar o e-mail.
 export async function adminRegister(adminData) {
-    const result = await request('/auth/admin/register', {
+    return request('/auth/admin/register', {
         method: 'POST',
         body: JSON.stringify(adminData),
     })
-    localStorage.setItem('zakys_admin_token', result.token)
-    localStorage.setItem('zakys_admin', JSON.stringify(result.admin))
-    return result.admin
 }
 
 export function logout() {

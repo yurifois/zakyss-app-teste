@@ -55,3 +55,32 @@ export function passwordProblem(password) {
     }
     return null
 }
+
+// Link de confirmação de e-mail. Assinado com um segredo derivado (não serve
+// como token de login) e amarrado ao hash da senha atual: se alguém
+// recadastrar o mesmo e-mail por cima de uma conta não confirmada, a senha
+// muda e o link antigo morre — o impostor não aproveita o clique da vítima.
+function emailVerificationSecret(account) {
+    return `${process.env.JWT_SECRET}:verify-email:${account.password}`
+}
+
+export function generateEmailVerificationToken(account, kind) {
+    return jwt.sign(
+        { purpose: 'verify-email', id: account.id, email: account.email, kind },
+        emailVerificationSecret(account),
+        { expiresIn: '7d' }
+    )
+}
+
+export function verifyEmailVerificationToken(token, account) {
+    const payload = jwt.verify(token, emailVerificationSecret(account))
+    if (payload.purpose !== 'verify-email' || payload.email !== account.email) {
+        throw new Error('Token de confirmação não confere')
+    }
+    return payload
+}
+
+// Conta criada antes desta regra tem emailVerified vazio e vale como confirmada.
+export function isEmailVerified(account) {
+    return account?.emailVerified !== false
+}

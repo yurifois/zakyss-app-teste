@@ -50,22 +50,17 @@ export default function Register() {
         setLoading(true)
 
         try {
-            await register({
+            const result = await register({
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
                 password: formData.password,
                 termsAccepted: formData.terms,
             })
-            success('Conta criada com sucesso!')
-
-            const redirectUrl = sessionStorage.getItem('redirect_after_login')
-            if (redirectUrl) {
-                sessionStorage.removeItem('redirect_after_login')
-                navigate(redirectUrl)
-            } else {
-                navigate('/')
-            }
+            // A conta só entra depois de confirmar o e-mail. O destino
+            // (redirect_after_login) fica guardado e é usado depois do clique.
+            success('Conta criada! Falta só confirmar seu e-mail.')
+            navigate(`/verificar-email?email=${encodeURIComponent(result.email || formData.email.trim())}`)
         } catch (err) {
             error(err.message)
         } finally {

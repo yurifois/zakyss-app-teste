@@ -33,6 +33,37 @@ export async function sendPasswordResetEmail(to, token) {
     }
 }
 
+// Link para confirmar o e-mail de uma conta nova. Até clicar, a conta não
+// entra — é o que impede alguém de criar conta com o e-mail de outra pessoa.
+export async function sendEmailVerificationEmail(to, token) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const verifyUrl = `${frontendUrl}/verificar-email?token=${token}`
+
+    const subject = 'Confirme seu e-mail - Zakys'
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Confirme seu e-mail</h2>
+            <p>Sua conta na Zakys foi criada. Para começar a usar, confirme que este e-mail é seu:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${verifyUrl}" style="background-color: #EC4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Confirmar meu e-mail</a>
+            </div>
+            <p>Se o botão não funcionar, copie e cole o link abaixo no seu navegador:</p>
+            <p style="word-break: break-all; color: #666; font-size: 14px;">${verifyUrl}</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px;">Se você não criou uma conta na Zakys, ignore este e-mail: sem a confirmação, ninguém consegue entrar usando o seu endereço.</p>
+            <p style="color: #999; font-size: 12px;">Este link vale por 7 dias.</p>
+        </div>
+    `
+
+    try {
+        await sendEmail(to, subject, html)
+        console.log(`[Email] Verification sent to ${to}`)
+    } catch (error) {
+        console.error(`[Email] Error sending verification to ${to}:`, error)
+        throw new Error('Falha ao enviar e-mail: ' + error.message)
+    }
+}
+
 /**
  * Convite para criar conta.
  *

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken, passwordProblem, REMEMBER_ME_EXPIRES_IN } from '../utils/auth.js'
-import { sendPasswordResetEmail, sendAccountInviteEmail } from '../utils/email.js'
+import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken, passwordProblem, REMEMBER_ME_EXPIRES_IN, generateEmailVerificationToken, verifyEmailVerificationToken, isEmailVerified } from '../utils/auth.js'
+import { sendPasswordResetEmail, sendAccountInviteEmail, sendEmailVerificationEmail } from '../utils/email.js'
 import { recordTermsAcceptance } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
@@ -23,6 +23,14 @@ const forgotLimit = rateLimit('forgot', [
     // vários IPs sem deixar um estranho gastar os 3 pedidos do dono de verdade.
     { key: byBody('email'), max: 10, windowMinutes: 60 },
     { key: byIp, max: 20, windowMinutes: 60 },
+])
+const resendVerificationLimit = rateLimit('resend-verification', [
+    { key: byIpAnd('email'), max: 3, windowMinutes: 60 },
+    { key: byBody('email'), max: 10, windowMinutes: 60 },
+    { key: byIp, max: 20, windowMinutes: 60 },
+])
+const verifyEmailLimit = rateLimit('verify-email', [
+    { key: byIp, max: 30, windowMinutes: 15 },
 ])
 const resetLimit = rateLimit('reset', [
     { key: byIp, max: 20, windowMinutes: 15 },
@@ -47,6 +55,18 @@ async function registrarUltimoLogin(repo, id) {
         console.warn('[auth] Não foi possível registrar o último login:', err.message)
     }
 }
+
+// Manda o link de confirmação. Falha de envio não derruba o cadastro: a conta
+// já existe e a pessoa pode pedir outro link pela tela de login.
+async function enviarConfirmacaoDeEmail(account, kind) {
+    try {
+        await sendEmailVerificationEmail(account.email, generateEmailVerificationToken(account, kind))
+    } catch (err) {
+        console.error(`[auth] Falha ao enviar confirmação de e-mail (${kind} ${account.id}):`, err.message)
+    }
+}
+
+const EMAIL_NAO_CONFIRMADO = 'Confirme seu e-mail antes de entrar: enviamos um link quando você criou a conta. Não achou? Peça outro abaixo.'
 
 /**
  * Procura um agendamento feito com esse e-mail.
@@ -98,6 +118,9 @@ router.post('/login', loginLimit, async (req, res, next) => {
         if (!validPassword) {
             throw new AppError('Credenciais inválidas', 401)
         }
+        if (!isEmailVerified(user)) {
+            throw new AppError(EMAIL_NAO_CONFIRMADO, 403, 'EMAIL_NOT_VERIFIED')
+        }
 
         await registrarUltimoLogin(usersRepo, user.id)
 
@@ -136,35 +159,37 @@ router.post('/register', registerLimit, async (req, res, next) => {
 
         const normalizedEmail = email.toLowerCase().trim()
         const existing = await usersRepo.findOne({ email: normalizedEmail })
-        if (existing) {
-            throw new AppError('Email já cadastrado', 400)
+        const hashedPassword = await hashPassword(password)
+
+        let user
+        if (existing && isEmailVerified(existing)) {
+            throw new AppError('Email já cadastrado. Se a conta é sua, entre ou use "Esqueci minha senha".', 400)
+        } else if (existing) {
+            // Conta criada com este e-mail mas nunca confirmada: quem a criou
+            // nunca provou que o e-mail era dele. O dono de verdade pode se
+            // cadastrar por cima — a senha muda e o link antigo deixa de valer.
+            user = await usersRepo.update(existing.id, { name, password: hashedPassword, phone, emailVerified: false })
+        } else {
+            user = await usersRepo.create({
+                name,
+                email: normalizedEmail,
+                password: hashedPassword,
+                phone,
+                avatar: null,
+                favorites: [],
+                // Conta nova só entra depois de confirmar o e-mail. Contas
+                // antigas têm o campo vazio e seguem entrando normalmente.
+                emailVerified: false
+            })
         }
 
-        const hashedPassword = await hashPassword(password)
-        const user = await usersRepo.create({
-            name,
-            email: email.toLowerCase().trim(),
-            password: hashedPassword,
-            phone,
-            avatar: null,
-            favorites: []
-        })
-
         await recordTermsAcceptance({ userId: user.id, userType: 'customer' })
+        await enviarConfirmacaoDeEmail(user, 'customer')
 
-        const { password: _, ...userWithoutPassword } = user
-        const token = generateToken({
-            id: user.id,
-            email: user.email,
-            type: 'customer'
-        })
-
+        // Sem token: a conta só entra depois de confirmar o e-mail.
         res.status(201).json({
             success: true,
-            data: {
-                user: userWithoutPassword,
-                token
-            }
+            data: { verificationRequired: true, email: user.email }
         })
     } catch (error) {
         next(error)
@@ -190,6 +215,9 @@ router.post('/admin/login', loginLimit, async (req, res, next) => {
         const validPassword = await comparePassword(password, admin.password)
         if (!validPassword) {
             throw new AppError('Credenciais inválidas', 401)
+        }
+        if (!isEmailVerified(admin)) {
+            throw new AppError(EMAIL_NAO_CONFIRMADO, 403, 'EMAIL_NOT_VERIFIED')
         }
 
         await registrarUltimoLogin(adminsRepo, admin.id)
@@ -271,25 +299,17 @@ router.post('/admin/register', registerLimit, async (req, res, next) => {
             name,
             email: email.toLowerCase().trim(),
             password: hashedPassword,
-            establishmentId: targetEstablishmentId
+            establishmentId: targetEstablishmentId,
+            // Igual ao cliente: o painel só abre depois de confirmar o e-mail.
+            emailVerified: false
         })
 
         await recordTermsAcceptance({ userId: admin.id, userType: 'admin' })
-
-        const { password: _, ...adminWithoutPassword } = admin
-        const token = generateToken({
-            id: admin.id,
-            email: admin.email,
-            type: 'admin',
-            establishmentId: admin.establishmentId
-        })
+        await enviarConfirmacaoDeEmail(admin, 'admin')
 
         res.status(201).json({
             success: true,
-            data: {
-                admin: adminWithoutPassword,
-                token
-            }
+            data: { verificationRequired: true, email: admin.email }
         })
     } catch (error) {
         next(error)
@@ -297,6 +317,64 @@ router.post('/admin/register', registerLimit, async (req, res, next) => {
 })
 
 
+
+// Confirmar e-mail (link do e-mail de boas-vindas). Já devolve a sessão, para
+// a pessoa cair logada em vez de ter que digitar a senha de novo.
+router.post('/verify-email', verifyEmailLimit, async (req, res, next) => {
+    try {
+        const { token } = req.body
+        const invalido = new AppError('Link de confirmação inválido ou expirado. Peça outro na tela de entrar.', 400)
+        const payload = token ? decodeToken(token) : null
+        if (!payload?.id || payload.purpose !== 'verify-email' || !['customer', 'admin'].includes(payload.kind)) throw invalido
+
+        const repo = payload.kind === 'admin' ? adminsRepo : usersRepo
+        const account = await repo.findById(payload.id)
+        if (!account) throw invalido
+        try {
+            verifyEmailVerificationToken(token, account)
+        } catch {
+            throw invalido
+        }
+
+        const updated = isEmailVerified(account)
+            ? account
+            : await repo.update(account.id, { emailVerified: true })
+        await registrarUltimoLogin(repo, account.id)
+
+        const { password: _, ...safe } = updated
+        const sessionPayload = payload.kind === 'admin'
+            ? { id: updated.id, email: updated.email, type: 'admin', establishmentId: updated.establishmentId }
+            : { id: updated.id, email: updated.email, type: 'customer' }
+        const sessionToken = generateToken(sessionPayload, REMEMBER_ME_EXPIRES_IN)
+
+        res.json({
+            success: true,
+            data: payload.kind === 'admin'
+                ? { kind: 'admin', admin: safe, token: sessionToken }
+                : { kind: 'customer', user: safe, token: sessionToken }
+        })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Reenviar o link de confirmação. Resposta sempre igual, exista a conta ou
+// não, para não revelar quais e-mails têm cadastro.
+router.post('/resend-verification', resendVerificationLimit, async (req, res, next) => {
+    try {
+        const email = String(req.body?.email || '').toLowerCase().trim()
+        if (!email) throw new AppError('E-mail é obrigatório', 400)
+
+        const user = await usersRepo.findOne({ email })
+        if (user && !isEmailVerified(user)) await enviarConfirmacaoDeEmail(user, 'customer')
+        const admin = await adminsRepo.findOne({ email })
+        if (admin && !isEmailVerified(admin)) await enviarConfirmacaoDeEmail(admin, 'admin')
+
+        res.json({ success: true, data: { message: 'Se houver uma conta aguardando confirmação com esse e-mail, enviamos um novo link.' } })
+    } catch (error) {
+        next(error)
+    }
+})
 
 // Dados do usuário logado
 router.get('/me', authMiddleware, async (req, res, next) => {
@@ -427,10 +505,12 @@ router.post('/reset-password', resetLimit, async (req, res, next) => {
 
         const hashedPassword = await hashPassword(newPassword)
 
+        // O link de redefinição chegou na caixa do dono do e-mail: isso prova a
+        // posse, então a conta fica confirmada também.
         if (payload.type === 'admin') {
-            await adminsRepo.update(user.id, { password: hashedPassword })
+            await adminsRepo.update(user.id, { password: hashedPassword, emailVerified: true })
         } else {
-            await usersRepo.update(user.id, { password: hashedPassword })
+            await usersRepo.update(user.id, { password: hashedPassword, emailVerified: true })
         }
 
         res.json({ success: true, data: { message: 'Senha alterada com sucesso.' } })

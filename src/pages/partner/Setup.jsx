@@ -151,8 +151,8 @@ export default function PartnerSetup() {
                 workingHours: formattedHours,
             })
 
-            // Create admin user
-            await api.adminRegister({
+            // Create admin user (o painel só abre depois de confirmar o e-mail)
+            const adminResult = await api.adminRegister({
                 name: `Admin ${establishmentName}`,
                 email: partnerData.email,
                 password: partnerData.password,
@@ -164,8 +164,8 @@ export default function PartnerSetup() {
             sessionStorage.removeItem('partner_register')
             sessionStorage.removeItem('partner_services')
 
-            success('Estabelecimento cadastrado com sucesso!')
-            navigate('/admin')
+            success('Estabelecimento cadastrado! Falta só confirmar seu e-mail.')
+            navigate(`/verificar-email?tipo=parceiro&email=${encodeURIComponent(adminResult.email || partnerData.email)}`)
         } catch (err) {
             error(err.message || 'Erro ao cadastrar estabelecimento')
             console.error(err)
