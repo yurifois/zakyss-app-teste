@@ -79,6 +79,12 @@ app.get('/api/health', async (req, res) => {
         res.json({ 
             status: 'ok', 
             timestamp: new Date().toISOString(),
+            // IP de QUEM CHAMOU, como o servidor enxerga. Serve para conferir
+            // que o 'trust proxy' acima pega o IP real do visitante e não o do
+            // balanceador do Render — se pegasse o do balanceador, o limite de
+            // tentativas (rateLimit) trataria todo mundo como uma pessoa só.
+            clientIp: req.ip,
+            proxyHops: (req.headers['x-forwarded-for'] || '').split(',').filter(Boolean).length,
             env: process.env.NODE_ENV,
             database: process.env.SUPABASE_URL ? 'supabase' : 'json'
         })
