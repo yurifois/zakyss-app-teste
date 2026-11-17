@@ -28,6 +28,9 @@ export default function Booking() {
     const [demorando, setDemorando] = useState(false)
     const [showReviewModal, setShowReviewModal] = useState(false)
     const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+    // Conta desconectada pela manutenção de segurança (recado guardado até a
+    // pessoa entrar de novo): o pedido de login explica o motivo.
+    const sessaoEncerrada = showLoginPrompt && !user && !!api.getSessionEndedNotice('customer')
     // Quando dia, serviço e horário já vieram escolhidos da página do
     // estabelecimento, repetir os três seletores aqui empurrava o formulário e o
     // botão de confirmar para mais de 2.600px abaixo do topo — três telas de
@@ -106,6 +109,14 @@ export default function Booking() {
             window.scrollTo(0, y)
         }
     }, [showReviewModal, showLoginPrompt])
+
+    // Confere de novo, ao abrir o agendamento, se o login guardado ainda vale
+    // (a conferência ao abrir o app pode ter falhado com o servidor acordando).
+    // Se tiver sido encerrado, api.js desconecta e o pedido de login abaixo
+    // explica o motivo.
+    useEffect(() => {
+        if (user?.id) api.checkStoredSession('customer')
+    }, [user?.id])
 
     // Salva o estado do agendamento incompleto no localStorage
     useEffect(() => {
@@ -350,6 +361,14 @@ export default function Booking() {
             success('Agendamento realizado com sucesso!')
             navigate(`/confirmacao/${appointment.id}`)
         } catch (err) {
+            // Login guardado recusado pelo servidor (manutenção de segurança):
+            // em vez de um erro solto, pede para entrar de novo. As escolhas já
+            // estão salvas no rascunho e voltam depois do login.
+            if (err.code === 'SESSION_INVALID') {
+                setShowReviewModal(false)
+                setShowLoginPrompt(true)
+                return
+            }
             error(err.message || 'Erro ao criar agendamento')
             // O horário selecionado pode ter sido bloqueado/ocupado nesse meio tempo;
             // atualiza a lista para não deixar um horário inválido marcado como disponível.
@@ -790,7 +809,7 @@ export default function Booking() {
                 </div>
             )}
 
-            {/* Login Prompt Modal */}
+            {/* Login Prompt Modal (com recado próprio se a conta caiu na manutenção) */}
             {showLoginPrompt && (
                 <div
                     className="modal-backdrop"
@@ -803,8 +822,20 @@ export default function Booking() {
                         <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
                             <UserIcon size={32} />
                         </div>
-                        <h2 className="text-xl font-bold mb-2">Identifique-se</h2>
-                        <p className="text-muted mb-6 text-sm">Para concluir o agendamento, você precisa entrar na sua conta ou criar uma nova.</p>
+                        {sessaoEncerrada ? (
+                            <>
+                                <h2 className="text-xl font-bold mb-2">Entre novamente</h2>
+                                <p className="text-muted mb-6 text-sm">
+                                    Fizemos uma <strong>manutenção de segurança</strong> e, por isso, sua conta foi desconectada.
+                                    Entre de novo para concluir o agendamento — suas escolhas ficam guardadas.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="text-xl font-bold mb-2">Identifique-se</h2>
+                                <p className="text-muted mb-6 text-sm">Para concluir o agendamento, você precisa entrar na sua conta ou criar uma nova.</p>
+                            </>
+                        )}
                         
                         <div className="flex flex-col gap-3">
                             <button 
@@ -814,18 +845,20 @@ export default function Booking() {
                                     navigate('/entrar')
                                 }}
                             >
-                                Fazer Login
+                                {sessaoEncerrada ? 'Entrar novamente' : 'Fazer Login'}
                             </button>
-                            <button 
-                                className="btn w-full"
-                                style={{ backgroundColor: 'var(--base-200)' }}
-                                onClick={() => {
-                                    sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
-                                    navigate('/cadastro')
-                                }}
-                            >
-                                Criar Conta
-                            </button>
+                            {!sessaoEncerrada && (
+                                <button 
+                                    className="btn w-full"
+                                    style={{ backgroundColor: 'var(--base-200)' }}
+                                    onClick={() => {
+                                        sessionStorage.setItem('redirect_after_login', `/agendar/${id}`)
+                                        navigate('/cadastro')
+                                    }}
+                                >
+                                    Criar Conta
+                                </button>
+                            )}
                             <button 
                                 className="btn btn-ghost w-full mt-2"
                                 onClick={() => setShowLoginPrompt(false)}

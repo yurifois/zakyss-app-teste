@@ -240,6 +240,19 @@ test('agendamento novo: convidado não pendura agendamento na conta de outra pes
     assert.equal(r2.json.data.userId, 1)
 })
 
+test('agendamento com login antigo (de antes da manutenção) é recusado, não vira visitante', async () => {
+    const jwt = (await import('jsonwebtoken')).default
+    const tokenAntigo = jwt.sign({ id: 1, email: 'c1@teste.local', type: 'customer' }, 'segredo-de-antes-da-troca')
+    const r = await call('POST', '/appointments', {
+        token: tokenAntigo,
+        body: { establishmentId: 1, services: [101], date: '2030-03-01', time: '15:00',
+                customerName: 'Cliente Um', customerPhone: '11911111111', customerEmail: 'c1@teste.local' },
+    })
+    assert.equal(r.status, 401)
+    assert.equal(r.json.code, 'SESSION_INVALID')
+    assert.equal((await readData('appointments.json')).filter(a => a.date === '2030-03-01').length, 0, 'nada foi agendado')
+})
+
 test('cancelamento sem conta: chutar telefone esbarra no limite', async () => {
     const statuses = []
     for (let i = 0; i < 6; i++) {

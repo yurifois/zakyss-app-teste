@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware, optionalAuthMiddleware, isAdminOf } from '../middleware/auth.middleware.js'
+import { authMiddleware, optionalAuthMiddleware, optionalAuthRejectStaleMiddleware, isAdminOf } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { rateLimit, byIp, byParam } from '../middleware/rateLimit.middleware.js'
 
@@ -129,7 +129,7 @@ router.get('/:id', optionalAuthMiddleware, async (req, res, next) => {
 })
 
 // Criar agendamento
-router.post('/', optionalAuthMiddleware, async (req, res, next) => {
+router.post('/', optionalAuthRejectStaleMiddleware, async (req, res, next) => {
     try {
         const {
             establishmentId,

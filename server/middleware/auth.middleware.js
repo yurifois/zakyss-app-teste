@@ -37,6 +37,22 @@ export function optionalAuthMiddleware(req, res, next) {
     next()
 }
 
+// Igual ao optionalAuthMiddleware, mas recusa um login GUARDADO que não vale
+// mais (ex.: depois de uma manutenção que troca o segredo). Sem login nenhum
+// segue como visitante. Usado no agendamento: antes, quem tinha um login antigo
+// agendava "como visitante" sem perceber — o app achava que estava logado e o
+// servidor ignorava o token em silêncio.
+export function optionalAuthRejectStaleMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization
+    if (!authHeader?.startsWith('Bearer ')) return next()
+    try {
+        req.user = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET)
+    } catch {
+        throw new AppError('Sua sessão foi encerrada. Entre novamente para concluir o agendamento.', 401, 'SESSION_INVALID')
+    }
+    next()
+}
+
 export function adminMiddleware(req, res, next) {
     if (req.user?.type !== 'admin') {
         throw new AppError('Acesso restrito a administradores', 403)
