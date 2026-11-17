@@ -5,6 +5,7 @@ import { getCurrentPosition, sortByDistance } from '../services/geolocation'
 import EstablishmentCard from '../components/EstablishmentCard'
 import { Search, MapPin, Star } from 'lucide-react'
 import CategoryIconBase from '../components/CategoryIcon'
+import MaintenanceBanner from '../components/MaintenanceBanner'
 
 const CategoryIcon = ({ iconName, color }) => {
     const Icon = (props) => <CategoryIconBase iconName={iconName} {...props} />
@@ -130,6 +131,7 @@ export default function Home() {
             <section className="hero">
                 <HeroDecorations />
                 <div className="container hero-content">
+                    <MaintenanceBanner />
                     <h1 className="hero-title">
                         Encontre os melhores <br />
                         <span className="highlight">
