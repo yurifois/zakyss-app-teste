@@ -6,7 +6,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export class JsonRepository {
     constructor(filename) {
-        this.filePath = path.join(__dirname, '..', 'data', filename)
+        // JSON_DATA_DIR existe para os testes escreverem numa pasta temporária,
+        // sem tocar nos arquivos de server/data (que são versionados).
+        this.filePath = path.join(process.env.JSON_DATA_DIR || path.join(__dirname, '..', 'data'), filename)
     }
 
     async readAll() {

@@ -19,31 +19,32 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // Middleware
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []
+app.disable('x-powered-by')
+// O Render fica atrás de um proxy: sem isto, req.ip seria o IP do proxy e o
+// limite de tentativas (rateLimit) trataria todo mundo como uma pessoa só.
+app.set('trust proxy', 1)
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+    : []
+// Origens do app Android/iOS empacotado com Capacitor.
+const nativeAppOrigins = ['capacitor://localhost', 'https://localhost', 'http://localhost']
+
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, curl, etc)
+        // Sem origem = app nativo, curl, servidor-a-servidor
         if (!origin) return callback(null, true)
 
-        // Allow any localhost port
-        if (origin.startsWith('http://localhost:')) {
+        // Desenvolvimento local (qualquer porta)
+        if (origin.startsWith('http://localhost:')) return callback(null, true)
+
+        if (nativeAppOrigins.includes(origin) || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
             return callback(null, true)
         }
 
-        // Allow production origins
-        const isAllowed = allowedOrigins.includes(origin) || 
-                          allowedOrigins.includes('*') ||
-                          (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) // Fallback for production if not specified
-
-        if (isAllowed) {
-            return callback(null, true)
-        }
-
-        // Always allow Vercel and Render preview URLs
-        if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
-            return callback(null, true)
-        }
-
+        // Não liberar mais *.vercel.app / *.onrender.com por curinga: qualquer
+        // pessoa publica um site nesses domínios em minutos. Preview novo que
+        // precise falar com a API entra em ALLOWED_ORIGINS no Render.
         console.warn(`🛑 Blocked by CORS: ${origin}`)
         callback(new Error('Not allowed by CORS'))
     },
@@ -85,19 +86,6 @@ app.get('/api/health', async (req, res) => {
         console.error('Health check database ping failed:', error.message)
         res.status(500).json({ status: 'error', message: 'Database ping failed' })
     }
-})
-
-// Debug Env (temporário para diagnóstico)
-app.get('/api/debug-env', (req, res) => {
-    const mask = (val) => val ? `${val.substring(0, 5)}...${val.substring(val.length - 4)}` : 'MISSING'
-    res.json({
-        NODE_ENV: process.env.NODE_ENV,
-        PORT: process.env.PORT,
-        SUPABASE_URL: mask(process.env.SUPABASE_URL),
-        SUPABASE_ANON_KEY: mask(process.env.SUPABASE_ANON_KEY),
-        JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
-        ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
-    })
 })
 
 // Error handling

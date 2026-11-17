@@ -35,3 +35,19 @@ export function verifyResetToken(token, user) {
 export function decodeToken(token) {
     return jwt.decode(token)
 }
+
+// Regra de senha para cadastro, troca e redefinição. Não afeta quem já tem
+// conta: senha antiga continua entrando normalmente, a regra só vale para
+// senha nova. Teto de 72 bytes porque o bcrypt ignora o que passa disso
+// (duas senhas diferentes depois do 72º byte virariam a mesma).
+export const PASSWORD_MIN_LENGTH = 8
+
+export function passwordProblem(password) {
+    if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
+        return `A senha precisa ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`
+    }
+    if (Buffer.byteLength(password, 'utf8') > 72) {
+        return 'A senha pode ter no máximo 72 caracteres.'
+    }
+    return null
+}

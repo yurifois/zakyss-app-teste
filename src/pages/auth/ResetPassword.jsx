@@ -29,8 +29,8 @@ export default function ResetPassword() {
             return error('As senhas não coincidem.')
         }
 
-        if (formData.password.length < 6) {
-            return error('A senha deve ter pelo menos 6 caracteres.')
+        if (formData.password.length < 8) {
+            return error('A senha deve ter pelo menos 8 caracteres.')
         }
 
         setLoading(true)

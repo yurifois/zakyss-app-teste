@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware } from '../middleware/auth.middleware.js'
+import { authMiddleware, requireEstablishmentAdmin } from '../middleware/auth.middleware.js'
+import { AppError } from '../middleware/error.middleware.js'
 
 const router = Router()
 const appointmentsRepo = getRepository('appointments.json')
@@ -9,7 +10,7 @@ const establishmentsRepo = getRepository('establishments.json')
 const servicesRepo = getRepository('services.json')
 
 // Analytics completo do estabelecimento
-router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
+router.get('/:establishmentId', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const {
@@ -378,7 +379,7 @@ router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
 })
 
 // Adicionar lançamento manual
-router.post('/:establishmentId/manual-finance', authMiddleware, async (req, res, next) => {
+router.post('/:establishmentId/manual-finance', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId);
         const { date, value, description, customerName, customerPhone, customerEmail, userId } = req.body;

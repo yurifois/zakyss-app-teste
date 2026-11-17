@@ -1,10 +1,32 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken } from '../utils/auth.js'
+import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken, passwordProblem } from '../utils/auth.js'
 import { sendPasswordResetEmail, sendAccountInviteEmail } from '../utils/email.js'
 import { recordTermsAcceptance } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
+import { rateLimit, byIp, byBody, byIpAnd } from '../middleware/rateLimit.middleware.js'
+
+// Freios contra força bruta e spam (ver rateLimit.middleware.js para o porquê dos números).
+const loginLimit = rateLimit('login', [
+    // Sem limite só por e-mail de propósito: ele deixaria qualquer um trancar a
+    // conta de outra pessoa errando a senha dela de vários IPs.
+    { key: byIpAnd('email'), max: 10, windowMinutes: 15 },  // mesma pessoa errando
+    { key: byIp, max: 100, windowMinutes: 15 },             // um IP testando muitas contas
+])
+const registerLimit = rateLimit('register', [
+    { key: byIp, max: 20, windowMinutes: 60 },
+])
+const forgotLimit = rateLimit('forgot', [
+    { key: byIpAnd('email'), max: 3, windowMinutes: 60 },   // mesmo pedido repetido
+    // Teto por e-mail mais folgado: segura o bombardeio de uma caixa vindo de
+    // vários IPs sem deixar um estranho gastar os 3 pedidos do dono de verdade.
+    { key: byBody('email'), max: 10, windowMinutes: 60 },
+    { key: byIp, max: 20, windowMinutes: 60 },
+])
+const resetLimit = rateLimit('reset', [
+    { key: byIp, max: 20, windowMinutes: 15 },
+])
 
 const router = Router()
 const usersRepo = getRepository('users.json')
@@ -57,7 +79,7 @@ async function encontrarAgendamentoPorEmail(emailLower) {
 
 
 // Login de usuário
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimit, async (req, res, next) => {
     try {
         const { email, password } = req.body
 
@@ -99,13 +121,15 @@ router.post('/login', async (req, res, next) => {
 })
 
 // Registro de usuário
-router.post('/register', async (req, res, next) => {
+router.post('/register', registerLimit, async (req, res, next) => {
     try {
         const { name, email, password, phone, termsAccepted } = req.body
 
         if (!name || !email || !password) {
             throw new AppError('Nome, email e senha são obrigatórios', 400)
         }
+        const problemaSenha = passwordProblem(password)
+        if (problemaSenha) throw new AppError(problemaSenha, 400)
         if (!termsAccepted) {
             throw new AppError('Você precisa aceitar os Termos de Uso e a Política de Privacidade', 400)
         }
@@ -148,7 +172,7 @@ router.post('/register', async (req, res, next) => {
 })
 
 // Login de admin
-router.post('/admin/login', async (req, res, next) => {
+router.post('/admin/login', loginLimit, async (req, res, next) => {
     try {
         const { email, password } = req.body
 
@@ -191,13 +215,15 @@ router.post('/admin/login', async (req, res, next) => {
 })
 
 // Registro de admin (para cadastro de estabelecimentos)
-router.post('/admin/register', async (req, res, next) => {
+router.post('/admin/register', registerLimit, async (req, res, next) => {
     try {
         const { name, email, password, establishmentId, termsAccepted } = req.body
 
         if (!name || !email || !password || !establishmentId) {
             throw new AppError('Dados incompletos', 400)
         }
+        const problemaSenhaAdmin = passwordProblem(password)
+        if (problemaSenhaAdmin) throw new AppError(problemaSenhaAdmin, 400)
         if (!termsAccepted) {
             throw new AppError('Você precisa aceitar os Termos de Uso e a Política de Privacidade', 400)
         }
@@ -300,7 +326,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
 })
 
 // Solicitar recuperação de senha
-router.post('/forgot-password', async (req, res, next) => {
+router.post('/forgot-password', forgotLimit, async (req, res, next) => {
     try {
         const { email } = req.body
 
@@ -361,13 +387,15 @@ router.post('/forgot-password', async (req, res, next) => {
 })
 
 // Redefinir senha
-router.post('/reset-password', async (req, res, next) => {
+router.post('/reset-password', resetLimit, async (req, res, next) => {
     try {
         const { token, newPassword } = req.body
 
         if (!token || !newPassword) {
             throw new AppError('Token e nova senha são obrigatórios', 400)
         }
+        const problemaSenhaNova = passwordProblem(newPassword)
+        if (problemaSenhaNova) throw new AppError(problemaSenhaNova, 400)
 
         // Decode token to find the user
         const payload = decodeToken(token)

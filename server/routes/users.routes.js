@@ -1,14 +1,19 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware } from '../middleware/auth.middleware.js'
+import { authMiddleware, customerMiddleware } from '../middleware/auth.middleware.js'
+import { passwordProblem } from '../utils/auth.js'
 import { AppError } from '../middleware/error.middleware.js'
 
 const router = Router()
+
+// Todas as rotas daqui são da conta de CLIENTE. Admin e cliente vivem em tabelas
+// diferentes e os ids se repetem: sem conferir o tipo do token, o admin nº 5
+// passava na checagem "id do token == id da URL" e lia/editava o cliente nº 5.
 const usersRepo = getRepository('users.json')
 const appointmentsRepo = getRepository('appointments.json')
 
 // Buscar usuário por ID
-router.get('/:id', authMiddleware, async (req, res, next) => {
+router.get('/:id', authMiddleware, customerMiddleware, async (req, res, next) => {
     try {
         if (parseInt(req.user.id) !== parseInt(req.params.id)) {
             throw new AppError('Não autorizado', 403)
@@ -32,7 +37,7 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
 })
 
 // Atualizar perfil
-router.put('/:id', authMiddleware, async (req, res, next) => {
+router.put('/:id', authMiddleware, customerMiddleware, async (req, res, next) => {
     try {
         const requestedId = parseInt(req.params.id)
         const tokenUserId = parseInt(req.user.id)
@@ -71,7 +76,7 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
 })
 
 // Alterar senha
-router.put('/:id/password', authMiddleware, async (req, res, next) => {
+router.put('/:id/password', authMiddleware, customerMiddleware, async (req, res, next) => {
     try {
         const { currentPassword, newPassword } = req.body
         const requestedId = parseInt(req.params.id)
@@ -80,6 +85,9 @@ router.put('/:id/password', authMiddleware, async (req, res, next) => {
         if (tokenUserId !== requestedId) {
             throw new AppError('Não autorizado', 403)
         }
+
+        const problemaSenha = passwordProblem(newPassword)
+        if (problemaSenha) throw new AppError(problemaSenha, 400)
 
         const user = await usersRepo.findById(req.params.id)
         if (!user) {
@@ -110,7 +118,7 @@ router.put('/:id/password', authMiddleware, async (req, res, next) => {
 })
 
 // Agendamentos do usuário
-router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
+router.get('/:id/appointments', authMiddleware, customerMiddleware, async (req, res, next) => {
     try {
         if (parseInt(req.user.id) !== parseInt(req.params.id)) {
             throw new AppError('Não autorizado', 403)
@@ -128,7 +136,7 @@ router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
 })
 
 // Favoritos
-router.get('/:id/favorites', authMiddleware, async (req, res, next) => {
+router.get('/:id/favorites', authMiddleware, customerMiddleware, async (req, res, next) => {
     try {
         if (parseInt(req.user.id) !== parseInt(req.params.id)) {
             throw new AppError('Não autorizado', 403)
@@ -150,7 +158,7 @@ router.get('/:id/favorites', authMiddleware, async (req, res, next) => {
 })
 
 // Toggle favorito
-router.post('/:id/favorites/:establishmentId', authMiddleware, async (req, res, next) => {
+router.post('/:id/favorites/:establishmentId', authMiddleware, customerMiddleware, async (req, res, next) => {
     try {
         if (parseInt(req.user.id) !== parseInt(req.params.id)) {
             throw new AppError('Não autorizado', 403)

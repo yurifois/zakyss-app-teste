@@ -414,10 +414,10 @@ export default function PartnerRegister() {
                                     type="password"
                                     name="password"
                                     className="form-input"
-                                    placeholder="Mínimo 6 caracteres"
+                                    placeholder="Mínimo 8 caracteres"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    minLength={6}
+                                    minLength={8}
                                     required
                                 />
                             </div>

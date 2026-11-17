@@ -1,8 +1,15 @@
 import { Router } from 'express'
-import jwt from 'jsonwebtoken'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware } from '../middleware/auth.middleware.js'
+import { authMiddleware, optionalAuthMiddleware, isAdminOf } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
+import { rateLimit, byIp, byParam } from '../middleware/rateLimit.middleware.js'
+
+// O telefone é a "senha" do cancelamento sem conta: sem limite, dava para
+// testar números até acertar.
+const cancelGuestLimit = rateLimit('cancel-guest', [
+    { key: byParam('id'), max: 5, windowMinutes: 15 },
+    { key: byIp, max: 30, windowMinutes: 15 },
+])
 import { overlaps, agoraNoFuso } from '../utils/daySchedule.js'
 import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
 
@@ -68,15 +75,10 @@ function isOutsideWorkingHours(establishment, date, time) {
 
 // Um admin autenticado (dashboard) pode criar agendamentos "de encaixe" mesmo
 // para um cliente restrito — a restrição vale apenas para autoagendamento público.
+// Só conta o admin DO estabelecimento do agendamento: antes, admin de qualquer
+// salão furava as regras de horário e de no-show dos outros.
 function isAuthenticatedAdminRequest(req) {
-    const authHeader = req.headers.authorization
-    if (!authHeader?.startsWith('Bearer ')) return false
-    try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET)
-        return decoded?.type === 'admin'
-    } catch (error) {
-        return false
-    }
+    return isAdminOf(req.user, req.body?.establishmentId)
 }
 
 // Verifica se o usuário autenticado (req.user, via authMiddleware) pode gerenciar
@@ -85,13 +87,20 @@ function isAuthenticatedAdminRequest(req) {
 function canManageAppointment(req, appointment) {
     const user = req.user
     if (!user || !appointment) return false
-    if (user.type === 'admin') return String(user.establishmentId) === String(appointment.establishmentId)
+    if (user.type === 'admin') return isAdminOf(user, appointment.establishmentId)
     if (user.type === 'customer') return Boolean(appointment.userId) && String(user.id) === String(appointment.userId)
     return false
 }
 
+// Campos que a tela de confirmação precisa e que não identificam ninguém.
+// Nome, telefone, e-mail, observações e anamnese ficam só para quem pode
+// gerenciar o agendamento. Antes esta rota era pública e devolvia tudo: como o
+// id é sequencial, dava para baixar o contato de todos os clientes de todos os
+// salões — e o telefone vazado era justamente o que libera o cancel-guest.
+const PUBLIC_APPOINTMENT_FIELDS = ['id', 'establishmentId', 'userId', 'services', 'date', 'time', 'status', 'cancelledBy', 'totalPrice', 'totalDuration']
+
 // Buscar agendamento por ID
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', optionalAuthMiddleware, async (req, res, next) => {
     try {
         const appointment = await appointmentsRepo.findById(req.params.id)
 
@@ -103,10 +112,14 @@ router.get('/:id', async (req, res, next) => {
         const allServices = await servicesRepo.findAll()
         const services = allServices.filter(s => appointment.services.includes(s.id))
 
+        const visible = canManageAppointment(req, appointment)
+            ? appointment
+            : Object.fromEntries(PUBLIC_APPOINTMENT_FIELDS.filter(f => f in appointment).map(f => [f, appointment[f]]))
+
         res.json({
             success: true,
             data: {
-                ...appointment,
+                ...visible,
                 servicesList: services
             }
         })
@@ -116,7 +129,7 @@ router.get('/:id', async (req, res, next) => {
 })
 
 // Criar agendamento
-router.post('/', async (req, res, next) => {
+router.post('/', optionalAuthMiddleware, async (req, res, next) => {
     try {
         const {
             establishmentId,
@@ -140,7 +153,8 @@ router.post('/', async (req, res, next) => {
         // Cliente com falta (no_show) recente fica restrito de se autoagendar por alguns dias.
         // Um admin autenticado (agendamento de encaixe pelo dashboard) pode ignorar a restrição.
         if (!isAuthenticatedAdminRequest(req)) {
-            const restrictionEnd = await getActiveNoShowRestriction(customerPhone, userId)
+            // Cliente logado: vale o id do token, para não fugir da própria falta mandando outro userId.
+            const restrictionEnd = await getActiveNoShowRestriction(customerPhone, req.user?.type === 'customer' ? req.user.id : userId)
             if (restrictionEnd) {
                 const formattedDate = restrictionEnd.toLocaleDateString('pt-BR')
                 throw new AppError(`Devido a uma falta (no-show) recente, novos agendamentos ficam temporariamente indisponíveis para este contato até ${formattedDate}.`, 403)
@@ -157,7 +171,16 @@ router.post('/', async (req, res, next) => {
         // vincula automaticamente. Sem isso, o agendamento nunca aparece em
         // "Meus Agendamentos" do cliente, mesmo que ele tenha conta — e ele
         // nunca consegue avaliar/comentar (era exatamente esse o sintoma).
-        let resolvedUserId = userId || null
+        // Quem pode dizer "este agendamento é da conta X": o próprio cliente logado
+        // (vale o id do token, não o do corpo) ou o admin do estabelecimento num
+        // encaixe. Convidado sem login não escolhe conta — antes dava para pendurar
+        // agendamento na conta de qualquer pessoa só mandando o userId dela.
+        // Sem um id confiável, segue a vinculação por telefone/e-mail logo abaixo.
+        let trustedUserId = null
+        if (req.user?.type === 'customer') trustedUserId = req.user.id
+        else if (isAdminOf(req.user, establishmentId)) trustedUserId = userId || null
+
+        let resolvedUserId = trustedUserId
         if (!resolvedUserId && (customerPhone || customerEmail)) {
             const usersRepo = getRepository('users.json')
             const normalizedTargetPhone = normalizePhone(customerPhone)
@@ -759,7 +782,7 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
 
 // Cancelamento de agendamento feito sem conta (convidado): confirma a identidade
 // pelo telefone usado no agendamento, já que não há login para autenticar.
-router.patch('/:id/cancel-guest', async (req, res, next) => {
+router.patch('/:id/cancel-guest', cancelGuestLimit, async (req, res, next) => {
     try {
         const { phone } = req.body
         if (!phone) {
@@ -925,6 +948,9 @@ router.patch('/:id/assignments', authMiddleware, async (req, res, next) => {
         const appointment = await appointmentsRepo.findById(req.params.id)
         if (!appointment) {
             throw new AppError('Agendamento não encontrado', 404)
+        }
+        if (!isAdminOf(req.user, appointment.establishmentId)) {
+            throw new AppError('Você não tem permissão para alterar este agendamento', 403)
         }
 
         // Validate assignments format

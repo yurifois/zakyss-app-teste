@@ -1,8 +1,14 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware.js'
+import { authMiddleware, adminMiddleware, assertAdminOf } from '../middleware/auth.middleware.js'
 import { premiumMiddleware } from '../middleware/plan.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
+import { rateLimit, byIp } from '../middleware/rateLimit.middleware.js'
+
+// Cadastro de parceiro é público; o limite só impede encher o app de salões falsos.
+const createEstablishmentLimit = rateLimit('create-establishment', [
+    { key: byIp, max: 10, windowMinutes: 60 },
+])
 import { buildDaySchedule, MOTIVOS_LONGOS } from '../utils/daySchedule.js'
 
 const router = Router()
@@ -499,10 +505,11 @@ router.get('/:id/day-schedule', async (req, res, next) => {
 })
 
 // Criar estabelecimento
-router.post('/', async (req, res, next) => {
+router.post('/', createEstablishmentLimit, async (req, res, next) => {
     try {
+        const { id: _ignoredId, ...body } = req.body
         const establishment = await establishmentsRepo.create({
-            ...req.body,
+            ...body,
             rating: 5.0,
             reviewCount: 0,
             plan: 'free' // Novos estabelecimentos começam no plano free
@@ -517,10 +524,17 @@ router.post('/', async (req, res, next) => {
     }
 })
 
-// Atualizar estabelecimento
+// Campos que o próprio admin não pode trocar pela tela de edição: plano pago,
+// nota/avaliações (calculadas pelas avaliações reais) e identidade do registro.
+// Antes, qualquer conta logada mandava { plan: 'premium' } para qualquer salão.
+const PROTECTED_ESTABLISHMENT_FIELDS = ['id', 'plan', 'rating', 'reviewCount', 'createdAt']
+
+// Atualizar estabelecimento — só o admin do próprio estabelecimento
 router.put('/:id', authMiddleware, async (req, res, next) => {
     try {
         const id = req.params.id
+        assertAdminOf(req.user, id)
+        for (const field of PROTECTED_ESTABLISHMENT_FIELDS) delete req.body[field]
 
         // Bloqueio de fechamento de dia com cliente agendado: se esta atualização
         // está fechando um dia inteiro ou bloqueando um horário que antes estava

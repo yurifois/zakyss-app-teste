@@ -287,8 +287,8 @@ export default function Profile() {
             error('As senhas não coincidem')
             return
         }
-        if (passwordData.newPassword.length < 6) {
-            error('A senha deve ter pelo menos 6 caracteres')
+        if (passwordData.newPassword.length < 8) {
+            error('A senha deve ter pelo menos 8 caracteres')
             return
         }
 
@@ -995,7 +995,7 @@ export default function Profile() {
                                             className="form-input"
                                             value={passwordData.newPassword}
                                             onChange={handlePasswordChange}
-                                            placeholder="Digite a nova senha (mín. 6 caracteres)"
+                                            placeholder="Digite a nova senha (mín. 8 caracteres)"
                                         />
                                     </div>
 

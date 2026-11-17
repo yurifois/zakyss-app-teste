@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware } from '../middleware/auth.middleware.js'
+import { authMiddleware, assertAdminOf, requireEstablishmentAdmin } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { logAudit } from '../utils/auditLog.js'
 
@@ -34,7 +34,7 @@ router.get('/:establishmentId/public', async (req, res, next) => {
 })
 
 // Listar funcionários de um estabelecimento (ADMIN - requer auth)
-router.get('/:establishmentId', authMiddleware, async (req, res, next) => {
+router.get('/:establishmentId', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const employees = await employeesRepo.findAll()
@@ -57,6 +57,7 @@ router.post('/', authMiddleware, async (req, res, next) => {
         if (!establishmentId || !name?.trim()) {
             throw new AppError('establishmentId e name são obrigatórios', 400)
         }
+        assertAdminOf(req.user, establishmentId)
 
         const employee = await employeesRepo.create({
             establishmentId: parseInt(establishmentId),
@@ -109,6 +110,12 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
             throw new AppError('Nenhum dado para atualizar', 400)
         }
 
+        const current = await employeesRepo.findById(req.params.id)
+        if (!current) {
+            throw new AppError('Funcionário não encontrado', 404)
+        }
+        assertAdminOf(req.user, current.establishmentId)
+
         const employee = await employeesRepo.update(req.params.id, updateData)
 
         if (!employee) {
@@ -134,6 +141,10 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
 router.delete('/:id', authMiddleware, async (req, res, next) => {
     try {
         const existing = await employeesRepo.findById(req.params.id)
+        if (!existing) {
+            throw new AppError('Funcionário não encontrado', 404)
+        }
+        assertAdminOf(req.user, existing.establishmentId)
 
         const deleted = await employeesRepo.delete(req.params.id)
 
@@ -166,7 +177,7 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
 })
 
 // Histórico de auditoria (quem criou/editou/removeu funcionários) do estabelecimento
-router.get('/:establishmentId/audit-log', authMiddleware, async (req, res, next) => {
+router.get('/:establishmentId/audit-log', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const entries = await auditLogRepo.findAll({ establishmentId })
@@ -180,7 +191,7 @@ router.get('/:establishmentId/audit-log', authMiddleware, async (req, res, next)
 })
 
 // Relatório financeiro por funcionário
-router.get('/:establishmentId/report', authMiddleware, async (req, res, next) => {
+router.get('/:establishmentId/report', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const { month, year } = req.query
@@ -370,7 +381,7 @@ router.get('/:establishmentId/report', authMiddleware, async (req, res, next) =>
 })
 
 // Marcar a comissão de um funcionário num mês/ano como paga.
-router.post('/:establishmentId/report/mark-paid', authMiddleware, async (req, res, next) => {
+router.post('/:establishmentId/report/mark-paid', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const { employeeId, month, year, amount, paymentMethod, note } = req.body
@@ -405,7 +416,7 @@ router.post('/:establishmentId/report/mark-paid', authMiddleware, async (req, re
 })
 
 // Desfazer a marcação de pago (volta pra pendente).
-router.post('/:establishmentId/report/mark-pending', authMiddleware, async (req, res, next) => {
+router.post('/:establishmentId/report/mark-pending', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const { employeeId, month, year } = req.body
@@ -429,7 +440,7 @@ router.post('/:establishmentId/report/mark-pending', authMiddleware, async (req,
 })
 
 // Detalhamento de serviços por funcionário (para KPI)
-router.get('/:establishmentId/detail-report', authMiddleware, async (req, res, next) => {
+router.get('/:establishmentId/detail-report', authMiddleware, requireEstablishmentAdmin(), async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.establishmentId)
         const { months, year } = req.query // months = "1,2,3" (comma separated)

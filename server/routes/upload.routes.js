@@ -4,7 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { getRepository } from '../repositories/index.js'
-import { authMiddleware } from '../middleware/auth.middleware.js'
+import { authMiddleware, customerMiddleware, requireEstablishmentAdmin } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { supabase } from '../repositories/supabase.repository.js'
 
@@ -85,7 +85,16 @@ const deleteFromSupabaseByUrl = async (url) => {
 }
 
 // Upload de avatar do usuário
-router.post('/avatar/:userId', authMiddleware, upload.single('image'), async (req, res, next) => {
+// A checagem de dono vem ANTES do multer, para nem processar arquivo de quem
+// não pode enviar. Antes, qualquer conta trocava a foto/logo de qualquer um.
+function requireSelf(req, res, next) {
+    if (String(req.user?.id) !== String(parseInt(req.params.userId))) {
+        throw new AppError('Você só pode alterar a sua própria foto', 403)
+    }
+    next()
+}
+
+router.post('/avatar/:userId', authMiddleware, customerMiddleware, requireSelf, upload.single('image'), async (req, res, next) => {
     try {
         if (!req.file) throw new AppError('Nenhuma imagem enviada', 400)
 
@@ -120,7 +129,7 @@ router.post('/avatar/:userId', authMiddleware, upload.single('image'), async (re
 })
 
 // Upload de logo do estabelecimento
-router.post('/logo/:id', authMiddleware, upload.single('image'), async (req, res, next) => {
+router.post('/logo/:id', authMiddleware, requireEstablishmentAdmin('id'), upload.single('image'), async (req, res, next) => {
     try {
         if (!req.file) throw new AppError('Nenhuma imagem enviada', 400)
 
@@ -152,7 +161,7 @@ router.post('/logo/:id', authMiddleware, upload.single('image'), async (req, res
 })
 
 // Upload de imagem de serviço
-router.post('/service-image/:id', authMiddleware, upload.single('image'), async (req, res, next) => {
+router.post('/service-image/:id', authMiddleware, requireEstablishmentAdmin('id'), upload.single('image'), async (req, res, next) => {
     try {
         if (!req.file) throw new AppError('Nenhuma imagem enviada', 400)
 
@@ -182,7 +191,7 @@ router.post('/service-image/:id', authMiddleware, upload.single('image'), async 
 })
 
 // Remover imagem de serviço
-router.delete('/service-image/:id/:imageIndex', authMiddleware, async (req, res, next) => {
+router.delete('/service-image/:id/:imageIndex', authMiddleware, requireEstablishmentAdmin('id'), async (req, res, next) => {
     try {
         const establishment = await establishmentsRepo.findById(req.params.id)
         if (!establishment) throw new AppError('Estabelecimento não encontrado', 404)

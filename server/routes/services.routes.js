@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
+import { authMiddleware, adminMiddleware, isAdminOf } from '../middleware/auth.middleware.js'
 
 const router = Router()
 const servicesRepo = getRepository('services.json')
@@ -57,6 +58,9 @@ router.get('/:id', async (req, res, next) => {
 router.post('/batch', async (req, res, next) => {
     try {
         const { ids } = req.body
+        if (!Array.isArray(ids)) {
+            return res.status(400).json({ success: false, error: 'ids deve ser uma lista' })
+        }
         const allServices = await servicesRepo.findAll()
         const services = allServices.filter(s => ids.includes(s.id))
 
@@ -69,10 +73,17 @@ router.post('/batch', async (req, res, next) => {
     }
 })
 
-// Criar novo serviço customizado
-router.post('/', async (req, res, next) => {
+// Criar novo serviço customizado.
+// Antes desta rota não pedia login: qualquer pessoa na internet criava serviço
+// em qualquer estabelecimento. Agora só o admin, e sempre no PRÓPRIO
+// estabelecimento (o do token), não no que vier no corpo.
+router.post('/', authMiddleware, adminMiddleware, async (req, res, next) => {
     try {
-        const { name, categoryId, price, duration, establishmentId } = req.body
+        const { name, categoryId, price, duration } = req.body
+        const establishmentId = req.user.establishmentId
+        if (req.body.establishmentId && !isAdminOf(req.user, req.body.establishmentId)) {
+            return res.status(403).json({ success: false, error: 'Não autorizado' })
+        }
         if (!name || !categoryId || !price || !duration || !establishmentId) {
             return res.status(400).json({ success: false, error: 'Campos obrigatórios faltando' })
         }
@@ -94,8 +105,10 @@ router.post('/', async (req, res, next) => {
     }
 })
 
-// Atualizar serviço customizado
-router.put('/:id', async (req, res, next) => {
+// Atualizar serviço customizado — só o admin do estabelecimento dono dele.
+// Serviços globais (sem establishmentId) são o catálogo base de todos e não
+// podem ser alterados pela API.
+router.put('/:id', authMiddleware, adminMiddleware, async (req, res, next) => {
     try {
         const { id } = req.params
         const service = await servicesRepo.findById(id)
@@ -104,11 +117,15 @@ router.put('/:id', async (req, res, next) => {
             return res.status(404).json({ success: false, error: 'Serviço não encontrado' })
         }
 
-        if (req.body.establishmentId && String(service.establishmentId) !== String(req.body.establishmentId)) {
+        if (!isAdminOf(req.user, service.establishmentId)) {
              return res.status(403).json({ success: false, error: 'Não autorizado' })
         }
 
         const dataToUpdate = { ...req.body }
+        // Dono e identidade do serviço não mudam por aqui.
+        delete dataToUpdate.id
+        delete dataToUpdate.establishmentId
+        delete dataToUpdate.createdAt
         if (dataToUpdate.price) dataToUpdate.price = Number(dataToUpdate.price)
         if (dataToUpdate.duration) dataToUpdate.duration = Number(dataToUpdate.duration)
 
@@ -123,14 +140,18 @@ router.put('/:id', async (req, res, next) => {
     }
 })
 
-// Remover serviço customizado
-router.delete('/:id', async (req, res, next) => {
+// Remover serviço customizado — mesma regra do PUT.
+router.delete('/:id', authMiddleware, adminMiddleware, async (req, res, next) => {
     try {
         const { id } = req.params
         const service = await servicesRepo.findById(id)
 
         if (!service) {
             return res.status(404).json({ success: false, error: 'Serviço não encontrado' })
+        }
+
+        if (!isAdminOf(req.user, service.establishmentId)) {
+            return res.status(403).json({ success: false, error: 'Não autorizado' })
         }
 
         const deleted = await servicesRepo.delete(id)
