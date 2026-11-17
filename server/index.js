@@ -20,9 +20,14 @@ const PORT = process.env.PORT || 3001
 
 // Middleware
 app.disable('x-powered-by')
-// O Render fica atrás de um proxy: sem isto, req.ip seria o IP do proxy e o
-// limite de tentativas (rateLimit) trataria todo mundo como uma pessoa só.
-app.set('trust proxy', 1)
+// No Render a requisição passa por 3 proxies antes do app (medido em
+// 2026-11-17 pelo /api/health: X-Forwarded-For com 3 saltos; com 1, req.ip era
+// um IP interno 10.x do Render). Sem acertar isto, req.ip vira o IP de um
+// proxy e o limite de tentativas (rateLimit) trata todo mundo como uma pessoa
+// só. Contar da direita é à prova de falsificação: o que o visitante inventar
+// no cabeçalho fica à esquerda e é ignorado. Pode ser sobrescrito por
+// TRUST_PROXY_HOPS se o Render mudar a topologia (conferir no /api/health).
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS) || 3)
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
