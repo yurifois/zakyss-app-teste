@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
-import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken, passwordProblem } from '../utils/auth.js'
+import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken, passwordProblem, REMEMBER_ME_EXPIRES_IN } from '../utils/auth.js'
 import { sendPasswordResetEmail, sendAccountInviteEmail } from '../utils/email.js'
 import { recordTermsAcceptance } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
@@ -81,7 +81,7 @@ async function encontrarAgendamentoPorEmail(emailLower) {
 // Login de usuário
 router.post('/login', loginLimit, async (req, res, next) => {
     try {
-        const { email, password } = req.body
+        const { email, password, remember } = req.body
 
         if (!email || !password) {
             throw new AppError('Email e senha são obrigatórios', 400)
@@ -106,7 +106,7 @@ router.post('/login', loginLimit, async (req, res, next) => {
             id: user.id,
             email: user.email,
             type: 'customer'
-        })
+        }, remember ? REMEMBER_ME_EXPIRES_IN : undefined)
 
         res.json({
             success: true,
@@ -174,7 +174,7 @@ router.post('/register', registerLimit, async (req, res, next) => {
 // Login de admin
 router.post('/admin/login', loginLimit, async (req, res, next) => {
     try {
-        const { email, password } = req.body
+        const { email, password, remember } = req.body
 
         if (!email || !password) {
             throw new AppError('Email e senha são obrigatórios', 400)
@@ -200,7 +200,7 @@ router.post('/admin/login', loginLimit, async (req, res, next) => {
             email: admin.email,
             type: 'admin',
             establishmentId: admin.establishmentId
-        })
+        }, remember ? REMEMBER_ME_EXPIRES_IN : undefined)
 
         res.json({
             success: true,

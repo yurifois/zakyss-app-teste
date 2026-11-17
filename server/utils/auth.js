@@ -1,9 +1,13 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 
-export function generateToken(payload) {
+// "Manter-me conectado" marcado: a sessão dura 30 dias, para a pessoa não cair
+// toda semana e ter que lembrar de novo qual e-mail usou.
+export const REMEMBER_ME_EXPIRES_IN = '30d'
+
+export function generateToken(payload, expiresIn) {
     return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+        expiresIn: expiresIn || process.env.JWT_EXPIRES_IN || '7d'
     })
 }
 

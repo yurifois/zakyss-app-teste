@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
 import { loginErrorMessage } from '../../services/authErrors'
+import { getLastEmail } from '../../services/api'
 
 export default function AdminLogin() {
     const navigate = useNavigate()
@@ -14,15 +15,18 @@ export default function AdminLogin() {
         adminLogout()
     }, [])
 
+    const lastEmail = getLastEmail('admin')
     const [formData, setFormData] = useState({
-        email: '',
+        email: lastEmail,
         password: '',
+        remember: true,
     })
+    const passwordRef = useRef(null)
     const [loading, setLoading] = useState(false)
 
     const handleChange = (e) => {
-        const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
+        const { name, value, type, checked } = e.target
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
     }
 
     const handleSubmit = async (e) => {
@@ -30,7 +34,7 @@ export default function AdminLogin() {
         setLoading(true)
 
         try {
-            await adminLogin(formData.email, formData.password)
+            await adminLogin(formData.email, formData.password, formData.remember)
             success('Login realizado com sucesso!')
             navigate('/admin')
         } catch (err) {
@@ -82,6 +86,15 @@ export default function AdminLogin() {
                                 placeholder="admin@estabelecimento.com"
                                 value={formData.email}
                                 onChange={handleChange}
+                                autoComplete="username"
+                                enterKeyHint="next"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        passwordRef.current?.focus()
+                                    }
+                                }}
+                                autoFocus={!lastEmail}
                                 required
                             />
                         </div>
@@ -95,8 +108,27 @@ export default function AdminLogin() {
                                 placeholder="••••••••"
                                 value={formData.password}
                                 onChange={handleChange}
+                                ref={passwordRef}
+                                autoComplete="current-password"
+                                enterKeyHint="go"
+                                autoFocus={!!lastEmail}
                                 required
                             />
+                        </div>
+
+                        <div className="flex justify-between items-center mb-6">
+                            <label className="form-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="remember"
+                                    checked={formData.remember}
+                                    onChange={handleChange}
+                                />
+                                <span className="text-sm">Manter-me conectado</span>
+                            </label>
+                            <Link to="/recuperar-senha" className="text-sm" style={{ color: 'var(--accent-400)' }}>
+                                Esqueceu a senha?
+                            </Link>
                         </div>
 
                         <button
@@ -130,9 +162,6 @@ export default function AdminLogin() {
                     </div>
                 </div>
 
-                <p className="text-center text-sm mt-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    Teste: admin@studiobeleza.com / 123456
-                </p>
             </div>
         </div>
     )

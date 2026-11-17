@@ -265,3 +265,19 @@ test('senha: menos de 8 caracteres é recusada no cadastro', async () => {
     const ok = await call('POST', '/auth/register', { body: { name: 'N', email: 'novo@teste.local', password: '12345678', termsAccepted: true } })
     assert.equal(ok.status, 201)
 })
+
+test('manter-me conectado: marcado dá sessão de 30 dias, desmarcado de 7', async () => {
+    const email = 'lembrar@teste.local'
+    assert.equal((await call('POST', '/auth/register', { body: { name: 'L', email, password: 'senhaforte1', termsAccepted: true } })).status, 201)
+
+    const diasDeSessao = (token) => {
+        const { iat, exp } = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())
+        return Math.round((exp - iat) / 86400)
+    }
+    const comLembrar = await call('POST', '/auth/login', { body: { email, password: 'senhaforte1', remember: true } })
+    assert.equal(comLembrar.status, 200)
+    assert.equal(diasDeSessao(comLembrar.json.data.token), 30)
+
+    const semLembrar = await call('POST', '/auth/login', { body: { email, password: 'senhaforte1', remember: false } })
+    assert.equal(diasDeSessao(semLembrar.json.data.token), 7)
+})

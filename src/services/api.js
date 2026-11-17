@@ -109,16 +109,35 @@ async function request(endpoint, options = {}) {
 
 // ========== AUTH ==========
 
+// Último e-mail que entrou NESTE aparelho, para preencher sozinho na próxima
+// vez — muita gente esquece com qual e-mail se cadastrou. Só fica guardado
+// quando a pessoa marca "Manter-me conectado"; desmarcando, é apagado (aparelho
+// compartilhado não fica mostrando o e-mail de ninguém).
+const LAST_EMAIL_KEY = { customer: 'zakys_last_email', admin: 'zakys_admin_last_email' }
+
+export function getLastEmail(kind = 'customer') {
+    return localStorage.getItem(LAST_EMAIL_KEY[kind]) || ''
+}
+
+function rememberLastEmail(kind, email, remember) {
+    if (remember && email) localStorage.setItem(LAST_EMAIL_KEY[kind], email.trim())
+    else localStorage.removeItem(LAST_EMAIL_KEY[kind])
+}
+
+// remember = "Manter-me conectado": token de 30 dias guardado no localStorage
+// (sobrevive a fechar a aba/o app). Desmarcado: sessionStorage, que some quando
+// a aba fecha — no celular isso acontece sozinho, e era o "caiu a conexão".
 export async function login(email, password, remember = true) {
     const result = await request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember }),
     })
-    
+
+    logout() // não deixa sessão antiga sobrando no outro armazenamento
     const storage = remember ? localStorage : sessionStorage
-    
     storage.setItem('zakys_token', result.token)
     storage.setItem('zakys_user', JSON.stringify(result.user))
+    rememberLastEmail('customer', email, remember)
     return result.user
 }
 
@@ -132,13 +151,17 @@ export async function register(userData) {
     return result.user
 }
 
-export async function adminLogin(email, password) {
+export async function adminLogin(email, password, remember = true) {
     const result = await request('/auth/admin/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember }),
     })
-    localStorage.setItem('zakys_admin_token', result.token)
-    localStorage.setItem('zakys_admin', JSON.stringify(result.admin))
+
+    adminLogout()
+    const storage = remember ? localStorage : sessionStorage
+    storage.setItem('zakys_admin_token', result.token)
+    storage.setItem('zakys_admin', JSON.stringify(result.admin))
+    rememberLastEmail('admin', email, remember)
     return result.admin
 }
 
@@ -176,6 +199,8 @@ export async function resetPassword(token, newPassword) {
 export function adminLogout() {
     localStorage.removeItem('zakys_admin_token')
     localStorage.removeItem('zakys_admin')
+    sessionStorage.removeItem('zakys_admin_token')
+    sessionStorage.removeItem('zakys_admin')
 }
 
 export function getCurrentUser() {

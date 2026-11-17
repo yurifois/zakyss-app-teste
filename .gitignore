@@ -37,3 +37,6 @@ yarn-error.log*
 /android
 /ios
 /www
+
+# Config local do MCP (Supabase) do Claude Code — fica fora do repositório
+.mcp.json

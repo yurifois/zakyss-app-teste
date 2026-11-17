@@ -50,8 +50,8 @@ export function AuthProvider({ children }) {
     }
 
     // Admin auth
-    const adminLogin = async (email, password) => {
-        const adminData = await api.adminLogin(email, password)
+    const adminLogin = async (email, password, remember = true) => {
+        const adminData = await api.adminLogin(email, password, remember)
         setAdmin(adminData)
         return adminData
     }

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { forgotPassword } from '../../services/api'
+import { forgotPassword, getLastEmail } from '../../services/api'
 import { useToast } from '../../contexts/ToastContext'
 
 export default function ForgotPassword() {
     const { success, error } = useToast()
-    const [email, setEmail] = useState('')
+    // Quem esquece a senha muitas vezes esqueceu também qual e-mail usou.
+    const [email, setEmail] = useState(() => getLastEmail('customer') || getLastEmail('admin'))
     const [loading, setLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
 

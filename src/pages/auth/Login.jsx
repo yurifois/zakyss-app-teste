@@ -1,20 +1,26 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
 import { loginErrorMessage } from '../../services/authErrors'
+import { getLastEmail } from '../../services/api'
 
 export default function Login() {
     const navigate = useNavigate()
     const { login } = useAuth()
     const { success, error } = useToast()
 
+    // "Manter-me conectado" já vem marcado: desmarcado, a sessão some quando o
+    // celular fecha a aba — e o navegador/teclado do celular muitas vezes envia
+    // o formulário assim que a senha é preenchida, antes de dar tempo de marcar.
+    const lastEmail = getLastEmail('customer')
     const [formData, setFormData] = useState({
-        email: '',
+        email: lastEmail,
         password: '',
-        remember: false,
+        remember: true,
     })
+    const passwordRef = useRef(null)
     const [loading, setLoading] = useState(false)
 
     const handleChange = (e) => {
@@ -83,6 +89,16 @@ export default function Login() {
                                 placeholder="seu@email.com"
                                 value={formData.email}
                                 onChange={handleChange}
+                                autoComplete="username"
+                                enterKeyHint="next"
+                                onKeyDown={(e) => {
+                                    // Enter no e-mail vai para a senha em vez de tentar entrar
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        passwordRef.current?.focus()
+                                    }
+                                }}
+                                autoFocus={!lastEmail}
                                 required
                             />
                         </div>
@@ -96,6 +112,10 @@ export default function Login() {
                                 placeholder="••••••••"
                                 value={formData.password}
                                 onChange={handleChange}
+                                ref={passwordRef}
+                                autoComplete="current-password"
+                                enterKeyHint="go"
+                                autoFocus={!!lastEmail}
                                 required
                             />
                         </div>
@@ -108,7 +128,7 @@ export default function Login() {
                                     checked={formData.remember}
                                     onChange={handleChange}
                                 />
-                                <span className="text-sm">Lembrar-me</span>
+                                <span className="text-sm">Manter-me conectado</span>
                             </label>
                             <span 
                                 onClick={() => navigate('/recuperar-senha')} 
