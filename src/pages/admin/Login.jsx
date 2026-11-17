@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
 import { loginErrorMessage } from '../../services/authErrors'
-import { getLastEmail, resendVerification } from '../../services/api'
+import { getLastEmail, resendVerification, getSessionEndedNotice } from '../../services/api'
 
 export default function AdminLogin() {
     const navigate = useNavigate()
@@ -16,6 +16,8 @@ export default function AdminLogin() {
     }, [])
 
     const lastEmail = getLastEmail('admin')
+    // Sessão encerrada pelo servidor (manutenção): explica e já traz o e-mail.
+    const [sessionNotice] = useState(() => getSessionEndedNotice('admin'))
     const [formData, setFormData] = useState({
         email: lastEmail,
         password: '',
@@ -94,6 +96,23 @@ export default function AdminLogin() {
                             }}
                         >
                             ⚠️ {STORAGE_BLOCKED_HINT}
+                        </div>
+                    )}
+
+                    {sessionNotice && (
+                        <div
+                            className="mb-4 text-sm"
+                            role="status"
+                            style={{
+                                padding: '0.75rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid var(--warning-500, #f59e0b)',
+                                background: 'rgba(245, 158, 11, 0.08)'
+                            }}
+                        >
+                            🔒 Fizemos uma <strong>manutenção de segurança</strong> e, por isso, sua conta foi desconectada.
+                            Seus dados e agendamentos continuam aqui — é só entrar de novo com seu e-mail e senha.
+                            Se não lembrar a senha, toque em <strong>Esqueceu a senha?</strong>
                         </div>
                     )}
 

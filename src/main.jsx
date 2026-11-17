@@ -10,6 +10,7 @@ import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { ConfirmProvider } from './contexts/ConfirmContext'
+import SessionEndedNotice from './components/SessionEndedNotice'
 import { NotificationProvider } from './contexts/NotificationContext'
 import NotificationManager from './components/NotificationManager'
 import ScrollToTop from './components/ScrollToTop'
@@ -42,6 +43,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <ConfirmProvider>
                         <NotificationProvider>
                             <NotificationManager />
+                            <SessionEndedNotice />
                             <App />
                         </NotificationProvider>
                     </ConfirmProvider>

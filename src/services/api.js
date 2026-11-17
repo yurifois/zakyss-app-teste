@@ -58,6 +58,8 @@ async function request(endpoint, options = {}) {
         ...options,
     }
 
+    const sentToken = (config.headers?.Authorization || '').replace(/^Bearer /, '') || null
+
     // Tempo limite de 90s.
     //
     // Sem limite, uma requisição que nunca responde deixa a tela girando para
@@ -81,6 +83,14 @@ async function request(endpoint, options = {}) {
         const data = await response.json()
 
         if (!response.ok) {
+            // O servidor recusou a sessão guardada (ex.: depois de uma
+            // manutenção que troca o segredo dos logins). Sem isto o app seguia
+            // "logado" com todas as telas dando erro, e ninguém mandava a pessoa
+            // entrar de novo.
+            if (response.status === 401 && sentToken &&
+                (data.code === 'SESSION_INVALID' || /token inválido ou expirado/i.test(data.error || ''))) {
+                endRejectedSession(sentToken)
+            }
             const err = new Error(data.error || `Erro na requisição: ${response.status}`)
             // Código estável do backend (ex.: EMAIL_NOT_VERIFIED) para a tela
             // reagir sem depender do texto da mensagem.
@@ -114,6 +124,64 @@ async function request(endpoint, options = {}) {
 
 // ========== AUTH ==========
 
+// ========== SESSÃO ENCERRADA PELO SERVIDOR ==========
+// Quando o servidor recusa um login guardado, a pessoa é desconectada e a tela
+// de entrar explica o motivo, com o e-mail já preenchido.
+// Um recado por tipo de conta: quem tinha login de cliente E de parceiro no
+// mesmo aparelho perde os dois, e um não pode apagar o recado do outro.
+const sessionEndedKey = (kind) => `zakys_session_ended_${kind}`
+export const SESSION_ENDED_EVENT = 'zakys:session-ended'
+
+function storedEmail(key) {
+    try {
+        const raw = localStorage.getItem(key) || sessionStorage.getItem(key)
+        return raw ? (JSON.parse(raw)?.email || '') : ''
+    } catch {
+        return ''
+    }
+}
+
+function endRejectedSession(token) {
+    const isAdmin = token === localStorage.getItem('zakys_admin_token') || token === sessionStorage.getItem('zakys_admin_token')
+    const isCustomer = token === localStorage.getItem('zakys_token') || token === sessionStorage.getItem('zakys_token')
+    if (!isAdmin && !isCustomer) return
+    const kind = isAdmin ? 'admin' : 'customer'
+
+    const email = storedEmail(kind === 'admin' ? 'zakys_admin' : 'zakys_user')
+    if (kind === 'admin') adminLogout()
+    else logout()
+    if (email) rememberLastEmail(kind, email, true)
+    localStorage.setItem(sessionEndedKey(kind), JSON.stringify({ kind, email }))
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT, { detail: { kind } }))
+    }
+}
+
+export function getSessionEndedNotice(kind) {
+    try {
+        return JSON.parse(localStorage.getItem(sessionEndedKey(kind)) || 'null')
+    } catch {
+        return null
+    }
+}
+
+function clearSessionEndedNotice(kind) {
+    localStorage.removeItem(sessionEndedKey(kind))
+}
+
+// Confere, em segundo plano, se o login guardado ainda vale no servidor. Se
+// não valer, o tratamento do 401 em request() desconecta e avisa.
+export async function checkStoredSession(kind) {
+    const keys = kind === 'admin' ? 'zakys_admin_token' : 'zakys_token'
+    const token = [localStorage.getItem(keys), sessionStorage.getItem(keys)].find(isTokenValid)
+    if (!token) return
+    try {
+        await request('/auth/me', { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } })
+    } catch {
+        // Rede fora / servidor acordando: não desconecta ninguém por isso.
+    }
+}
+
 // Último e-mail que entrou NESTE aparelho, para preencher sozinho na próxima
 // vez — muita gente esquece com qual e-mail se cadastrou. Só fica guardado
 // quando a pessoa marca "Manter-me conectado"; desmarcando, é apagado (aparelho
@@ -143,6 +211,7 @@ export async function login(email, password, remember = true) {
     storage.setItem('zakys_token', result.token)
     storage.setItem('zakys_user', JSON.stringify(result.user))
     rememberLastEmail('customer', email, remember)
+    clearSessionEndedNotice('customer')
     return result.user
 }
 
@@ -173,6 +242,7 @@ export async function verifyEmail(token) {
         localStorage.setItem('zakys_user', JSON.stringify(result.user))
         rememberLastEmail('customer', result.user.email, true)
     }
+    clearSessionEndedNotice(result.kind === 'admin' ? 'admin' : 'customer')
     return result
 }
 
@@ -194,6 +264,7 @@ export async function adminLogin(email, password, remember = true) {
     storage.setItem('zakys_admin_token', result.token)
     storage.setItem('zakys_admin', JSON.stringify(result.admin))
     rememberLastEmail('admin', email, remember)
+    clearSessionEndedNotice('admin')
     return result.admin
 }
 

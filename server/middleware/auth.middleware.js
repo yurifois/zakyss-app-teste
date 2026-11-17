@@ -15,7 +15,10 @@ export function authMiddleware(req, res, next) {
         req.user = decoded
         next()
     } catch (error) {
-        throw new AppError('Token inválido ou expirado', 401)
+        // Código estável: o app desconecta a pessoa e explica o motivo na tela
+        // de entrar (ex.: depois de uma troca do JWT_SECRET, que invalida todas
+        // as sessões de uma vez).
+        throw new AppError('Token inválido ou expirado', 401, 'SESSION_INVALID')
     }
 }
 

@@ -17,6 +17,19 @@ export function AuthProvider({ children }) {
         if (savedAdmin) setAdmin(savedAdmin)
 
         setLoading(false)
+
+        // O login guardado pode ter sido encerrado pelo servidor (ex.: numa
+        // manutenção de segurança). Confere em segundo plano; se tiver sido,
+        // api.js desconecta e dispara SESSION_ENDED_EVENT.
+        if (savedUser) api.checkStoredSession('customer')
+        if (savedAdmin) api.checkStoredSession('admin')
+
+        const onSessionEnded = (e) => {
+            if (e.detail?.kind === 'admin') setAdmin(null)
+            else setUser(null)
+        }
+        window.addEventListener(api.SESSION_ENDED_EVENT, onSessionEnded)
+        return () => window.removeEventListener(api.SESSION_ENDED_EVENT, onSessionEnded)
     }, [])
 
     const login = async (email, password, remember = true) => {
