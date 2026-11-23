@@ -1637,7 +1637,14 @@ img {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
+  gap: 4px;
+}
+
+/* Setas do mês com área de toque de dedo (44px) */
+.calendar-header .btn-icon {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.125rem;
 }
 
 @media (min-width: 640px) {
@@ -1663,13 +1670,24 @@ img {
 
 .calendar-day {
   aspect-ratio: 1;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
+  /* Dia livre tem fundo próprio: dá para ver de relance o que pode ser escolhido */
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   transition: all var(--transition-fast);
+}
+
+/* Células vazias antes do dia 1 não são dias: sem fundo nem borda */
+.calendar-day.disabled:empty {
+  background: transparent;
+  border-color: transparent;
 }
 
 .calendar-day:hover:not(.disabled):not(.selected) {
@@ -1679,37 +1697,168 @@ img {
 .calendar-day.today {
   font-weight: 700;
   color: var(--accent-400);
+  box-shadow: inset 0 0 0 2px var(--accent-400);
 }
 
 .calendar-day.selected {
   background: var(--gradient-primary);
+  border-color: var(--accent-400);
   color: white;
-  font-weight: 600;
+  font-weight: 700;
   box-shadow: var(--shadow-glow);
 }
 
 .calendar-day.disabled {
   color: var(--text-muted);
   cursor: not-allowed;
-  opacity: 0.4;
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.45;
 }
 
+/* Dia fechado: número riscado, discreto. Antes era um X vermelho que
+   parecia erro; continua dando para distinguir de dia que já passou. */
 .calendar-day.closed {
-  position: relative;
-  color: var(--error-500);
-  opacity: 0.5;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(239, 68, 68, 0.7);
+  text-decoration-thickness: 2px;
+  opacity: 0.6;
 }
 
-.calendar-day.closed::after {
+/* ========================================
+   Trilha das etapas do agendamento (dia → serviço → horário)
+======================================== */
+.trilha-etapas {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.trilha-etapa {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+/* Linha ligando uma etapa à próxima */
+.trilha-etapa:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 70%;
+  top: 16px;
+  left: calc(50% + 20px);
+  right: calc(-50% + 20px);
   height: 2px;
-  background-color: var(--error-500);
-  transform: translate(-50%, -50%) rotate(-45deg);
-  border-radius: 1px;
+  background: var(--border-color);
+}
+
+.trilha-etapa--feita:not(:last-child)::after {
+  background: var(--accent-400);
+}
+
+.trilha-etapa__marca {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.trilha-etapa--ativa .trilha-etapa__marca {
+  border-color: var(--accent-400);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.18);
+}
+
+.trilha-etapa--feita .trilha-etapa__marca {
+  background: var(--accent-400);
+  border-color: var(--accent-400);
+  color: #1a0f24;
+}
+
+.trilha-etapa__rotulo {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.trilha-etapa--ativa .trilha-etapa__rotulo,
+.trilha-etapa--feita .trilha-etapa__rotulo {
+  color: var(--text-primary);
+}
+
+.trilha-etapa__valor {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.trilha-etapa--feita .trilha-etapa__valor {
+  color: var(--accent-400);
+  font-weight: 600;
+}
+
+/* ========================================
+   Barra fixa: total + continuar (página do estabelecimento)
+======================================== */
+.barra-continuar {
+  /* fixed (e não sticky): o layout tem overflow-x hidden, que quebra o sticky */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color-hover);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Espaço reservado no fim da página para a barra não cobrir o conteúdo */
+.barra-continuar-espaco {
+  height: 96px;
+}
+
+.barra-continuar__total {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.barra-continuar__total strong {
+  font-size: 1.125rem;
+}
+
+.barra-continuar .btn {
+  min-height: 48px;
+  flex: 0 1 auto;
+}
+
+@media (min-width: 640px) {
+  .barra-continuar {
+    left: 50%;
+    right: auto;
+    bottom: var(--space-4);
+    width: min(640px, calc(100% - 2rem));
+    transform: translateX(-50%);
+    border: 1px solid var(--border-color-hover);
+    border-radius: var(--radius-xl);
+  }
 }
 
 /* Time Slots */

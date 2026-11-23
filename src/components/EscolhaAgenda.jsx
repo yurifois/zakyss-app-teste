@@ -28,6 +28,27 @@ import { getClosedWeekdays, toDateString } from '../utils/schedule'
  */
 const Etapa = ({ titulo, subtitulo, estado, children }) => {
     const ativa = estado === 'ativa'
+    // Bloqueada vira uma linha curta com o que falta. Antes era um bloco
+    // grande de texto apagado, que parecia erro em vez de "ainda não".
+    if (estado === 'bloqueada') {
+        return (
+            <div
+                className="mb-4 px-3 py-3 sm:px-6"
+                style={{
+                    background: 'var(--bg-secondary)',
+                    borderRadius: 'var(--radius-xl)',
+                    border: '1px dashed var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap'
+                }}
+            >
+                <h2 className="font-semibold" style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>{titulo}</h2>
+                {subtitulo && <span className="text-sm text-muted">🔒 {subtitulo}</span>}
+            </div>
+        )
+    }
     return (
         <div
             className="mb-6 p-3 sm:p-6"
@@ -36,8 +57,7 @@ const Etapa = ({ titulo, subtitulo, estado, children }) => {
                 borderRadius: 'var(--radius-xl)',
                 border: `1px solid ${ativa ? 'var(--primary-500)' : 'var(--border-color)'}`,
                 boxShadow: ativa ? 'var(--shadow-glow)' : 'none',
-                opacity: estado === 'bloqueada' ? 0.55 : 1,
-                transition: 'box-shadow .25s ease, border-color .25s ease, opacity .25s ease'
+                transition: 'box-shadow .25s ease, border-color .25s ease'
             }}
         >
             <h2 className="text-lg font-semibold mb-1">{titulo}</h2>
@@ -57,6 +77,7 @@ const Opcao = ({ disponivel, escolhido, titulo, onClick, dica, children }) => (
         title={dica || ''}
         style={{
             padding: '0.6rem 0.75rem',
+            minHeight: '44px',
             borderRadius: '0.75rem',
             textAlign: 'left',
             width: '100%',
@@ -213,7 +234,7 @@ export default function EscolhaAgenda({
             {/* Etapa 2: o dia escolhido já diz quais serviços têm horário nele */}
             <Etapa
                 titulo="✨ 2. Escolha o serviço"
-                subtitulo={dateStr ? 'Serviços em cinza não têm horário livre neste dia' : 'Escolha a data primeiro'}
+                subtitulo={dateStr ? 'Serviços em cinza não têm horário livre neste dia' : 'escolha a data primeiro'}
                 estado={estadoDa(2, !!dateStr)}
             >
                 {!dateStr ? (
@@ -259,7 +280,7 @@ export default function EscolhaAgenda({
                 titulo="🕐 3. Escolha o horário"
                 subtitulo={services.length > 0
                     ? `Horários que comportam os ${duracaoTotal} min escolhidos`
-                    : 'Escolha o serviço primeiro'}
+                    : 'escolha o serviço primeiro'}
                 estado={estadoDa(3, services.length > 0)}
             >
                 {services.length === 0 ? (

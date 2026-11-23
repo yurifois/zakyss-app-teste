@@ -8,18 +8,22 @@ import { toDateString } from '../utils/schedule'
 import EstablishmentLocationCard from '../components/EstablishmentLocationCard'
 import { ArrowLeft, Star, MapPin, X } from 'lucide-react'
 // Chip de progresso. O da etapa atual acende junto com a seção correspondente.
-const Passo = ({ numero, rotulo, valor, ativo }) => (
-    <span
-        className="badge"
-        style={{
-            background: valor ? 'rgba(236, 72, 153, 0.15)' : 'var(--secondary-500)',
-            color: valor ? 'var(--text-primary)' : 'var(--text-muted)',
-            border: `1px solid ${ativo ? 'var(--primary-500)' : 'transparent'}`,
-            boxShadow: ativo ? 'var(--shadow-glow)' : 'none'
-        }}
-    >
-        {valor ? '✓' : numero} {rotulo}{valor ? `: ${valor}` : ''}
-    </span>
+// Trilha das três etapas do agendamento. É uma sequência de verdade (dia →
+// serviço → horário, nesta ordem), por isso números ligados por uma linha: o
+// cliente vê de relance onde está e o que já escolheu.
+const TrilhaEtapas = ({ etapas }) => (
+    <ol className="trilha-etapas" aria-label="Etapas do agendamento">
+        {etapas.map((etapa, i) => {
+            const estado = etapa.valor ? 'feita' : etapa.ativo ? 'ativa' : 'pendente'
+            return (
+                <li key={etapa.rotulo} className={`trilha-etapa trilha-etapa--${estado}`} aria-current={etapa.ativo ? 'step' : undefined}>
+                    <span className="trilha-etapa__marca" aria-hidden="true">{etapa.valor ? '✓' : i + 1}</span>
+                    <span className="trilha-etapa__rotulo">{etapa.rotulo}</span>
+                    <span className="trilha-etapa__valor">{etapa.valor || (etapa.ativo ? 'agora' : '—')}</span>
+                </li>
+            )
+        })}
+    </ol>
 )
 
 export default function Establishment() {
@@ -165,17 +169,23 @@ export default function Establishment() {
                     <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
                         <h1 className="text-2xl font-bold mb-1" style={{ wordBreak: 'break-word' }}>{establishment.name}</h1>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">
-                            <span className="flex items-center gap-1">
-                                <Star size={16} className="text-yellow-500 fill-yellow-500" />
-                                <strong>{establishment.rating}</strong>
-                                <span className="text-muted">({establishment.reviewCount})</span>
-                                <button
-                                    onClick={handleOpenReviews}
-                                    style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', color: 'var(--primary-400)' }}
-                                >
-                                    Ver avaliações
-                                </button>
-                            </span>
+                            {/* Sem avaliação, a nota de cadastro (5) não diz nada:
+                                mostrar "5 (0)" parecia nota máxima dada por ninguém. */}
+                            {Number(establishment.reviewCount) > 0 ? (
+                                <span className="flex items-center gap-1">
+                                    <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                                    <strong>{establishment.rating}</strong>
+                                    <span className="text-muted">({establishment.reviewCount})</span>
+                                    <button
+                                        onClick={handleOpenReviews}
+                                        style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: '0.5rem 0', font: 'inherit', color: 'var(--primary-400)' }}
+                                    >
+                                        Ver avaliações
+                                    </button>
+                                </span>
+                            ) : (
+                                <span className="badge">Sem avaliações ainda</span>
+                            )}
                             <span className="flex items-center gap-1" style={{ minWidth: 0 }}>
                                 <MapPin size={16} className="text-primary" />
                                 {establishment.address}
@@ -194,11 +204,11 @@ export default function Establishment() {
                     etapas destravam em ordem porque só depois do dia e do
                     horário dá pra saber quais serviços cabem na agenda. */}
                 <h2 className="text-xl font-bold mb-3">Agende seu horário</h2>
-                <div className="flex flex-wrap gap-2 mb-4">
-                    <Passo ativo={etapaAtual === 1} numero="1" rotulo="Dia" valor={bookingDate ? new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR') : null} />
-                    <Passo ativo={etapaAtual === 2} numero="2" rotulo="Serviço" valor={selectedServices.length > 0 ? `${selectedServices.length} escolhido(s)` : null} />
-                    <Passo ativo={etapaAtual === 3} numero="3" rotulo="Horário" valor={bookingTime} />
-                </div>
+                <TrilhaEtapas etapas={[
+                    { rotulo: 'Dia', ativo: etapaAtual === 1, valor: bookingDate ? new Date(`${toDateString(bookingDate)}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : null },
+                    { rotulo: 'Serviço', ativo: etapaAtual === 2, valor: selectedServices.length === 1 ? '1 escolhido' : selectedServices.length > 1 ? `${selectedServices.length} escolhidos` : null },
+                    { rotulo: 'Horário', ativo: etapaAtual === 3, valor: bookingTime },
+                ]} />
 
                 <EscolhaAgenda
                     establishmentId={id}
@@ -212,45 +222,46 @@ export default function Establishment() {
                     onAviso={error}
                 />
 
-                {/* Sem caixa de resumo: os chips lá em cima já dizem onde o
-                    cliente está. Aqui fica só o que falta para confirmar. */}
+                {/* Quem atende: só aparece se o salão tem equipe cadastrada. */}
+                {selectedServices.length > 0 && employees.length > 0 && (
+                    <div className="card mb-6 p-3 sm:p-6">
+                        <h3 className="font-semibold mb-3">Quem vai te atender</h3>
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+                            {getSelectedServicesData().map(service => (
+                                <label key={service.id} className="text-sm">
+                                    <span className="text-muted">{service.name}</span>
+                                    <select
+                                        className="form-select mt-1"
+                                        style={{ fontSize: '1rem', minHeight: '44px' }}
+                                        value={employeePreferences[service.id] || ''}
+                                        onChange={(e) => setEmployeeForService(service.id, e.target.value)}
+                                    >
+                                        <option value="">👤 Qualquer profissional</option>
+                                        {getQualifiedEmployees(service.id).map(emp => (
+                                            <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Total + continuar presos no rodapé enquanto o cliente escolhe:
+                    antes o botão ficava lá embaixo e era preciso rolar para achá-lo.
+                    Mesma regra de antes: só libera com dia, serviço e horário. */}
                 {selectedServices.length > 0 && (
-                    <div className="card mb-8 p-3 sm:p-6">
-                        <div className="flex flex-wrap justify-between items-baseline gap-3 mb-3">
-                            <span className="font-bold">
-                                Total <span className="text-gradient">R$ {getTotalPrice().toFixed(2)}</span>
-                            </span>
+                    <div className="barra-continuar" role="region" aria-label="Total e continuar">
+                        <div className="barra-continuar__total">
+                            <strong>R$ {getTotalPrice().toFixed(2)}</strong>
                             <span className="text-sm text-muted">{getTotalDuration()} min</span>
                         </div>
-
-                        {employees.length > 0 && (
-                            <div className="grid gap-2 mb-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
-                                {getSelectedServicesData().map(service => (
-                                    <label key={service.id} className="text-sm">
-                                        <span className="text-muted">{service.name}</span>
-                                        <select
-                                            className="form-select mt-1"
-                                            style={{ fontSize: '0.875rem', padding: '0.4rem 0.75rem' }}
-                                            value={employeePreferences[service.id] || ''}
-                                            onChange={(e) => setEmployeeForService(service.id, e.target.value)}
-                                        >
-                                            <option value="">👤 Qualquer profissional</option>
-                                            {getQualifiedEmployees(service.id).map(emp => (
-                                                <option key={emp.id} value={emp.id}>{emp.name}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Só libera quando as três etapas foram cumpridas */}
                         <button
                             onClick={handleBooking}
                             disabled={!bookingDate || !bookingTime || selectedServices.length === 0}
-                            className={`btn btn-lg w-full ${bookingTime ? 'btn-primary' : 'btn-secondary'}`}
+                            className={`btn btn-lg ${bookingTime ? 'btn-primary' : 'btn-secondary'}`}
                         >
-                            {!bookingTime ? 'Escolha o horário' : 'Continuar agendamento'}
+                            {!bookingTime ? 'Escolha o horário' : 'Continuar'}
                         </button>
                     </div>
                 )}
@@ -283,6 +294,8 @@ export default function Establishment() {
                     </div>
                 )}
             </div>
+
+            {selectedServices.length > 0 && <div className="barra-continuar-espaco" aria-hidden="true" />}
 
             {/* Lightbox: expande a imagem clicada da galeria */}
             {expandedImage && (
