@@ -58,10 +58,29 @@ router.put('/:id', authMiddleware, customerMiddleware, async (req, res, next) =>
             }
         })
 
+        // Endereço vai para uma coluna jsonb: guarda só os campos da tela,
+        // como texto curto, em vez de qualquer objeto que chegar.
+        if (updates.address !== undefined && updates.address !== null) {
+            if (typeof updates.address !== 'object' || Array.isArray(updates.address)) {
+                throw new AppError('Endereço inválido', 400)
+            }
+            const campos = ['cep', 'street', 'number', 'complement', 'neighborhood', 'city', 'state']
+            updates.address = Object.fromEntries(
+                campos.map(c => [c, String(updates.address[c] ?? '').trim().slice(0, 200)])
+            )
+        }
+
         const user = await usersRepo.update(req.params.id, updates)
 
         if (!user) {
             throw new AppError('Usuário não encontrado', 404)
+        }
+
+        // Mesma armadilha da avaliação: sem a coluna address, o Supabase
+        // descartava o endereço em silêncio e a tela dizia "salvo".
+        if (updates.address !== undefined && user.address === undefined) {
+            console.error(`[Users] Endereço do usuário ${req.params.id} não foi gravado (coluna address ausente?)`)
+            throw new AppError('Não foi possível salvar o endereço agora. Tente de novo mais tarde.', 500)
         }
 
         const { password: _, ...userWithoutPassword } = user

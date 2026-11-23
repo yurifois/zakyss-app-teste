@@ -3,6 +3,7 @@ import { getRepository } from '../repositories/index.js'
 import { authMiddleware, assertAdminOf, requireEstablishmentAdmin } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { logAudit } from '../utils/auditLog.js'
+import { agoraNoFuso } from '../utils/daySchedule.js'
 
 const router = Router()
 const employeesRepo = getRepository('employees.json')
@@ -146,18 +147,35 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
         }
         assertAdminOf(req.user, existing.establishmentId)
 
+        // Quem executa o serviço é o funcionário. Se ele sair com cliente
+        // marcado, o agendamento fica sem ninguém para atender e o salão nem
+        // fica sabendo. Por isso a exclusão é recusada enquanto houver
+        // agendamento pendente/confirmado de hoje em diante com ele — o salão
+        // troca o profissional ou remarca antes. Nunca mexe em agendamento
+        // sozinho (mesma regra de fechar um dia com cliente marcado).
+        // O vínculo fica em assignments[].employeeId; appointments não tem
+        // coluna employeeId (a versão antiga procurava por ela e nunca achava).
+        const empId = parseInt(req.params.id)
+        const hoje = agoraNoFuso().date
+        const pendentes = (await appointmentsRepo.findAll({ establishmentId: parseInt(existing.establishmentId) }))
+            .filter(a => ['pending', 'confirmed'].includes(a.status) && a.date >= hoje)
+            .filter(a => (Array.isArray(a.assignments) ? a.assignments : []).some(x => parseInt(x.employeeId) === empId))
+            .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+
+        if (pendentes.length > 0) {
+            const preview = pendentes.slice(0, 5)
+                .map(a => `${a.date.split('-').reverse().slice(0, 2).join('/')} ${a.time} - ${a.customerName}`)
+                .join('; ')
+            throw new AppError(
+                `Não é possível remover ${existing.name}: ${pendentes.length} agendamento(s) futuro(s) com este profissional (${preview}${pendentes.length > 5 ? '...' : ''}). Troque o profissional ou remarque esses agendamentos antes de remover.`,
+                409
+            )
+        }
+
         const deleted = await employeesRepo.delete(req.params.id)
 
         if (!deleted) {
             throw new AppError('Funcionário não encontrado', 404)
-        }
-
-        // Remove referência deste funcionário dos agendamentos
-        const appointments = await appointmentsRepo.findAll()
-        const toUpdate = appointments.filter(a => a.employeeId === parseInt(req.params.id))
-
-        for (const apt of toUpdate) {
-            await appointmentsRepo.update(apt.id, { employeeId: null })
         }
 
         if (existing) {

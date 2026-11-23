@@ -382,6 +382,111 @@ test('confirmação de e-mail: parceiro novo também confirma antes de abrir o p
     assert.equal((await call('POST', '/auth/admin/login', { body: { email, password: 'senhaforte1' } })).status, 200)
 })
 
+// Coloca agendamentos extras direto no arquivo (o repositório JSON relê a cada chamada).
+async function addAppointments(rows) {
+    const atual = await readData('appointments.json')
+    await fs.writeFile(path.join(dataDir, 'appointments.json'), JSON.stringify([...atual, ...rows]))
+}
+
+test('avaliação: grava a nota, recalcula a nota do salão e aparece nas avaliações públicas', async () => {
+    const base = { establishmentId: 2, services: [102], time: '10:00', totalPrice: 60, totalDuration: 30 }
+    await addAppointments([
+        { ...base, id: 900, userId: 2, date: '2026-01-10', status: 'completed', customerName: 'Cliente Dois Silva' },
+        { ...base, id: 901, userId: 2, date: '2026-01-11', status: 'completed', customerName: 'Cliente Dois Silva' },
+        { ...base, id: 902, userId: 2, date: '2030-02-01', status: 'confirmed', customerName: 'Cliente Dois Silva' },
+    ])
+
+    // só o dono, só concluído, só de 1 a 5
+    assert.equal((await call('PATCH', '/appointments/900/rate', { token: tokens.cliente1, body: { rating: 5 } })).status, 403)
+    assert.equal((await call('PATCH', '/appointments/900/rate', { token: tokens.adminB, body: { rating: 5 } })).status, 403)
+    assert.equal((await call('PATCH', '/appointments/902/rate', { token: tokens.cliente2, body: { rating: 5 } })).status, 400)
+    assert.equal((await call('PATCH', '/appointments/900/rate', { token: tokens.cliente2, body: { rating: 6 } })).status, 400)
+
+    const r1 = await call('PATCH', '/appointments/900/rate', { token: tokens.cliente2, body: { rating: 4, comment: '  Muito bom  ' } })
+    assert.equal(r1.status, 200, JSON.stringify(r1.json))
+    assert.equal(r1.json.data.rating, 4)
+    assert.equal(r1.json.data.comment, 'Muito bom')
+    assert.ok(r1.json.data.ratedAt)
+
+    assert.equal((await call('PATCH', '/appointments/901/rate', { token: tokens.cliente2, body: { rating: 5 } })).status, 200)
+
+    let est = (await readData('establishments.json')).find(e => e.id === 2)
+    assert.equal(est.rating, 4.5)
+    assert.equal(est.reviewCount, 2)
+
+    // reavaliar o mesmo agendamento troca a nota, não conta de novo
+    assert.equal((await call('PATCH', '/appointments/901/rate', { token: tokens.cliente2, body: { rating: 3 } })).status, 200)
+    est = (await readData('establishments.json')).find(e => e.id === 2)
+    assert.equal(est.rating, 3.5)
+    assert.equal(est.reviewCount, 2)
+
+    // a página do salão mostra a nota e a avaliação escrita, com nome abreviado
+    const pub = await call('GET', '/establishments/2')
+    assert.equal(pub.json.data.reviewCount, 2)
+    const reviews = await call('GET', '/establishments/2/reviews')
+    assert.equal(reviews.status, 200)
+    assert.deepEqual(reviews.json.data.map(r => [r.id, r.rating, r.comment, r.name]), [[900, 4, 'Muito bom', 'Cliente S.']])
+
+    // e o salão não consegue maquiar a própria nota pela tela de edição
+    await call('PUT', '/establishments/2', { token: tokens.adminB, body: { rating: 5, reviewCount: 99 } })
+    est = (await readData('establishments.json')).find(e => e.id === 2)
+    assert.equal(est.rating, 3.5)
+    assert.equal(est.reviewCount, 2)
+})
+
+test('nota do salão: média com 1 casa; sem avaliação fica 5 com 0 avaliações', async () => {
+    const { summarizeRatings } = await import('../utils/ratings.js')
+    assert.deepEqual(summarizeRatings([]), { rating: 5, reviewCount: 0 })
+    assert.deepEqual(summarizeRatings([{ rating: 5 }, { rating: 4 }, { rating: 4 }]), { rating: 4.3, reviewCount: 3 })
+    assert.deepEqual(summarizeRatings([{ rating: null }, {}, { rating: 0 }, { rating: 2 }]), { rating: 2, reviewCount: 1 })
+})
+
+test('perfil: endereço do cliente é gravado só com os campos da tela', async () => {
+    const r = await call('PUT', '/users/2', {
+        token: tokens.cliente2,
+        body: { address: { cep: '70000-000', street: 'Rua A', number: '10', city: 'Brasília', state: 'DF', extra: 'lixo' } },
+    })
+    assert.equal(r.status, 200, JSON.stringify(r.json))
+    assert.equal(r.json.data.address.street, 'Rua A')
+    assert.equal(r.json.data.address.extra, undefined)
+    assert.equal(r.json.data.address.complement, '')
+    assert.equal((await readData('users.json')).find(u => u.id === 2).address.city, 'Brasília')
+
+    assert.equal((await call('PUT', '/users/2', { token: tokens.cliente2, body: { address: 'texto solto' } })).status, 400)
+    assert.equal((await call('PUT', '/users/2', { token: tokens.cliente1, body: { address: { street: 'x' } } })).status, 403)
+})
+
+test('funcionário com cliente marcado não pode ser removido; sem agendamento futuro, pode', async () => {
+    await fs.writeFile(path.join(dataDir, 'employees.json'), JSON.stringify([
+        ...(await readData('employees.json')),
+        { id: 33, name: 'Func Ocupado', establishmentId: 2, services: [102] },
+        { id: 34, name: 'Func Livre', establishmentId: 2, services: [102] },
+    ]))
+    const base = { establishmentId: 2, userId: null, services: [102], time: '09:00', totalPrice: 60, totalDuration: 30, customerPhone: '1' }
+    await addAppointments([
+        { ...base, id: 910, date: '2030-03-01', status: 'confirmed', customerName: 'Maria', assignments: [{ serviceId: 102, employeeId: 33 }] },
+        { ...base, id: 911, date: '2030-03-02', status: 'pending', customerName: 'Joana', assignments: [{ serviceId: 102, employeeId: 33 }] },
+        // nada disto impede a remoção: já passou, foi cancelado, ou é de outro funcionário
+        { ...base, id: 912, date: '2026-01-05', status: 'completed', customerName: 'Antiga', assignments: [{ serviceId: 102, employeeId: 34 }] },
+        { ...base, id: 913, date: '2030-03-03', status: 'cancelled', customerName: 'Desistiu', assignments: [{ serviceId: 102, employeeId: 34 }] },
+    ])
+
+    assert.equal((await call('DELETE', '/employees/33', { token: tokens.adminA })).status, 403)
+
+    const bloqueado = await call('DELETE', '/employees/33', { token: tokens.adminB })
+    assert.equal(bloqueado.status, 409, JSON.stringify(bloqueado.json))
+    assert.match(bloqueado.json.error || bloqueado.json.message, /2 agendamento\(s\).*01\/03 09:00 - Maria.*02\/03 09:00 - Joana/)
+    assert.ok((await readData('employees.json')).some(e => e.id === 33), 'funcionário continua cadastrado')
+    assert.deepEqual((await readData('appointments.json')).find(a => a.id === 910).assignments,
+        [{ serviceId: 102, employeeId: 33 }], 'agendamento não é mexido')
+
+    const livre = await call('DELETE', '/employees/34', { token: tokens.adminB })
+    assert.equal(livre.status, 200, JSON.stringify(livre.json))
+    assert.ok(!(await readData('employees.json')).some(e => e.id === 34))
+    assert.deepEqual((await readData('appointments.json')).find(a => a.id === 912).assignments,
+        [{ serviceId: 102, employeeId: 34 }], 'histórico fica como estava')
+})
+
 // Fica por último: apaga o salão 1 inteiro.
 test('excluir conta: leva tudo do salão, só o dono pode, e funciona mesmo com o salão já sumido', async () => {
     const owned = ['products.json', 'cashflow.json', 'client_notes.json', 'anamnesis_forms.json', 'anamnesis_responses.json', 'packages.json', 'audit_log.json']

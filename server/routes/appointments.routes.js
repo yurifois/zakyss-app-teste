@@ -11,6 +11,7 @@ const cancelGuestLimit = rateLimit('cancel-guest', [
     { key: byIp, max: 30, windowMinutes: 15 },
 ])
 import { overlaps, agoraNoFuso } from '../utils/daySchedule.js'
+import { refreshEstablishmentRating } from '../utils/ratings.js'
 import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
 
 const router = Router()
@@ -999,11 +1000,28 @@ router.patch('/:id/rate', authMiddleware, async (req, res, next) => {
             throw new AppError('Apenas agendamentos concluídos podem ser avaliados', 400)
         }
 
+        const nota = Math.floor(rating)
         const updatedAppointment = await appointmentsRepo.update(appointmentId, {
-            rating: Math.floor(rating),
+            rating: nota,
             comment: comment ? comment.trim() : null,
             ratedAt: new Date().toISOString()
         })
+
+        // O repositório do Supabase descarta em silêncio campo que não existe
+        // na tabela. Foi assim que as avaliações sumiram por meses sem erro
+        // nenhum: a resposta vinha 200 e nada era gravado. Se a nota não
+        // voltou gravada, avisa o cliente em vez de fingir que deu certo.
+        if (updatedAppointment?.rating !== nota) {
+            console.error(`[Rate] Nota do agendamento ${appointmentId} não foi gravada (coluna rating ausente?)`)
+            throw new AppError('Não foi possível salvar sua avaliação agora. Tente de novo mais tarde.', 500)
+        }
+
+        try {
+            await refreshEstablishmentRating(appointment.establishmentId)
+        } catch (err) {
+            // A avaliação já está salva; a nota do salão se acerta na próxima.
+            console.error(`[Rate] Falha ao recalcular a nota do estabelecimento ${appointment.establishmentId}:`, err.message)
+        }
 
         res.json({
             success: true,
