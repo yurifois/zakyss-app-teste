@@ -47,4 +47,22 @@ assert.match(loginErrorMessage(new Error('falha esquisita 500')), /falha esquisi
 assert.match(loginErrorMessage(new Error('')), /Não foi possível entrar/i)
 assert.match(loginErrorMessage(null), /Não foi possível entrar/i)
 
+// Login recusado por algo que a pessoa resolve: aviso fixo + botão certo.
+const { loginProblem } = await import('./authErrors.js')
+const erro = (code, message = 'msg do servidor') => Object.assign(new Error(message), { code })
+const destinos = (p) => p.actions.map(a => a.to)
+
+assert.equal(loginProblem(erro('EMAIL_NOT_FOUND', 'Não encontramos')).message, 'Não encontramos')
+assert.deepEqual(destinos(loginProblem(erro('EMAIL_NOT_FOUND'), 'customer', ' Ana+1@x.com ')), ['/cadastro?email=Ana%2B1%40x.com'])
+assert.deepEqual(destinos(loginProblem(erro('EMAIL_NOT_FOUND'), 'customer', '')), ['/cadastro'])
+assert.deepEqual(destinos(loginProblem(erro('EMAIL_NOT_FOUND'), 'admin', 'a@x.com')), ['/parceiro/cadastro'])
+assert.deepEqual(destinos(loginProblem(erro('NO_ACCOUNT_HAS_BOOKINGS'), 'customer', 'a@x.com')), ['/cadastro?email=a%40x.com'])
+assert.deepEqual(destinos(loginProblem(erro('WRONG_PASSWORD'), 'admin')), ['/recuperar-senha'])
+assert.deepEqual(destinos(loginProblem(erro('ACCOUNT_IS_PARTNER'), 'customer')), ['/admin/login'])
+assert.deepEqual(destinos(loginProblem(erro('ACCOUNT_IS_CUSTOMER'), 'admin')), ['/entrar'])
+// Rede, servidor fora do ar, e-mail não confirmado: não é aviso de conta.
+assert.equal(loginProblem(erro(undefined, 'Failed to fetch'), 'customer'), null)
+assert.equal(loginProblem(erro('EMAIL_NOT_VERIFIED'), 'customer'), null)
+assert.equal(loginProblem(null, 'customer'), null)
+
 console.log('✅ authErrors: todos os casos passaram')

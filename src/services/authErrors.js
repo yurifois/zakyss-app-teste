@@ -31,4 +31,38 @@ export function loginErrorMessage(err) {
     return raw || 'Não foi possível entrar. Tente de novo em alguns instantes.'
 }
 
-export default { loginErrorMessage }
+/**
+ * Login recusado por um motivo que a pessoa resolve sozinha (e-mail sem conta,
+ * senha errada, e-mail do outro tipo de conta): devolve o aviso que fica na
+ * tela e o(s) botão(ões) que levam ao próximo passo. Para qualquer outra
+ * falha devolve null e a tela segue com o aviso rápido de sempre.
+ *
+ * kind: 'customer' (tela /entrar) ou 'admin' (Portal do Parceiro).
+ */
+export function loginProblem(err, kind, email = '') {
+    const message = err?.message || ''
+    const comEmail = (path) => email ? `${path}?email=${encodeURIComponent(email.trim())}` : path
+    const esqueci = { label: 'Esqueci minha senha', to: '/recuperar-senha' }
+
+    switch (err?.code) {
+        case 'WRONG_PASSWORD':
+            return { message, actions: [esqueci] }
+        case 'EMAIL_NOT_FOUND':
+            return {
+                message,
+                actions: kind === 'admin'
+                    ? [{ label: 'Criar conta de estabelecimento', to: '/parceiro/cadastro' }]
+                    : [{ label: 'Criar conta com este e-mail', to: comEmail('/cadastro') }],
+            }
+        case 'NO_ACCOUNT_HAS_BOOKINGS':
+            return { message, actions: [{ label: 'Criar minha conta', to: comEmail('/cadastro') }] }
+        case 'ACCOUNT_IS_PARTNER':
+            return { message, actions: [{ label: 'Ir para o Portal do Parceiro', to: '/admin/login' }] }
+        case 'ACCOUNT_IS_CUSTOMER':
+            return { message, actions: [{ label: 'Ir para o login de cliente', to: '/entrar' }] }
+        default:
+            return null
+    }
+}
+
+export default { loginErrorMessage, loginProblem }

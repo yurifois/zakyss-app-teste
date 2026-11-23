@@ -382,6 +382,47 @@ test('confirmação de e-mail: parceiro novo também confirma antes de abrir o p
     assert.equal((await call('POST', '/auth/admin/login', { body: { email, password: 'senhaforte1' } })).status, 200)
 })
 
+test('login que não deu certo diz o motivo: e-mail sem conta, só agendamento, senha errada, login do tipo errado', async () => {
+    const tentar = async (url, email) => {
+        const r = await call('POST', url, { body: { email, password: 'qualquercoisa1' } })
+        return { status: r.status, code: r.json?.code, error: r.json?.error }
+    }
+
+    let r = await tentar('/auth/login', 'ninguem@teste.local')
+    assert.equal(r.status, 401)
+    assert.equal(r.code, 'EMAIL_NOT_FOUND')
+    assert.match(r.error, /Não encontramos nenhuma conta com este e-mail.*outro e-mail/)
+
+    // agendou como convidado (agendamento 2), mas nunca criou conta
+    r = await tentar('/auth/login', 'Guest@Teste.local')
+    assert.equal(r.code, 'NO_ACCOUNT_HAS_BOOKINGS')
+    assert.match(r.error, /já tem agendamento com este e-mail/)
+
+    r = await tentar('/auth/login', 'c2@teste.local')
+    assert.equal(r.code, 'WRONG_PASSWORD')
+    assert.match(r.error, /Senha incorreta/)
+
+    r = await tentar('/auth/login', 'admin-b@teste.local')
+    assert.equal(r.code, 'ACCOUNT_IS_PARTNER')
+
+    r = await tentar('/auth/admin/login', 'ninguem@teste.local')
+    assert.equal(r.code, 'EMAIL_NOT_FOUND')
+    assert.match(r.error, /nenhum estabelecimento com este e-mail/)
+
+    r = await tentar('/auth/admin/login', 'c2@teste.local')
+    assert.equal(r.code, 'ACCOUNT_IS_CUSTOMER')
+
+    r = await tentar('/auth/admin/login', 'admin-b@teste.local')
+    assert.equal(r.code, 'WRONG_PASSWORD')
+
+    // nenhuma das respostas entrega dado da conta
+    for (const email of ['ninguem@teste.local', 'guest@teste.local', 'c2@teste.local']) {
+        const resp = await call('POST', '/auth/login', { body: { email, password: 'qualquercoisa1' } })
+        assert.equal(resp.json.token, undefined)
+        assert.equal(resp.json.user, undefined)
+    }
+})
+
 // Coloca agendamentos extras direto no arquivo (o repositório JSON relê a cada chamada).
 async function addAppointments(rows) {
     const atual = await readData('appointments.json')

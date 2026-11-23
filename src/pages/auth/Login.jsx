@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
-import { loginErrorMessage } from '../../services/authErrors'
+import { loginErrorMessage, loginProblem } from '../../services/authErrors'
 import { getLastEmail, resendVerification, getSessionEndedNotice } from '../../services/api'
+import LoginProblemNotice from '../../components/LoginProblemNotice'
 
 export default function Login() {
     const navigate = useNavigate()
@@ -49,10 +50,15 @@ export default function Login() {
         }
     }
 
+    // E-mail sem conta, senha errada etc.: aviso que fica na tela com o botão
+    // do próximo passo.
+    const [problem, setProblem] = useState(null)
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
         setPendingEmail('')
+        setProblem(null)
 
         try {
             await login(formData.email, formData.password, formData.remember)
@@ -66,8 +72,11 @@ export default function Login() {
                 navigate('/')
             }
         } catch (err) {
+            const p = loginProblem(err, 'customer', formData.email)
             if (err.code === 'EMAIL_NOT_VERIFIED') {
                 setPendingEmail(formData.email.trim())
+            } else if (p) {
+                setProblem(p)
             } else {
                 error(loginErrorMessage(err))
             }
@@ -138,6 +147,8 @@ export default function Login() {
                             </button>
                         </div>
                     )}
+
+                    <LoginProblemNotice problem={problem} />
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">

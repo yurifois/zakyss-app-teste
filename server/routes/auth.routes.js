@@ -68,6 +68,30 @@ async function enviarConfirmacaoDeEmail(account, kind) {
 
 const EMAIL_NAO_CONFIRMADO = 'Confirme seu e-mail antes de entrar: enviamos um link quando você criou a conta. Não achou? Peça outro abaixo.'
 
+// Login que não deu certo: em vez de um "credenciais inválidas" genérico, diz
+// o que aconteceu e o que fazer. Dizer se o e-mail existe não abre brecha
+// nova — o cadastro já responde "Email já cadastrado" — e o loginLimit segura
+// quem tentar testar e-mails em massa. O code é o que a tela usa para mostrar
+// o botão certo (Criar conta, Esqueci a senha, ir para o outro login).
+const SENHA_INCORRETA = () => new AppError('Senha incorreta. Se não lembra, toque em "Esqueceu a senha?".', 401, 'WRONG_PASSWORD')
+
+async function erroClienteSemConta(emailLower) {
+    if (await adminsRepo.findOne({ email: emailLower })) {
+        return new AppError('Este e-mail é de uma conta de estabelecimento. Para entrar, use o Portal do Parceiro.', 401, 'ACCOUNT_IS_PARTNER')
+    }
+    if (await encontrarAgendamentoPorEmail(emailLower)) {
+        return new AppError('Você já tem agendamento com este e-mail, mas ainda não criou uma conta. Crie sua conta com este mesmo e-mail para ver seus agendamentos.', 401, 'NO_ACCOUNT_HAS_BOOKINGS')
+    }
+    return new AppError('Não encontramos nenhuma conta com este e-mail. Confira se digitou certo — talvez você tenha se cadastrado com outro e-mail.', 401, 'EMAIL_NOT_FOUND')
+}
+
+async function erroParceiroSemConta(emailLower) {
+    if (await usersRepo.findOne({ email: emailLower })) {
+        return new AppError('Este e-mail é de uma conta de cliente. Para entrar como cliente, use o login de cliente.', 401, 'ACCOUNT_IS_CUSTOMER')
+    }
+    return new AppError('Não encontramos nenhum estabelecimento com este e-mail. Confira se digitou certo — talvez o cadastro tenha sido feito com outro e-mail.', 401, 'EMAIL_NOT_FOUND')
+}
+
 /**
  * Procura um agendamento feito com esse e-mail.
  *
@@ -111,12 +135,12 @@ router.post('/login', loginLimit, async (req, res, next) => {
         const user = await usersRepo.findOne({ email: normalizedEmail })
 
         if (!user) {
-            throw new AppError('Credenciais inválidas', 401)
+            throw await erroClienteSemConta(normalizedEmail)
         }
 
         const validPassword = await comparePassword(password, user.password)
         if (!validPassword) {
-            throw new AppError('Credenciais inválidas', 401)
+            throw SENHA_INCORRETA()
         }
         if (!isEmailVerified(user)) {
             throw new AppError(EMAIL_NAO_CONFIRMADO, 403, 'EMAIL_NOT_VERIFIED')
@@ -209,12 +233,12 @@ router.post('/admin/login', loginLimit, async (req, res, next) => {
         const admin = await adminsRepo.findOne({ email: normalizedEmail })
 
         if (!admin) {
-            throw new AppError('Credenciais inválidas', 401)
+            throw await erroParceiroSemConta(normalizedEmail)
         }
 
         const validPassword = await comparePassword(password, admin.password)
         if (!validPassword) {
-            throw new AppError('Credenciais inválidas', 401)
+            throw SENHA_INCORRETA()
         }
         if (!isEmailVerified(admin)) {
             throw new AppError(EMAIL_NAO_CONFIRMADO, 403, 'EMAIL_NOT_VERIFIED')

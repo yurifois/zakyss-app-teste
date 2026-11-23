@@ -3,8 +3,9 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isStoragePersistent, STORAGE_BLOCKED_HINT } from '../../services/safeStorage'
-import { loginErrorMessage } from '../../services/authErrors'
+import { loginErrorMessage, loginProblem } from '../../services/authErrors'
 import { getLastEmail, resendVerification, getSessionEndedNotice } from '../../services/api'
+import LoginProblemNotice from '../../components/LoginProblemNotice'
 
 export default function AdminLogin() {
     const navigate = useNavigate()
@@ -47,10 +48,15 @@ export default function AdminLogin() {
         }
     }
 
+    // E-mail sem conta, senha errada etc.: aviso que fica na tela com o botão
+    // do próximo passo.
+    const [problem, setProblem] = useState(null)
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
         setPendingEmail('')
+        setProblem(null)
 
         try {
             await adminLogin(formData.email, formData.password, formData.remember)
@@ -61,8 +67,11 @@ export default function AdminLogin() {
             // falha: servidor fora do ar, rede caindo, armazenamento bloqueado.
             // Isso escondia o problema real e mandava o dono trocar uma senha
             // que estava certa. Agora cada causa aparece com o próprio nome.
+            const p = loginProblem(err, 'admin', formData.email)
             if (err.code === 'EMAIL_NOT_VERIFIED') {
                 setPendingEmail(formData.email.trim())
+            } else if (p) {
+                setProblem(p)
             } else {
                 error(loginErrorMessage(err))
             }
@@ -135,6 +144,8 @@ export default function AdminLogin() {
                             </button>
                         </div>
                     )}
+
+                    <LoginProblemNotice problem={problem} />
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
