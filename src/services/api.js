@@ -276,6 +276,14 @@ export async function adminRegister(adminData) {
     })
 }
 
+// Excluir a própria conta (LGPD). A senha confirma que é a própria pessoa.
+export async function deleteMyAccount(userId, password) {
+    return request(`/users/${userId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ password }),
+    })
+}
+
 export function logout() {
     localStorage.removeItem('zakys_token')
     localStorage.removeItem('zakys_user')

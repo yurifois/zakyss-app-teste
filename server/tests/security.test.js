@@ -528,6 +528,45 @@ test('funcionário com cliente marcado não pode ser removido; sem agendamento f
         [{ serviceId: 102, employeeId: 34 }], 'histórico fica como estava')
 })
 
+test('LGPD: cliente exclui a própria conta — dados de saúde e anotações somem, histórico do salão fica anônimo', async () => {
+    const email = 'excluir@teste.local'
+    await call('POST', '/auth/register', { body: { name: 'Bia Excluir', email, password: 'senhaforte1', phone: '61988887777', termsAccepted: true } })
+    const sessao = (await confirmarEmail('users.json', email, 'customer')).json.data
+    const token = sessao.token, id = sessao.user.id
+
+    const ag = await call('POST', '/appointments', { token, body: { establishmentId: 1, services: [101], date: '2030-05-02', time: '14:00',
+        customerName: 'Bia Excluir', customerPhone: '61988887777', customerEmail: email } })
+    assert.equal(ag.status, 201, JSON.stringify(ag.json))
+    const aptId = ag.json.data.id
+
+    // agendamento futuro bloqueia a exclusão
+    const bloqueado = await call('DELETE', `/users/${id}`, { token, body: { password: 'senhaforte1' } })
+    assert.equal(bloqueado.status, 409)
+    assert.equal(bloqueado.json.code, 'HAS_FUTURE_APPOINTMENTS')
+
+    // vira passado e concluído; salão tem ficha de saúde e anotação dela
+    const apts = await readData('appointments.json')
+    Object.assign(apts.find(a => a.id === aptId), { date: '2020-01-01', status: 'completed', notes: 'alergia a amônia' })
+    await fs.writeFile(path.join(dataDir, 'appointments.json'), JSON.stringify(apts))
+    await fs.writeFile(path.join(dataDir, 'anamnesis_responses.json'), JSON.stringify([{ id: 1, appointmentId: aptId, establishmentId: 1, answers: ['gestante'] }, { id: 2, appointmentId: 999, establishmentId: 1, answers: [] }]))
+    await fs.writeFile(path.join(dataDir, 'client_notes.json'), JSON.stringify([{ id: 1, establishmentId: 1, clientKey: '61988887777', note: 'prefere manhã' }, { id: 2, establishmentId: 1, clientKey: '11900000000', note: 'outra pessoa' }]))
+
+    assert.equal((await call('DELETE', `/users/${id}`, { token, body: { password: 'errada123' } })).status, 401)
+    assert.equal((await call('DELETE', `/users/${id}`, { token: tokens.cliente2, body: { password: 'senhaforte1' } })).status, 403)
+
+    const ok = await call('DELETE', `/users/${id}`, { token, body: { password: 'senhaforte1' } })
+    assert.equal(ok.status, 200, JSON.stringify(ok.json))
+
+    assert.equal((await readData('users.json')).some(u => u.id === id), false, 'conta apagada')
+    const apt = (await readData('appointments.json')).find(a => a.id === aptId)
+    assert.ok(apt, 'agendamento continua no histórico do salão')
+    assert.deepEqual([apt.userId, apt.customerName, apt.customerEmail, apt.customerPhone, apt.notes], [null, 'Cliente removido', null, null, null])
+    assert.equal(apt.totalPrice > 0, true, 'valor do caixa preservado')
+    assert.deepEqual((await readData('anamnesis_responses.json')).map(r => r.id), [2], 'só a ficha dela some')
+    assert.deepEqual((await readData('client_notes.json')).map(n => n.id), [2], 'só a anotação dela some')
+    assert.equal((await call('POST', '/auth/login', { body: { email, password: 'senhaforte1' } })).status, 401)
+})
+
 // Fica por último: apaga o salão 1 inteiro.
 test('excluir conta: leva tudo do salão, só o dono pode, e funciona mesmo com o salão já sumido', async () => {
     const owned = ['products.json', 'cashflow.json', 'client_notes.json', 'anamnesis_forms.json', 'anamnesis_responses.json', 'packages.json', 'audit_log.json']

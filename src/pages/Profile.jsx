@@ -2,12 +2,35 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
+import { useConfirm } from '../contexts/ConfirmContext'
 import * as api from '../services/api'
 import SpamNotice from '../components/SpamNotice'
 import EstablishmentCard from '../components/EstablishmentCard'
 export default function Profile() {
     const { user, isAuthenticated, updateProfile, refreshUser, logout, loading: authLoading } = useAuth()
     const { success, error } = useToast()
+    const confirm = useConfirm()
+    // Excluir a própria conta (LGPD): pede a senha para confirmar.
+    const [deletePassword, setDeletePassword] = useState('')
+    const [deletingAccount, setDeletingAccount] = useState(false)
+    const handleDeleteAccount = async () => {
+        if (!deletePassword) return error('Digite sua senha para confirmar.')
+        const ok = await confirm(
+            'Sua conta, suas fichas de saúde e as anotações dos salões sobre você serão apagadas. Seus atendimentos passados ficam no histórico do salão, sem seu nome e contato. Não dá para desfazer.',
+            { title: 'Excluir minha conta', confirmLabel: 'Excluir definitivamente' }
+        )
+        if (!ok) return
+        setDeletingAccount(true)
+        try {
+            await api.deleteMyAccount(user.id, deletePassword)
+            logout()
+            success('Sua conta foi excluída.')
+        } catch (err) {
+            error(err.message || 'Não foi possível excluir a conta.')
+        } finally {
+            setDeletingAccount(false)
+        }
+    }
 
     const [tab, setTab] = useState('appointments')
     const [appointments, setAppointments] = useState([])
@@ -1017,6 +1040,30 @@ export default function Profile() {
                                         disabled={changingPassword}
                                     >
                                         {changingPassword ? 'Alterando...' : '🔒 Alterar senha'}
+                                    </button>
+                                </div>
+
+                                <div className="card mt-6" style={{ padding: '1.25rem', border: '1px solid rgba(239, 68, 68, 0.35)' }}>
+                                    <h3 className="font-semibold mb-1">Excluir minha conta</h3>
+                                    <p className="text-sm text-secondary mb-3">
+                                        Apaga sua conta e seus dados pessoais. Se você tiver agendamentos futuros, cancele-os antes.
+                                    </p>
+                                    <label className="form-label" htmlFor="senha-excluir">Digite sua senha para confirmar</label>
+                                    <input
+                                        id="senha-excluir"
+                                        type="password"
+                                        className="form-input mb-3"
+                                        autoComplete="current-password"
+                                        value={deletePassword}
+                                        onChange={e => setDeletePassword(e.target.value)}
+                                    />
+                                    <button
+                                        onClick={handleDeleteAccount}
+                                        className="btn"
+                                        style={{ background: '#dc2626', color: 'white' }}
+                                        disabled={deletingAccount}
+                                    >
+                                        {deletingAccount ? 'Excluindo...' : 'Excluir minha conta'}
                                     </button>
                                 </div>
                             </>
