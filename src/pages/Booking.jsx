@@ -45,6 +45,8 @@ export default function Booking() {
     const [editandoEscolhas, setEditandoEscolhas] = useState(false)
     const [anamnesisForms, setAnamnesisForms] = useState([]) // fichas exigidas pelos serviços selecionados
     const [anamnesisAnswers, setAnamnesisAnswers] = useState({}) // { [formId]: { [questionId]: valor } }
+    // LGPD art. 11: a ficha tem dados de saúde — consentimento próprio, desmarcado.
+    const [anamnesisConsent, setAnamnesisConsent] = useState(false)
 
     const calendarRef = useRef(null)
 
@@ -322,6 +324,11 @@ export default function Booking() {
             return
         }
 
+        if (anamnesisForms.length > 0 && !anamnesisConsent) {
+            error('Marque a autorização da ficha de saúde para continuar')
+            return
+        }
+
         if (!user) {
             setShowLoginPrompt(true)
             return
@@ -350,7 +357,8 @@ export default function Booking() {
                 customerEmail: formData.email,
                 notes: formData.notes,
                 assignments: assignments,
-                anamnesisAnswers: buildAnamnesisPayload()
+                anamnesisAnswers: buildAnamnesisPayload(),
+                anamnesisConsent: anamnesisForms.length > 0 ? anamnesisConsent : undefined
             })
 
             sessionStorage.removeItem('booking_services')
@@ -609,6 +617,24 @@ export default function Booking() {
                                     </div>
                                 </div>
                             ))}
+
+                            {anamnesisForms.length > 0 && (
+                                <label
+                                    className="form-checkbox mb-6"
+                                    style={{ alignItems: 'flex-start', padding: '0.875rem 1rem', borderRadius: '0.75rem', border: '1px solid var(--warning-500, #f59e0b)', background: 'rgba(245, 158, 11, 0.08)' }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={anamnesisConsent}
+                                        onChange={(e) => setAnamnesisConsent(e.target.checked)}
+                                        style={{ marginTop: '0.2rem', minWidth: '20px', minHeight: '20px' }}
+                                    />
+                                    <span className="text-sm">
+                                        <strong>Autorizo</strong> {establishment?.name ? <strong>{establishment.name}</strong> : 'o estabelecimento'} a ver e guardar as respostas da ficha acima,
+                                        que podem conter informações de saúde, só para cuidar do meu atendimento. Posso pedir a exclusão a qualquer momento.
+                                    </span>
+                                </label>
+                            )}
 
                             {/* Etapa 4: dados do cliente */}
                             {services.length > 0 && (

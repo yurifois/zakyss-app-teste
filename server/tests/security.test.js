@@ -567,6 +567,29 @@ test('LGPD: cliente exclui a própria conta — dados de saúde e anotações so
     assert.equal((await call('POST', '/auth/login', { body: { email, password: 'senhaforte1' } })).status, 401)
 })
 
+test('LGPD: ficha de saúde só é aceita com consentimento específico, e o aceite fica gravado', async () => {
+    const ests = await readData('establishments.json')
+    const original = JSON.stringify(ests)
+    ests.find(e => e.id === 1).servicePreferences = { 101: { anamnesisFormId: 5 } }
+    await fs.writeFile(path.join(dataDir, 'establishments.json'), JSON.stringify(ests))
+    await fs.writeFile(path.join(dataDir, 'anamnesis_forms.json'), JSON.stringify([{ id: 5, establishmentId: 1, name: 'Ficha capilar', questions: [{ id: 'q1', label: 'Alergias?', type: 'texto', required: true }] }]))
+    const corpo = { establishmentId: 1, services: [101], date: '2030-06-03', time: '10:00', customerName: 'Cliente Um', customerPhone: '11911111111', customerEmail: 'c1@teste.local',
+        anamnesisAnswers: [{ formId: 5, answers: [{ questionId: 'q1', answer: 'nenhuma' }] }] }
+    try {
+        const sem = await call('POST', '/appointments', { token: tokens.cliente1, body: corpo })
+        assert.equal(sem.status, 400)
+        assert.equal(sem.json.code, 'ANAMNESIS_CONSENT_REQUIRED')
+
+        const com = await call('POST', '/appointments', { token: tokens.cliente1, body: { ...corpo, anamnesisConsent: true } })
+        assert.equal(com.status, 201, JSON.stringify(com.json))
+        const ficha = (await readData('anamnesis_responses.json')).find(r => r.appointmentId === com.json.data.id)
+        assert.ok(ficha?.consentAt, 'momento do consentimento gravado')
+        assert.equal(ficha.consentVersion, '2026-11')
+    } finally {
+        await fs.writeFile(path.join(dataDir, 'establishments.json'), original)
+    }
+})
+
 // Fica por último: apaga o salão 1 inteiro.
 test('excluir conta: leva tudo do salão, só o dono pode, e funciona mesmo com o salão já sumido', async () => {
     const owned = ['products.json', 'cashflow.json', 'client_notes.json', 'anamnesis_forms.json', 'anamnesis_responses.json', 'packages.json', 'audit_log.json']

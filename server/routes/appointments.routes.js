@@ -16,6 +16,10 @@ import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointment
 import { maskEmail } from '../utils/logPrivacy.js'
 
 const router = Router()
+
+// Versão do texto de consentimento da ficha de saúde mostrado no agendamento.
+// Mudou o texto? Mude a versão — cada ficha guarda sob qual texto foi aceita.
+const ANAMNESIS_CONSENT_VERSION = '2026-11'
 const appointmentsRepo = getRepository('appointments.json')
 const servicesRepo = getRepository('services.json')
 const anamnesisFormsRepo = getRepository('anamnesis_forms.json')
@@ -144,7 +148,8 @@ router.post('/', optionalAuthRejectStaleMiddleware, async (req, res, next) => {
             customerEmail,
             notes,
             assignments,
-            anamnesisAnswers
+            anamnesisAnswers,
+            anamnesisConsent
         } = req.body
 
         // Validar dados obrigatórios
@@ -252,6 +257,12 @@ router.post('/', optionalAuthRejectStaleMiddleware, async (req, res, next) => {
                 if (!submitted || missing) {
                     throw new AppError(`Preencha a ficha "${form.name}" antes de confirmar o agendamento.`, 400)
                 }
+            }
+
+            // LGPD art. 11: a ficha tem dados de saúde. Sem o consentimento
+            // específico e destacado (caixa própria na tela), ela não é aceita.
+            if (requiredFormIds.size > 0 && anamnesisConsent !== true) {
+                throw new AppError('Para enviar a ficha de saúde, marque que autoriza o salão a ver essas informações.', 400, 'ANAMNESIS_CONSENT_REQUIRED')
             }
         }
 
@@ -374,7 +385,10 @@ router.post('/', optionalAuthRejectStaleMiddleware, async (req, res, next) => {
                     formId: form.id,
                     formName: form.name,
                     customerName,
-                    answers: entry.answers || []
+                    answers: entry.answers || [],
+                    // Prova do consentimento (LGPD art. 11, art. 8º §2º).
+                    consentAt: anamnesisConsent === true ? new Date().toISOString() : null,
+                    consentVersion: anamnesisConsent === true ? ANAMNESIS_CONSENT_VERSION : null
                 })
             }
         }
