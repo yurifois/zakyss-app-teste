@@ -1,4 +1,5 @@
 import { sendEmail } from '../utils/sendEmail.js'
+import { maskEmail, maskName } from '../utils/logPrivacy.js'
 
 /**
  * Formata data para exibição em português
@@ -102,7 +103,7 @@ const generateEmailTemplate = (customerName, date, time, reminderType) => {
  */
 export const sendAppointmentReminder = async (email, customerName, date, time, reminderType) => {
     if (!email) {
-        console.log(`[EmailService] Sem email para enviar lembrete para ${customerName}`)
+        console.log(`[EmailService] Sem email para enviar lembrete para ${maskName(customerName)}`)
         return false
     }
 
@@ -112,10 +113,10 @@ export const sendAppointmentReminder = async (email, customerName, date, time, r
             `⏰ Lembrete: Seu agendamento é ${reminderType === '24h' ? 'amanhã' : 'hoje'}!`,
             generateEmailTemplate(customerName, date, time, reminderType)
         )
-        console.log(`[EmailService] ✅ Email de lembrete (${reminderType}) enviado para ${email}`)
+        console.log(`[EmailService] ✅ Email de lembrete (${reminderType}) enviado para ${maskEmail(email)}`)
         return true
     } catch (error) {
-        console.error(`[EmailService] ❌ Erro ao enviar email para ${email}:`, error.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email para ${maskEmail(email)}:`, error.message)
         return false
     }
 }
@@ -207,7 +208,7 @@ const generateConfirmationTemplate = (customerName, date, time, establishmentNam
  */
 export const sendConfirmationEmail = async (email, customerName, date, time, establishmentName) => {
     if (!email) {
-        console.log(`[EmailService] Sem email para enviar confirmação para ${customerName}`)
+        console.log(`[EmailService] Sem email para enviar confirmação para ${maskName(customerName)}`)
         return false
     }
 
@@ -217,10 +218,10 @@ export const sendConfirmationEmail = async (email, customerName, date, time, est
             `✅ Agendamento Confirmado - ${establishmentName}`,
             generateConfirmationTemplate(customerName, date, time, establishmentName)
         )
-        console.log(`[EmailService] ✅ Email de confirmação enviado para ${email}`)
+        console.log(`[EmailService] ✅ Email de confirmação enviado para ${maskEmail(email)}`)
         return true
     } catch (error) {
-        console.error(`[EmailService] ❌ Erro ao enviar email de confirmação para ${email}:`, error.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email de confirmação para ${maskEmail(email)}:`, error.message)
         return false
     }
 }
@@ -315,10 +316,10 @@ export const sendNewAppointmentEmail = async (establishmentEmail, establishmentN
             `📅 Novo Agendamento Recebido - ${customerName}`,
             generateNewAppointmentTemplate(establishmentName, customerName, date, time, servicesListStr)
         )
-        console.log(`[EmailService] ✅ Email de novo agendamento enviado para o estabelecimento: ${establishmentEmail}`)
+        console.log(`[EmailService] ✅ Email de novo agendamento enviado para o estabelecimento: ${maskEmail(establishmentEmail)}`)
         return true
     } catch (error) {
-        console.error(`[EmailService] ❌ Erro ao enviar email para o estabelecimento ${establishmentEmail}:`, error.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email para o estabelecimento ${maskEmail(establishmentEmail)}:`, error.message)
         return false
     }
 }
@@ -411,10 +412,10 @@ export const sendEmployeeAppointmentEmail = async (employeeEmail, employeeName, 
             `📅 Novo Agendamento - ${customerName}`,
             generateEmployeeAppointmentTemplate(employeeName, customerName, date, time, servicesListStr)
         )
-        console.log(`[EmailService] ✅ Email de agendamento enviado para o funcionário: ${employeeEmail}`)
+        console.log(`[EmailService] ✅ Email de agendamento enviado para o funcionário: ${maskEmail(employeeEmail)}`)
         return true
     } catch (error) {
-        console.error(`[EmailService] ❌ Erro ao enviar email para o funcionário ${employeeEmail}:`, error.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email para o funcionário ${maskEmail(employeeEmail)}:`, error.message)
         return false
     }
 }
@@ -490,7 +491,7 @@ const generateReturnReminderTemplate = (customerName, establishmentName, service
  */
 export const sendReturnReminder = async (email, customerName, establishmentName, serviceNames) => {
     if (!email) {
-        console.log(`[EmailService] Sem email para enviar lembrete de retorno para ${customerName}`)
+        console.log(`[EmailService] Sem email para enviar lembrete de retorno para ${maskName(customerName)}`)
         return false
     }
 
@@ -500,10 +501,10 @@ export const sendReturnReminder = async (email, customerName, establishmentName,
             `✨ Que tal agendar seu próximo ${serviceNames}?`,
             generateReturnReminderTemplate(customerName, establishmentName, serviceNames)
         )
-        console.log(`[EmailService] ✅ Email de lembrete de retorno enviado para ${email}`)
+        console.log(`[EmailService] ✅ Email de lembrete de retorno enviado para ${maskEmail(email)}`)
         return true
     } catch (error) {
-        console.error(`[EmailService] ❌ Erro ao enviar email de retorno para ${email}:`, error.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email de retorno para ${maskEmail(email)}:`, error.message)
         return false
     }
 }
@@ -541,10 +542,10 @@ export const sendReactivationEmailToCustomer = async (email, customerName, date,
     </html>`
     try {
         await sendEmail(email, `🔄 Agendamento Reativado - ${establishmentName}`, html)
-        console.log(`[EmailService] ✅ Email de reativação enviado para o cliente: ${email}`)
+        console.log(`[EmailService] ✅ Email de reativação enviado para o cliente: ${maskEmail(email)}`)
         return true
     } catch (err) {
-        console.error(`[EmailService] ❌ Erro ao enviar email de reativação para ${email}:`, err.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email de reativação para ${maskEmail(email)}:`, err.message)
         return false
     }
 }
@@ -583,10 +584,10 @@ export const sendReactivationEmailToEstablishment = async (establishmentEmail, e
     </html>`
     try {
         await sendEmail(establishmentEmail, `🔄 Agendamento Reativado - ${customerName}`, html)
-        console.log(`[EmailService] ✅ Email de reativação enviado para o estabelecimento: ${establishmentEmail}`)
+        console.log(`[EmailService] ✅ Email de reativação enviado para o estabelecimento: ${maskEmail(establishmentEmail)}`)
         return true
     } catch (err) {
-        console.error(`[EmailService] ❌ Erro ao enviar email de reativação para o estabelecimento ${establishmentEmail}:`, err.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email de reativação para o estabelecimento ${maskEmail(establishmentEmail)}:`, err.message)
         return false
     }
 }
@@ -624,10 +625,10 @@ export const sendCancellationEmailToCustomer = async (email, customerName, date,
     </html>`
     try {
         await sendEmail(email, `❌ Agendamento Cancelado - ${establishmentName}`, html)
-        console.log(`[EmailService] ✅ Email de cancelamento enviado para o cliente: ${email}`)
+        console.log(`[EmailService] ✅ Email de cancelamento enviado para o cliente: ${maskEmail(email)}`)
         return true
     } catch (err) {
-        console.error(`[EmailService] ❌ Erro ao enviar email de cancelamento para ${email}:`, err.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email de cancelamento para ${maskEmail(email)}:`, err.message)
         return false
     }
 }
@@ -666,10 +667,10 @@ export const sendCancellationEmailToEstablishment = async (establishmentEmail, e
     </html>`
     try {
         await sendEmail(establishmentEmail, `❌ Agendamento Cancelado - ${customerName}`, html)
-        console.log(`[EmailService] ✅ Email de cancelamento enviado para o estabelecimento: ${establishmentEmail}`)
+        console.log(`[EmailService] ✅ Email de cancelamento enviado para o estabelecimento: ${maskEmail(establishmentEmail)}`)
         return true
     } catch (err) {
-        console.error(`[EmailService] ❌ Erro ao enviar email de cancelamento para o estabelecimento ${establishmentEmail}:`, err.message)
+        console.error(`[EmailService] ❌ Erro ao enviar email de cancelamento para o estabelecimento ${maskEmail(establishmentEmail)}:`, err.message)
         return false
     }
 }

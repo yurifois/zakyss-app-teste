@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import { getRepository } from '../repositories/index.js'
 import { sendAppointmentReminder, sendReturnReminder } from './emailService.js'
+import { maskName } from '../utils/logPrivacy.js'
 
 const appointmentsRepo = getRepository('appointments.json')
 
@@ -96,7 +97,7 @@ const processNotifications = async () => {
             const notificationType = getNotificationToSend(hoursUntil, apt.notificationsSent)
 
             if (notificationType) {
-                console.log(`[NotificationScheduler] ⏰ Enviando notificação ${notificationType} para ${apt.customerName}`)
+                console.log(`[NotificationScheduler] ⏰ Enviando notificação ${notificationType} para ${maskName(apt.customerName)}`)
 
                 // Determinar email do destinatário
                 // Prioriza email do perfil do usuário (se existir userId)

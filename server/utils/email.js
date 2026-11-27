@@ -1,5 +1,6 @@
 import dotenv from 'dotenv'
 import { sendEmail } from './sendEmail.js'
+import { maskEmail } from './logPrivacy.js'
 
 dotenv.config()
 
@@ -26,9 +27,9 @@ export async function sendPasswordResetEmail(to, token) {
 
     try {
         await sendEmail(to, subject, html)
-        console.log(`[Email] Password reset sent to ${to}`)
+        console.log(`[Email] Password reset sent to ${maskEmail(to)}`)
     } catch (error) {
-        console.error(`[Email] Error sending to ${to}:`, error)
+        console.error(`[Email] Error sending to ${maskEmail(to)}:`, error)
         throw new Error('Falha ao enviar e-mail: ' + error.message)
     }
 }
@@ -57,9 +58,9 @@ export async function sendEmailVerificationEmail(to, token) {
 
     try {
         await sendEmail(to, subject, html)
-        console.log(`[Email] Verification sent to ${to}`)
+        console.log(`[Email] Verification sent to ${maskEmail(to)}`)
     } catch (error) {
-        console.error(`[Email] Error sending verification to ${to}:`, error)
+        console.error(`[Email] Error sending verification to ${maskEmail(to)}:`, error)
         throw new Error('Falha ao enviar e-mail: ' + error.message)
     }
 }
@@ -101,9 +102,9 @@ export async function sendAccountInviteEmail(to) {
 
     try {
         await sendEmail(to, subject, html)
-        console.log(`[Email] Account invite sent to ${to}`)
+        console.log(`[Email] Account invite sent to ${maskEmail(to)}`)
     } catch (error) {
-        console.error(`[Email] Error sending invite to ${to}:`, error)
+        console.error(`[Email] Error sending invite to ${maskEmail(to)}:`, error)
         throw new Error('Falha ao enviar e-mail: ' + error.message)
     }
 }

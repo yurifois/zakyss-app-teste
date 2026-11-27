@@ -6,6 +6,7 @@ import { recordTermsAcceptance } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { rateLimit, byIp, byBody, byIpAnd } from '../middleware/rateLimit.middleware.js'
+import { maskEmail } from '../utils/logPrivacy.js'
 
 // Freios contra força bruta e spam (ver rateLimit.middleware.js para o porquê dos números).
 const loginLimit = rateLimit('login', [
@@ -463,7 +464,7 @@ router.post('/forgot-password', forgotLimit, async (req, res, next) => {
             const agendamento = await encontrarAgendamentoPorEmail(emailLower)
 
             if (agendamento) {
-                console.warn(`[auth] forgot-password: ${emailLower} não tem conta, mas tem agendamento. Enviando convite de cadastro.`)
+                console.warn(`[auth] forgot-password: ${maskEmail(emailLower)} não tem conta, mas tem agendamento. Enviando convite de cadastro.`)
                 try {
                     await sendAccountInviteEmail((agendamento.customerEmail || emailLower).trim())
                 } catch (err) {
@@ -472,7 +473,7 @@ router.post('/forgot-password', forgotLimit, async (req, res, next) => {
                     console.error('[auth] Falha ao enviar convite de cadastro:', err.message)
                 }
             } else {
-                console.warn(`[auth] forgot-password: ${emailLower} não tem conta nem agendamento. Nada enviado.`)
+                console.warn(`[auth] forgot-password: ${maskEmail(emailLower)} não tem conta nem agendamento. Nada enviado.`)
             }
 
             return res.json({ success: true, data: { message: 'Se o e-mail existir, um link de recuperação foi enviado.' } })

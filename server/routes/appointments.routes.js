@@ -13,6 +13,7 @@ const cancelGuestLimit = rateLimit('cancel-guest', [
 import { overlaps, agoraNoFuso } from '../utils/daySchedule.js'
 import { refreshEstablishmentRating } from '../utils/ratings.js'
 import { sendConfirmationEmail, sendNewAppointmentEmail, sendEmployeeAppointmentEmail, sendReactivationEmailToCustomer, sendReactivationEmailToEstablishment, sendCancellationEmailToCustomer, sendCancellationEmailToEstablishment } from '../services/emailService.js'
+import { maskEmail } from '../utils/logPrivacy.js'
 
 const router = Router()
 const appointmentsRepo = getRepository('appointments.json')
@@ -396,7 +397,7 @@ router.post('/', optionalAuthRejectStaleMiddleware, async (req, res, next) => {
                     time,
                     servicesListStr
                 )
-                console.log(`[Appointments] Email de novo agendamento enviado para ${targetEmail}`)
+                console.log(`[Appointments] Email de novo agendamento enviado para ${maskEmail(targetEmail)}`)
             } else {
                 console.log(`[Appointments] Nenhum email encontrado para o estabelecimento ID ${establishmentId}`)
             }
@@ -702,7 +703,7 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
                             servicesListStr
                         )
                     }
-                    console.log(`[Appointments] E-mails de reativação enviados para cliente (${recipientEmail}) e estabelecimento (${estEmail})`)
+                    console.log(`[Appointments] E-mails de reativação enviados para cliente (${maskEmail(recipientEmail)}) e estabelecimento (${maskEmail(estEmail)})`)
                 } else if (recipientEmail) {
                     await sendConfirmationEmail(
                         recipientEmail,
@@ -711,7 +712,7 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
                         appointment.time,
                         establishment?.name || 'Estabelecimento'
                     )
-                    console.log(`[Appointments] Email de confirmação enviado para ${recipientEmail}`)
+                    console.log(`[Appointments] Email de confirmação enviado para ${maskEmail(recipientEmail)}`)
                 }
             } catch (emailErr) {
                 console.error('[Appointments] Erro ao enviar emails de notificação:', emailErr.message)
@@ -744,7 +745,7 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
                         appointment.time,
                         establishment?.name || 'Estabelecimento'
                     )
-                    console.log(`[Appointments] Email de cancelamento enviado para o cliente ${recipientEmail}`)
+                    console.log(`[Appointments] Email de cancelamento enviado para o cliente ${maskEmail(recipientEmail)}`)
                 }
 
                 let estEmail = establishment?.email
@@ -765,7 +766,7 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
                         appointment.time,
                         servicesListStr
                     )
-                    console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${estEmail}`)
+                    console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${maskEmail(estEmail)}`)
                 }
             } catch (emailErr) {
                 console.error('[Appointments] Erro ao enviar email de cancelamento:', emailErr.message)
@@ -825,7 +826,7 @@ router.patch('/:id/cancel-guest', cancelGuestLimit, async (req, res, next) => {
                     appointment.time,
                     establishment?.name || 'Estabelecimento'
                 )
-                console.log(`[Appointments] Email de cancelamento enviado para o cliente ${appointment.customerEmail}`)
+                console.log(`[Appointments] Email de cancelamento enviado para o cliente ${maskEmail(appointment.customerEmail)}`)
             }
 
             let estEmail = establishment?.email
@@ -846,7 +847,7 @@ router.patch('/:id/cancel-guest', cancelGuestLimit, async (req, res, next) => {
                     appointment.time,
                     servicesListStr
                 )
-                console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${estEmail}`)
+                console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${maskEmail(estEmail)}`)
             }
         } catch (emailErr) {
             console.error('[Appointments] Erro ao enviar email de cancelamento:', emailErr.message)
@@ -903,7 +904,7 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
                     existingAppointment.time,
                     establishment?.name || 'Estabelecimento'
                 )
-                console.log(`[Appointments] Email de cancelamento enviado para o cliente ${recipientEmail}`)
+                console.log(`[Appointments] Email de cancelamento enviado para o cliente ${maskEmail(recipientEmail)}`)
             }
 
             {
@@ -925,7 +926,7 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
                         existingAppointment.time,
                         servicesListStr
                     )
-                    console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${estEmail}`)
+                    console.log(`[Appointments] Email de cancelamento enviado para o estabelecimento ${maskEmail(estEmail)}`)
                 }
             }
         } catch (emailErr) {
