@@ -6,6 +6,8 @@ import EstablishmentCard from '../components/EstablishmentCard'
 import { Search, MapPin, Star } from 'lucide-react'
 import CategoryIconBase from '../components/CategoryIcon'
 import MaintenanceBanner from '../components/MaintenanceBanner'
+import VoiceSearchButton from '../components/VoiceSearchButton'
+import { useToast } from '../contexts/ToastContext'
 
 const CategoryIcon = ({ iconName, color }) => {
     const Icon = (props) => <CategoryIconBase iconName={iconName} {...props} />
@@ -86,6 +88,7 @@ function HeroDecorations() {
 
 export default function Home() {
     const [searchQuery, setSearchQuery] = useState('')
+    const { error: avisoErro } = useToast()
     const [categories, setCategories] = useState([])
     const [nearbyEstablishments, setNearbyEstablishments] = useState([])
     const [loading, setLoading] = useState(true)
@@ -150,9 +153,16 @@ export default function Home() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        <VoiceSearchButton
+                            onResult={(texto) => {
+                                setSearchQuery(texto)
+                                navigate(`/buscar?q=${encodeURIComponent(texto)}`)
+                            }}
+                            onError={avisoErro}
+                        />
                         <button type="submit" className="search-btn">
                             <Search size={20} />
-                            Buscar
+                            <span className="search-btn__texto">Buscar</span>
                         </button>
                     </form>
 
