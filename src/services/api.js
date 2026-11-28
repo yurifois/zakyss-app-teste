@@ -284,6 +284,15 @@ export async function deleteMyAccount(userId, password) {
     })
 }
 
+// Novo aceite dos Termos/Política quando a versão muda.
+export async function getTermsStatus() {
+    return request('/auth/terms-status')
+}
+
+export async function acceptTerms() {
+    return request('/auth/terms/accept', { method: 'POST' })
+}
+
 export function logout() {
     localStorage.removeItem('zakys_token')
     localStorage.removeItem('zakys_user')

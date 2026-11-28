@@ -590,6 +590,22 @@ test('LGPD: ficha de saúde só é aceita com consentimento específico, e o ace
     }
 })
 
+test('LGPD: termos novos pedem novo aceite; aceitar grava e libera', async () => {
+    assert.equal((await call('GET', '/auth/terms-status')).status, 401)
+    const antes = await call('GET', '/auth/terms-status', { token: tokens.cliente2 })
+    assert.equal(antes.status, 200)
+    assert.equal(antes.json.data.upToDate, false, 'conta sem aceite da versão vigente')
+    assert.equal((await call('POST', '/auth/terms/accept', { token: tokens.cliente2 })).status, 200)
+    assert.equal((await call('GET', '/auth/terms-status', { token: tokens.cliente2 })).json.data.upToDate, true)
+    // o aceite de um cliente não vale para o admin de mesmo número
+    assert.equal((await call('GET', '/auth/terms-status', { token: tokens.adminB })).json.data.upToDate, false)
+    // cadastro novo já nasce com a versão vigente aceita
+    const email = 'termos.novos@teste.local'
+    await call('POST', '/auth/register', { body: { name: 'T', email, password: 'senhaforte1', termsAccepted: true } })
+    const sessao = (await confirmarEmail('users.json', email, 'customer')).json.data
+    assert.equal((await call('GET', '/auth/terms-status', { token: sessao.token })).json.data.upToDate, true)
+})
+
 // Fica por último: apaga o salão 1 inteiro.
 test('excluir conta: leva tudo do salão, só o dono pode, e funciona mesmo com o salão já sumido', async () => {
     const owned = ['products.json', 'cashflow.json', 'client_notes.json', 'anamnesis_forms.json', 'anamnesis_responses.json', 'packages.json', 'audit_log.json']

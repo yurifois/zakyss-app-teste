@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { getRepository } from '../repositories/index.js'
 import { generateToken, hashPassword, comparePassword, generateResetToken, verifyResetToken, decodeToken, passwordProblem, REMEMBER_ME_EXPIRES_IN, generateEmailVerificationToken, verifyEmailVerificationToken, isEmailVerified } from '../utils/auth.js'
 import { sendPasswordResetEmail, sendAccountInviteEmail, sendEmailVerificationEmail } from '../utils/email.js'
-import { recordTermsAcceptance } from '../utils/terms.js'
+import { recordTermsAcceptance, hasAcceptedCurrentTerms, CURRENT_TERMS_VERSION } from '../utils/terms.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 import { rateLimit, byIp, byBody, byIpAnd } from '../middleware/rateLimit.middleware.js'
@@ -396,6 +396,28 @@ router.post('/resend-verification', resendVerificationLimit, async (req, res, ne
         if (admin && !isEmailVerified(admin)) await enviarConfirmacaoDeEmail(admin, 'admin')
 
         res.json({ success: true, data: { message: 'Se houver uma conta aguardando confirmação com esse e-mail, enviamos um novo link.' } })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Novo aceite quando os Termos/Política mudam (os termos prometem isso).
+// O app consulta ao abrir; se estiver desatualizado, mostra o aviso para aceitar.
+router.get('/terms-status', authMiddleware, async (req, res, next) => {
+    try {
+        const userType = req.user.type === 'admin' ? 'admin' : 'customer'
+        const upToDate = await hasAcceptedCurrentTerms({ userId: req.user.id, userType })
+        res.json({ success: true, data: { upToDate, version: CURRENT_TERMS_VERSION } })
+    } catch (error) {
+        next(error)
+    }
+})
+
+router.post('/terms/accept', authMiddleware, async (req, res, next) => {
+    try {
+        const userType = req.user.type === 'admin' ? 'admin' : 'customer'
+        await recordTermsAcceptance({ userId: req.user.id, userType })
+        res.json({ success: true, data: { version: CURRENT_TERMS_VERSION } })
     } catch (error) {
         next(error)
     }
