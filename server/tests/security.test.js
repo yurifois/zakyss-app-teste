@@ -606,6 +606,55 @@ test('LGPD: termos novos pedem novo aceite; aceitar grava e libera', async () =>
     assert.equal((await call('GET', '/auth/terms-status', { token: sessao.token })).json.data.upToDate, true)
 })
 
+test('CRM: ficha do cliente com números certos e cartão fidelidade do salão com o cliente', async () => {
+    const ests = await readData('establishments.json'); const originalEst = JSON.stringify(ests)
+    const apts = await readData('appointments.json'); const originalApt = JSON.stringify(apts)
+    ests.find(e => e.id === 1).loyaltyProgram = { enabled: true, visitsRequired: 2, reward: 'Corte grátis' }
+    const base = { establishmentId: 1, userId: 1, services: [101], time: '10:00', customerName: 'Cliente Um', customerPhone: '(11) 91111-1111', customerEmail: 'c1@teste.local', totalDuration: 30 }
+    apts.push(
+        { ...base, id: 9001, date: '2026-01-10', status: 'completed', totalPrice: 50 },
+        { ...base, id: 9002, date: '2026-02-10', status: 'completed', totalPrice: 70 },
+        { ...base, id: 9003, date: '2026-03-10', status: 'no_show', totalPrice: 50 },
+        { ...base, id: 9004, date: '2026-03-11', status: 'completed', totalPrice: 999, customerName: 'Lançamento Manual', customerPhone: '00000000000', notes: JSON.stringify({ type: 'MANUAL_FINANCE', description: 'x' }) },
+    )
+    await fs.writeFile(path.join(dataDir, 'establishments.json'), JSON.stringify(ests))
+    await fs.writeFile(path.join(dataDir, 'appointments.json'), JSON.stringify(apts))
+    await fs.writeFile(path.join(dataDir, 'loyalty_redemptions.json'), '[]')
+    try {
+        const lista = await call('GET', '/establishments/1/clients', { token: tokens.adminA })
+        assert.equal(lista.status, 200)
+        const c = lista.json.data.find(x => x.key === '11911111111')
+        assert.ok(c, 'cliente agrupado pelo telefone')
+        assert.equal(c.visitCount, 2)
+        assert.equal(c.totalSpent, 120)
+        assert.equal(c.averageTicket, 60)
+        assert.equal(c.noShows, 1)
+        assert.equal(c.firstVisit, '2026-01-10')
+        assert.deepEqual([c.loyalty.progress, c.loyalty.available], [0, 1], '2 atendimentos = 1 prêmio')
+        assert.equal(lista.json.data.some(x => x.key === '00000000000'), false, 'lançamento manual não é cliente')
+        assert.equal((await call('GET', '/establishments/1/clients', { token: tokens.adminB })).status, 403)
+
+        assert.equal((await call('POST', '/establishments/1/loyalty/redeem', { token: tokens.adminB, body: { clientKey: '11911111111' } })).status, 403)
+        const r1 = await call('POST', '/establishments/1/loyalty/redeem', { token: tokens.adminA, body: { clientKey: '11911111111' } })
+        assert.equal(r1.status, 200); assert.equal(r1.json.data.available, 0)
+        assert.equal((await call('POST', '/establishments/1/loyalty/redeem', { token: tokens.adminA, body: { clientKey: '11911111111' } })).status, 409, 'sem prêmio sobrando')
+
+        const meu = await call('GET', '/users/1/loyalty', { token: tokens.cliente1 })
+        assert.equal(meu.status, 200)
+        assert.deepEqual(meu.json.data.map(x => [x.establishmentId, x.available, x.redeemed, x.reward]), [[1, 0, 1, 'Corte grátis']])
+        assert.equal((await call('GET', '/users/1/loyalty', { token: tokens.cliente2 })).status, 403)
+
+        // salão desliga o cartão: some para o cliente e o resgate é recusado
+        ests.find(e => e.id === 1).loyaltyProgram = { enabled: false, visitsRequired: 2, reward: 'x' }
+        await fs.writeFile(path.join(dataDir, 'establishments.json'), JSON.stringify(ests))
+        assert.deepEqual((await call('GET', '/users/1/loyalty', { token: tokens.cliente1 })).json.data, [])
+        assert.equal((await call('POST', '/establishments/1/loyalty/redeem', { token: tokens.adminA, body: { clientKey: '11911111111' } })).status, 400)
+    } finally {
+        await fs.writeFile(path.join(dataDir, 'establishments.json'), originalEst)
+        await fs.writeFile(path.join(dataDir, 'appointments.json'), originalApt)
+    }
+})
+
 // Fica por último: apaga o salão 1 inteiro.
 test('excluir conta: leva tudo do salão, só o dono pode, e funciona mesmo com o salão já sumido', async () => {
     const owned = ['products.json', 'cashflow.json', 'client_notes.json', 'anamnesis_forms.json', 'anamnesis_responses.json', 'packages.json', 'audit_log.json']

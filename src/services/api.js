@@ -293,6 +293,15 @@ export async function acceptTerms() {
     return request('/auth/terms/accept', { method: 'POST' })
 }
 
+// Cartão fidelidade
+export async function redeemLoyalty(establishmentId, clientKey) {
+    return request(`/establishments/${establishmentId}/loyalty/redeem`, { method: 'POST', body: JSON.stringify({ clientKey }) })
+}
+
+export async function getMyLoyalty(userId) {
+    return request(`/users/${userId}/loyalty`)
+}
+
 export function logout() {
     localStorage.removeItem('zakys_token')
     localStorage.removeItem('zakys_user')

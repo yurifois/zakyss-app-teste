@@ -10,6 +10,7 @@ const createEstablishmentLimit = rateLimit('create-establishment', [
     { key: byIp, max: 10, windowMinutes: 60 },
 ])
 import { buildDaySchedule, MOTIVOS_LONGOS } from '../utils/daySchedule.js'
+import { clientKeyOf, isManualFinance, loyaltyConfig, loyaltyStatus } from '../utils/clientes.js'
 
 const router = Router()
 const establishmentsRepo = getRepository('establishments.json')
@@ -362,68 +363,99 @@ router.get('/:id/appointments', authMiddleware, async (req, res, next) => {
 
 // Ficha de clientes: agrupa os agendamentos concluídos por cliente, com o
 // histórico de serviços já realizados no estabelecimento
+// Clientes do salão (CRM): ficha de cada um com números, pacotes, fidelidade
+// e histórico. Agrupa por telefone (ou e-mail), a mesma chave das anotações.
 router.get('/:id/clients', authMiddleware, async (req, res, next) => {
     try {
         const establishmentId = parseInt(req.params.id)
-        if (req.user.type !== 'admin' || req.user.establishmentId !== establishmentId) {
-            throw new AppError('Você não tem permissão para ver os clientes deste estabelecimento', 403)
-        }
+        assertAdminOf(req.user, establishmentId)
 
-        const appointments = await appointmentsRepo.findAll({ establishmentId })
-        const completed = appointments.filter(a => a.status === 'completed')
+        const establishment = await establishmentsRepo.findById(establishmentId)
+        const fidelidade = loyaltyConfig(establishment)
+        const appointments = (await appointmentsRepo.findAll({ establishmentId })).filter(a => !isManualFinance(a))
+        const pacotes = await getRepository('customer_packages.json').findAll({ establishmentId })
+        const resgates = fidelidade.enabled ? await getRepository('loyalty_redemptions.json').findAll({ establishmentId }) : []
 
         const servicesRepo = getRepository('services.json')
-        const allServices = await servicesRepo.findAll()
         const serviceNameById = {}
-        allServices.forEach(s => { serviceNameById[s.id] = s.name })
+        ;(await servicesRepo.findAll()).forEach(s => { serviceNameById[s.id] = s.name })
 
-        const normalizePhone = (phone) => (phone || '').replace(/\D/g, '')
-        const clientsByKey = {}
-
-        for (const apt of completed) {
-            const key = normalizePhone(apt.customerPhone) || `email:${(apt.customerEmail || '').toLowerCase()}`
-            if (!clientsByKey[key]) clientsByKey[key] = []
-            clientsByKey[key].push(apt)
+        const hoje = new Date().toISOString().slice(0, 10)
+        const porCliente = {}
+        for (const apt of appointments) {
+            const key = clientKeyOf(apt)
+            if (!key || key === 'email:') continue
+            ;(porCliente[key] ||= []).push(apt)
         }
 
-        const clients = Object.entries(clientsByKey).map(([key, apts]) => {
-            const sorted = [...apts].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))
-            const latest = sorted[0]
+        const clients = Object.entries(porCliente).map(([key, apts]) => {
+            const ordenados = [...apts].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))
+            const concluidos = ordenados.filter(a => a.status === 'completed')
+            const proximos = ordenados
+                .filter(a => ['pending', 'confirmed'].includes(a.status) && a.date >= hoje)
+                .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
+            const maisRecente = ordenados[0]
+            const totalGasto = concluidos.reduce((s, a) => s + (Number(a.totalPrice) || 0), 0)
+            const pacotesDoCliente = pacotes.filter(p => p.clientKey === key).map(p => ({
+                id: p.id,
+                name: p.packageName,
+                remaining: Math.max(0, (p.totalCredits || 0) - (p.usedCredits || 0)),
+                total: p.totalCredits,
+                expiresAt: p.expiresAt || null,
+                expired: !!(p.expiresAt && new Date(p.expiresAt) < new Date()),
+            }))
             return {
                 key,
-                name: latest.customerName,
-                phone: latest.customerPhone,
-                email: latest.customerEmail,
-                userId: latest.userId || null,
-                visitCount: sorted.length,
-                lastVisit: latest.date,
-                history: sorted.map(apt => {
-                    let parsedNotes = apt.notes;
-                    let isManual = false;
-                    let manualDescription = "";
-                    try {
-                        const parsed = JSON.parse(apt.notes);
-                        if (parsed && parsed.type === 'MANUAL_FINANCE') {
-                            isManual = true;
-                            manualDescription = parsed.description;
-                        }
-                    } catch (e) {}
-
-                    return {
-                        date: apt.date,
-                        time: apt.time,
-                        services: isManual ? ['Lançamento Manual'] : (apt.services || []).map(id => serviceNameById[id] || 'Serviço removido'),
-                        totalPrice: apt.totalPrice,
-                        notes: isManual ? manualDescription : apt.notes || null
-                    };
-                })
+                name: maisRecente.customerName,
+                phone: maisRecente.customerPhone,
+                email: maisRecente.customerEmail,
+                userId: maisRecente.userId || null,
+                visitCount: concluidos.length,
+                totalSpent: Math.round(totalGasto * 100) / 100,
+                averageTicket: concluidos.length ? Math.round((totalGasto / concluidos.length) * 100) / 100 : 0,
+                noShows: ordenados.filter(a => a.status === 'no_show').length,
+                cancellations: ordenados.filter(a => a.status === 'cancelled').length,
+                firstVisit: concluidos.length ? concluidos[concluidos.length - 1].date : null,
+                lastVisit: concluidos[0]?.date || null,
+                nextAppointment: proximos[0] ? { date: proximos[0].date, time: proximos[0].time } : null,
+                packages: pacotesDoCliente,
+                loyalty: loyaltyStatus(fidelidade, concluidos.length, resgates.filter(r => r.clientKey === key).length),
+                history: concluidos.map(apt => ({
+                    date: apt.date,
+                    time: apt.time,
+                    services: (apt.services || []).map(id => serviceNameById[id] || 'Serviço removido'),
+                    totalPrice: apt.totalPrice,
+                    notes: apt.notes || null
+                }))
             }
-        }).sort((a, b) => (b.lastVisit || '').localeCompare(a.lastVisit || ''))
+        }).sort((a, b) => (b.lastVisit || b.nextAppointment?.date || '').localeCompare(a.lastVisit || a.nextAppointment?.date || ''))
 
-        res.json({
-            success: true,
-            data: clients
-        })
+        res.json({ success: true, data: clients, loyaltyProgram: fidelidade })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Cartão fidelidade: o salão marca que o cliente usou um prêmio.
+router.post('/:id/loyalty/redeem', authMiddleware, async (req, res, next) => {
+    try {
+        const establishmentId = parseInt(req.params.id)
+        assertAdminOf(req.user, establishmentId)
+        const clientKey = String(req.body?.clientKey || '').trim()
+        if (!clientKey) throw new AppError('Cliente não informado', 400)
+
+        const fidelidade = loyaltyConfig(await establishmentsRepo.findById(establishmentId))
+        if (!fidelidade.enabled) throw new AppError('O cartão fidelidade está desligado neste salão.', 400)
+
+        const concluidos = (await appointmentsRepo.findAll({ establishmentId }))
+            .filter(a => a.status === 'completed' && !isManualFinance(a) && clientKeyOf(a) === clientKey).length
+        const resgatesRepo = getRepository('loyalty_redemptions.json')
+        const usados = (await resgatesRepo.findAll({ establishmentId, clientKey })).length
+        const status = loyaltyStatus(fidelidade, concluidos, usados)
+        if (!status.available) throw new AppError('Este cliente ainda não tem prêmio disponível.', 409)
+
+        await resgatesRepo.create({ establishmentId, clientKey, redeemedAt: new Date().toISOString() })
+        res.json({ success: true, data: loyaltyStatus(fidelidade, concluidos, usados + 1) })
     } catch (error) {
         next(error)
     }

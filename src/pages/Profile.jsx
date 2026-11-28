@@ -10,6 +10,13 @@ export default function Profile() {
     const { user, isAuthenticated, updateProfile, refreshUser, logout, loading: authLoading } = useAuth()
     const { success, error } = useToast()
     const confirm = useConfirm()
+    // Cartões fidelidade do cliente (um por salão que tem o cartão ligado).
+    const [cartoes, setCartoes] = useState([])
+    useEffect(() => {
+        if (!user?.id) return
+        api.getMyLoyalty(user.id).then(setCartoes).catch(() => setCartoes([]))
+    }, [user?.id])
+
     // Excluir a própria conta (LGPD): pede a senha para confirmar.
     const [deletePassword, setDeletePassword] = useState('')
     const [deletingAccount, setDeletingAccount] = useState(false)
@@ -523,6 +530,26 @@ export default function Profile() {
                         {tab === 'appointments' && (
                             <>
                                 <h1 className="text-2xl font-bold mb-6">Meus Agendamentos</h1>
+
+                                {cartoes.length > 0 && (
+                                    <div className="flex flex-col gap-3 mb-6">
+                                        {cartoes.map(c => (
+                                            <div key={c.establishmentId} className="card" style={{ padding: '1rem', border: '1px solid var(--accent-400)' }}>
+                                                <p className="font-semibold mb-1">🎁 Cartão fidelidade · {c.establishmentName}</p>
+                                                <div className="flex flex-wrap gap-1 mb-2" aria-label={`${c.progress} de ${c.visitsRequired}`}>
+                                                    {Array.from({ length: c.visitsRequired }).map((_, i) => (
+                                                        <span key={i} style={{ width: 18, height: 18, borderRadius: 999, border: '2px solid var(--accent-400)', background: i < c.progress ? 'var(--accent-400)' : 'transparent', opacity: i < c.progress ? 1 : 0.4 }} />
+                                                    ))}
+                                                </div>
+                                                <p className="text-sm text-secondary">
+                                                    {c.available > 0
+                                                        ? <><strong style={{ color: 'var(--accent-400)' }}>Você ganhou {c.reward}!</strong> Avise o salão no seu próximo atendimento.</>
+                                                        : <>{c.progress} de {c.visitsRequired} atendimentos — faltam {c.visitsRequired - c.progress} para ganhar {c.reward}.</>}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 <SpamNotice className="mb-6" />
 

@@ -3,6 +3,7 @@ import { getRepository } from '../repositories/index.js'
 import { authMiddleware, customerMiddleware } from '../middleware/auth.middleware.js'
 import { passwordProblem, comparePassword } from '../utils/auth.js'
 import { AppError } from '../middleware/error.middleware.js'
+import { clientKeyOf, isManualFinance, loyaltyConfig, loyaltyStatus } from '../utils/clientes.js'
 
 const router = Router()
 
@@ -155,6 +156,37 @@ router.get('/:id/appointments', authMiddleware, customerMiddleware, async (req, 
             success: true,
             data: appointments.sort((a, b) => new Date(b.date) - new Date(a.date))
         })
+    } catch (error) {
+        next(error)
+    }
+})
+
+// Cartão fidelidade do cliente em cada salão onde ele já foi atendido
+// (só salões com o cartão ligado).
+router.get('/:id/loyalty', authMiddleware, customerMiddleware, async (req, res, next) => {
+    try {
+        if (parseInt(req.user.id) !== parseInt(req.params.id)) {
+            throw new AppError('Não autorizado', 403)
+        }
+        const establishmentsRepo = getRepository('establishments.json')
+        const resgatesRepo = getRepository('loyalty_redemptions.json')
+        const meus = (await appointmentsRepo.findAll({ userId: parseInt(req.params.id) }))
+            .filter(a => a.status === 'completed' && !isManualFinance(a))
+
+        const porSalao = {}
+        for (const a of meus) (porSalao[a.establishmentId] ||= []).push(a)
+
+        const cartoes = []
+        for (const [estId, apts] of Object.entries(porSalao)) {
+            const est = await establishmentsRepo.findById(parseInt(estId))
+            const config = loyaltyConfig(est)
+            if (!config.enabled) continue
+            const chaves = [...new Set(apts.map(clientKeyOf))]
+            const usados = (await resgatesRepo.findAll({ establishmentId: parseInt(estId) }))
+                .filter(r => chaves.includes(r.clientKey)).length
+            cartoes.push({ establishmentId: parseInt(estId), establishmentName: est.name, ...loyaltyStatus(config, apts.length, usados) })
+        }
+        res.json({ success: true, data: cartoes })
     } catch (error) {
         next(error)
     }
