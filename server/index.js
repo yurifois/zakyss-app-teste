@@ -7,6 +7,7 @@ import routes from './routes/index.js'
 import { errorHandler } from './middleware/error.middleware.js'
 import { startNotificationScheduler } from './services/notificationScheduler.js'
 import { startKeepAlive } from './services/keepAliveService.js'
+import { restoreWhatsAppSessions } from './services/whatsapp.js'
 import { getRepository } from './repositories/index.js'
 import morgan from 'morgan'
 
@@ -112,4 +113,7 @@ app.listen(PORT, () => {
 
     // Iniciar serviço de keep-alive para evitar adormecimento do backend
     startKeepAlive()
+
+    // Reconecta o WhatsApp dos salões que já tinham lido o QR code
+    restoreWhatsAppSessions()
 })

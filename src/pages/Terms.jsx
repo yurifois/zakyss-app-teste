@@ -55,6 +55,12 @@ export default function Terms() {
                             registra sobre seus clientes (anotações, fichas de anamnese, pacotes). Deve usá-las apenas
                             para o atendimento e respeitar a Lei Geral de Proteção de Dados (LGPD).
                         </p>
+                        <p>
+                            Se conectar o WhatsApp do salão ao Zakys (por QR code), o estabelecimento autoriza a
+                            plataforma a enviar, pelo número dele, os avisos de agendamento. Essa conexão não é um
+                            serviço oficial do WhatsApp; o estabelecimento a usa por sua conta e deve respeitar as regras
+                            do WhatsApp, sem mensagens em massa.
+                        </p>
                     </Item>
                     <Item titulo="5. Conduta">
                         <p>
@@ -105,7 +111,7 @@ export default function Terms() {
 
                     <Item titulo="3. Para que usamos e com qual base legal">
                         <ul className="list-disc pl-5 flex flex-col gap-1">
-                            <li>Criar sua conta, agendar e enviar avisos do agendamento (confirmação, lembrete, cancelamento) — <em>execução de contrato</em> (art. 7º, V).</li>
+                            <li>Criar sua conta, agendar e enviar avisos do agendamento por e-mail e pelo WhatsApp do estabelecimento (confirmação, lembrete, cancelamento) — <em>execução de contrato</em> (art. 7º, V).</li>
                             <li>Ficha de anamnese — <em>consentimento específico e destacado</em> (art. 11, I).</li>
                             <li>Localização para "perto de você" — <em>consentimento</em>, dado pela permissão do aparelho (art. 7º, I).</li>
                             <li>Segurança, prevenção a fraude e registros de acesso — <em>legítimo interesse</em> (art. 7º, IX).</li>
@@ -120,7 +126,9 @@ export default function Terms() {
                         </p>
                         <p>
                             <strong>Com fornecedores que operam a plataforma</strong>, só no necessário: Supabase (banco de dados),
-                            Render (servidor), Vercel (site), Resend (envio de e-mails) e Google (mapas). Alguns guardam dados
+                            Render (servidor), Vercel (site), Resend (envio de e-mails), Google (mapas) e WhatsApp/Meta, quando o
+                            estabelecimento conecta o WhatsApp dele para mandar os avisos do agendamento (nesse caso a mensagem sai
+                            do número do estabelecimento para o seu). O Zakys não lê nem guarda as conversas. Alguns guardam dados
                             fora do Brasil, principalmente nos Estados Unidos; essa transferência ocorre com as garantias
                             contratuais desses fornecedores (LGPD, art. 33).
                         </p>

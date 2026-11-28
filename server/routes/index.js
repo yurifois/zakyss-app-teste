@@ -13,6 +13,7 @@ import cashflowRoutes from './cashflow.routes.js'
 import clientNotesRoutes from './clientNotes.routes.js'
 import packagesRoutes from './packages.routes.js'
 import anamnesisRoutes from './anamnesis.routes.js'
+import whatsappRoutes from './whatsapp.routes.js'
 
 const router = Router()
 
@@ -30,5 +31,6 @@ router.use('/cashflow', cashflowRoutes)
 router.use('/client-notes', clientNotesRoutes)
 router.use('/packages', packagesRoutes)
 router.use('/anamnesis', anamnesisRoutes)
+router.use('/whatsapp', whatsappRoutes)
 
 export default router

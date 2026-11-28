@@ -18,6 +18,7 @@ process.env.SUPABASE_ANON_KEY = ''
 process.env.SUPABASE_SERVICE_ROLE_KEY = ''
 process.env.RESEND_API_KEY = ''
 process.env.JWT_SECRET = 'segredo-so-para-teste'
+process.env.WA_AUTH_ENC_KEY = Buffer.alloc(32, 7).toString('base64')
 process.env.NODE_ENV = 'test'
 
 let server, base, dataDir, tokens
@@ -653,6 +654,35 @@ test('CRM: ficha do cliente com números certos e cartão fidelidade do salão c
         await fs.writeFile(path.join(dataDir, 'establishments.json'), originalEst)
         await fs.writeFile(path.join(dataDir, 'appointments.json'), originalApt)
     }
+})
+
+test('WhatsApp: só o dono do salão mexe; número de avisos validado; teste avisa quando não está conectado', async () => {
+    assert.equal((await call('GET', '/whatsapp/status', { token: tokens.cliente1 })).status, 403)
+    assert.equal((await call('GET', '/whatsapp/status')).status, 401)
+    const st = await call('GET', '/whatsapp/status', { token: tokens.adminA })
+    assert.equal(st.status, 200)
+    assert.deepEqual([st.json.data.available, st.json.data.status, st.json.data.qr], [true, 'disconnected', null])
+
+    assert.equal((await call('PUT', '/whatsapp/alert-phone', { token: tokens.adminA, body: { phone: '123' } })).status, 400)
+    assert.equal((await call('PUT', '/whatsapp/alert-phone', { token: tokens.adminA, body: { phone: '(61) 98888-7777' } })).status, 200)
+    assert.equal((await readData('establishments.json')).find(e => e.id === 1).whatsappAlertPhone, '(61) 98888-7777')
+    assert.equal((await readData('establishments.json')).find(e => e.id === 2).whatsappAlertPhone, undefined, 'só o próprio salão')
+
+    const t = await call('POST', '/whatsapp/test', { token: tokens.adminA })
+    assert.equal(t.status, 409)
+    assert.match(t.json.error, /não está conectado/)
+})
+
+test('WhatsApp: números brasileiros e mensagens automáticas', async () => {
+    const { numeroBR, mensagemNovoAgendamento, mensagemAgendamentoConfirmado } = await import('../services/whatsapp.js')
+    assert.equal(numeroBR('(61) 98888-7777'), '5561988887777')
+    assert.equal(numeroBR('6133334444'), '556133334444')
+    assert.equal(numeroBR('+55 61 98888-7777'), '5561988887777')
+    assert.equal(numeroBR('123'), null)
+    const novo = mensagemNovoAgendamento({ salao: 'Salão A', cliente: 'Ana Souza', servicos: 'Corte', date: '2030-05-02', time: '14:00', linkPainel: 'https://x/admin' })
+    assert.match(novo, /Novo agendamento/); assert.match(novo, /Ana Souza/); assert.match(novo, /02\/05 às 14:00/)
+    const conf = mensagemAgendamentoConfirmado({ salao: 'Salão A', cliente: 'Ana Souza', servicos: 'Corte', date: '2030-05-02', time: '14:00', link: 'https://x/perfil' })
+    assert.match(conf, /Olá, Ana!/); assert.match(conf, /confirmado/)
 })
 
 // Fica por último: apaga o salão 1 inteiro.

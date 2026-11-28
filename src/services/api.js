@@ -302,6 +302,13 @@ export async function getMyLoyalty(userId) {
     return request(`/users/${userId}/loyalty`)
 }
 
+// WhatsApp do salão (painel)
+export const getWhatsAppStatus = () => request('/whatsapp/status')
+export const connectWhatsApp = () => request('/whatsapp/connect', { method: 'POST' })
+export const disconnectWhatsApp = () => request('/whatsapp/disconnect', { method: 'POST' })
+export const setWhatsAppAlertPhone = (phone) => request('/whatsapp/alert-phone', { method: 'PUT', body: JSON.stringify({ phone }) })
+export const testWhatsApp = () => request('/whatsapp/test', { method: 'POST' })
+
 export function logout() {
     localStorage.removeItem('zakys_token')
     localStorage.removeItem('zakys_user')

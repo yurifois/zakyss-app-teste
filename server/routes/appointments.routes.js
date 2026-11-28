@@ -3,6 +3,9 @@ import { getRepository } from '../repositories/index.js'
 import { authMiddleware, optionalAuthMiddleware, optionalAuthRejectStaleMiddleware, isAdminOf } from '../middleware/auth.middleware.js'
 import { AppError } from '../middleware/error.middleware.js'
 import { rateLimit, byIp, byParam } from '../middleware/rateLimit.middleware.js'
+import { avisarSemTravar, mensagemNovoAgendamento, mensagemAgendamentoConfirmado } from '../services/whatsapp.js'
+
+const SITE = () => (process.env.FRONTEND_URL || 'https://www.zakys.com.br').replace(/\/+$/, '')
 
 // O telefone é a "senha" do cancelamento sem conta: sem limite, dava para
 // testar números até acertar.
@@ -419,6 +422,21 @@ router.post('/', optionalAuthRejectStaleMiddleware, async (req, res, next) => {
             console.error('[Appointments] Erro ao enviar email ao estabelecimento:', emailErr.message)
         }
 
+        // WhatsApp: avisa o salão (no número de avisos) que chegou agendamento.
+        // Encaixe feito pelo próprio salão não precisa de aviso. Nunca trava.
+        if (!isAuthenticatedAdminRequest(req)) {
+            const destino = establishment?.whatsappAlertPhone || establishment?.phone
+            if (destino) {
+                avisarSemTravar(establishmentId, destino, mensagemNovoAgendamento({
+                    salao: establishment?.name || 'salão',
+                    cliente: customerName,
+                    servicos: selectedServices.map(s => s.name).join(', '),
+                    date, time,
+                    linkPainel: `${SITE()}/admin`,
+                }), 'aviso de agendamento novo')
+            }
+        }
+
         // Avisa cada funcionário responsável, no e-mail cadastrado dele, sobre
         // o novo agendamento — evita o estabelecimento ter que avisar na mão.
         try {
@@ -665,6 +683,24 @@ router.patch('/:id/status', authMiddleware, async (req, res, next) => {
         }
 
         const appointment = await appointmentsRepo.update(req.params.id, updateData)
+
+        // WhatsApp: o salão confirmou → o cliente recebe no WhatsApp dele,
+        // enviado pelo WhatsApp do próprio salão. Nunca trava a confirmação.
+        if (status === 'confirmed' && currentAppointment.status !== 'confirmed' && req.user?.type === 'admin' && appointment?.customerPhone) {
+            try {
+                const est = await getRepository('establishments.json').findById(appointment.establishmentId)
+                const nomes = (await servicesRepo.findAll()).filter(sv => (appointment.services || []).includes(sv.id)).map(sv => sv.name).join(', ')
+                avisarSemTravar(appointment.establishmentId, appointment.customerPhone, mensagemAgendamentoConfirmado({
+                    salao: est?.name || 'salão',
+                    cliente: appointment.customerName,
+                    servicos: nomes,
+                    date: appointment.date, time: appointment.time,
+                    link: `${SITE()}/perfil`,
+                }), 'confirmação para o cliente')
+            } catch (waErr) {
+                console.error('[WhatsApp] Falha ao preparar confirmação:', waErr.message)
+            }
+        }
 
         // Se está confirmando ou reativando, enviar e-mails aos envolvidos
         const isReactivation = currentAppointment.status === 'cancelled' && status !== 'cancelled'

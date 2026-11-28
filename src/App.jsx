@@ -32,6 +32,7 @@ const AdminLogin = lazy(() => import('./pages/admin/Login'))
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
 const AdminAppointments = lazy(() => import('./pages/admin/Appointments'))
 const AdminClients = lazy(() => import('./pages/admin/Clients'))
+const AdminWhatsApp = lazy(() => import('./pages/admin/WhatsApp'))
 const AdminSchedule = lazy(() => import('./pages/admin/Schedule'))
 const AdminServices = lazy(() => import('./pages/admin/Services'))
 const AdminEmployees = lazy(() => import('./pages/admin/Employees'))
@@ -86,6 +87,7 @@ function App() {
                 <Route path="agendamentos" element={<AdminAppointments />} />
                 <Route path="calendario" element={<AdminCalendarView />} />
                 <Route path="clientes" element={<AdminClients />} />
+                <Route path="whatsapp" element={<AdminWhatsApp />} />
                 <Route path="horarios" element={<AdminSchedule />} />
                 <Route path="servicos" element={<AdminServices />} />
                 <Route path="funcionarios" element={<AdminEmployees />} />
